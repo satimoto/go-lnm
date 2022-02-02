@@ -24,10 +24,10 @@ type Interceptor interface {
 	GetRouterClient() routerrpc.RouterClient
 
 	InterceptHtlcs()
-	InterceptHtlc(htlcInterceptorClient routerrpc.Router_HtlcInterceptorClient)
+	InterceptHtlc(htlcInterceptorClient routerrpc.Router_HtlcInterceptorClient) error
 
 	MonitorHtlcEvents()
-	MonitorHtlcEvent(subscribeHtlcEventsClient routerrpc.Router_SubscribeHtlcEventsClient)
+	MonitorHtlcEvent(subscribeHtlcEventsClient routerrpc.Router_SubscribeHtlcEventsClient) error
 }
 
 type Intercept struct {
@@ -60,23 +60,24 @@ func (i *Intercept) InterceptHtlcs() {
 	util.PanicOnError("Invalid LND Macaroon", err)
 
 	macaroonCtx := metadata.AppendToOutgoingContext(context.Background(), "macaroon", hex.EncodeToString(lndMacaroon))
-	htlcInterceptorClient, err := i.RouterClient.HtlcInterceptor(macaroonCtx)
+	htlcInterceptorClient, err := i.waitForHtlcInterceptor(macaroonCtx, 0, 1000)
 	util.PanicOnError("Error creating HTLC Interceptor", err)
 
 	for {
-		i.InterceptHtlc(htlcInterceptorClient)
+		if err := i.InterceptHtlc(htlcInterceptorClient); err != nil {
+			htlcInterceptorClient, err = i.waitForHtlcInterceptor(macaroonCtx, 100, 1000)
+			util.PanicOnError("Error creating HTLC Interceptor", err)
+		}
 	}
 }
 
-func (i *Intercept) InterceptHtlc(htlcInterceptorClient routerrpc.Router_HtlcInterceptorClient) {
+func (i *Intercept) InterceptHtlc(htlcInterceptorClient routerrpc.Router_HtlcInterceptorClient) error {
 	forwardHtlcInterceptRequest, err := htlcInterceptorClient.Recv()
 
 	if err != nil {
-		if status.Code(err) != codes.Canceled {
-			util.PanicOnError("Error receiving HTLC request", err)
-		}
+		log.Printf("Error receiving HTLC intercept: %v", status.Code(err))
 
-		return
+		return err
 	}
 
 	log.Print("HTLC Intercept")
@@ -112,7 +113,7 @@ func (i *Intercept) InterceptHtlc(htlcInterceptorClient routerrpc.Router_HtlcInt
 			if _, err := i.ChannelRequestResolver.Repository.GetChannelRequestHtlcByCircuitKey(ctx, getChannelRequestHtlcByCircuitKeyParams); err != nil {
 				forwardHtlcInterceptFail("Channel request HTLC already exists", err, htlcInterceptorClient, forwardHtlcInterceptRequest.IncomingCircuitKey)
 
-				return
+				return nil
 			}
 
 			// Store the incoming HTLC
@@ -126,11 +127,12 @@ func (i *Intercept) InterceptHtlc(htlcInterceptorClient routerrpc.Router_HtlcInt
 			if _, err := i.ChannelRequestResolver.Repository.CreateChannelRequestHtlc(ctx, channelRequestHtlcParams); err != nil {
 				forwardHtlcInterceptFail("Error creating channel request HTLC", err, htlcInterceptorClient, forwardHtlcInterceptRequest.IncomingCircuitKey)
 
-				return
+				return nil
 			}
 
 			// Start payment timeout to cleanup failures
 			if channelRequest.Status == db.ChannelRequestStatusREQUESTED {
+				// TODO: Add monitoring task to worker group, this should prevent shutdown while awaiting payments
 				go i.monitorPaymentTimeout(ctx, htlcInterceptorClient, channelRequest.PaymentHash, 30)
 			}
 
@@ -170,6 +172,8 @@ func (i *Intercept) InterceptHtlc(htlcInterceptorClient routerrpc.Router_HtlcInt
 			Action:             routerrpc.ResolveHoldForwardAction_RESUME,
 		})
 	}
+
+	return nil
 }
 
 func (i *Intercept) MonitorHtlcEvents() {
@@ -177,21 +181,25 @@ func (i *Intercept) MonitorHtlcEvents() {
 	util.PanicOnError("Invalid LND Macaroon", err)
 
 	macaroonCtx := metadata.AppendToOutgoingContext(context.Background(), "macaroon", hex.EncodeToString(lndMacaroon))
-	subscribeHtlcEventsClient, err := i.RouterClient.SubscribeHtlcEvents(macaroonCtx, &routerrpc.SubscribeHtlcEventsRequest{})
+	subscribeHtlcEventsClient, err := i.waitForSubscribeHtlcEvents(macaroonCtx, 0, 1000)
 	util.PanicOnError("Error creating client", err)
 
 	for {
-		i.MonitorHtlcEvent(subscribeHtlcEventsClient)
+		if err := i.MonitorHtlcEvent(subscribeHtlcEventsClient); err != nil {
+			subscribeHtlcEventsClient, err = i.waitForSubscribeHtlcEvents(macaroonCtx, 100, 1000)
+			util.PanicOnError("Error creating client", err)
+		}
+
 	}
 }
 
-func (i *Intercept) MonitorHtlcEvent(subscribeHtlcEventsClient routerrpc.Router_SubscribeHtlcEventsClient) {
+func (i *Intercept) MonitorHtlcEvent(subscribeHtlcEventsClient routerrpc.Router_SubscribeHtlcEventsClient) error {
 	htlcEvent, err := subscribeHtlcEventsClient.Recv()
 
 	if err != nil {
-		util.LogOnError("Error receiving HTLC event", err)
+		log.Printf("Error receiving HTLC event: %v", status.Code(err))
 
-		return
+		return err
 	}
 
 	/** HTLC Event received.
@@ -215,9 +223,26 @@ func (i *Intercept) MonitorHtlcEvent(subscribeHtlcEventsClient routerrpc.Router_
 					ID:        channelRequestHtlc.ID,
 					IsSettled: true,
 				})
+
+				unsettledChannelRequestHtlcs, _ := i.ChannelRequestResolver.Repository.ListUnsettledChannelRequestHtlcs(ctx, channelRequestHtlc.ChannelRequestID)
+
+				if len(unsettledChannelRequestHtlcs) == 0 {
+					// TODO: Add creating channel task to worker group
+
+				}
 			}
 		}
 	}
+
+	return nil
+}
+
+func forwardHtlcInterceptFail(message string, err error, htlcInterceptorClient routerrpc.Router_HtlcInterceptorClient, circuitKey *routerrpc.CircuitKey) {
+	util.LogOnError(message, err)
+	htlcInterceptorClient.Send(&routerrpc.ForwardHtlcInterceptResponse{
+		IncomingCircuitKey: circuitKey,
+		Action:             routerrpc.ResolveHoldForwardAction_FAIL,
+	})
 }
 
 func (i *Intercept) monitorPaymentTimeout(ctx context.Context, htlcInterceptorClient routerrpc.Router_HtlcInterceptorClient, paymentHash []byte, timeoutSeconds int) {
@@ -267,10 +292,40 @@ func (i *Intercept) monitorPaymentTimeout(ctx context.Context, htlcInterceptorCl
 	}
 }
 
-func forwardHtlcInterceptFail(message string, err error, htlcInterceptorClient routerrpc.Router_HtlcInterceptorClient, circuitKey *routerrpc.CircuitKey) {
-	util.LogOnError(message, err)
-	htlcInterceptorClient.Send(&routerrpc.ForwardHtlcInterceptResponse{
-		IncomingCircuitKey: circuitKey,
-		Action:             routerrpc.ResolveHoldForwardAction_FAIL,
-	})
+func (i *Intercept) waitForSubscribeHtlcEvents(ctx context.Context, initialDelay, retryDelay time.Duration) (routerrpc.Router_SubscribeHtlcEventsClient, error) {
+	for {
+		if initialDelay > 0 {
+			time.Sleep(retryDelay * time.Millisecond)
+		}
+
+		subscribeHtlcEventsClient, err := i.RouterClient.SubscribeHtlcEvents(ctx, &routerrpc.SubscribeHtlcEventsRequest{})
+
+		if err == nil {
+			return subscribeHtlcEventsClient, nil
+		} else if status.Code(err) != codes.Unavailable {
+			return nil, err
+		}
+
+		log.Print("Waiting for subscribe HTLC events client")
+		time.Sleep(retryDelay * time.Millisecond)
+	}
+}
+
+func (i *Intercept) waitForHtlcInterceptor(ctx context.Context, initialDelay, retryDelay time.Duration) (routerrpc.Router_HtlcInterceptorClient, error) {
+	for {
+		if initialDelay > 0 {
+			time.Sleep(retryDelay * time.Millisecond)
+		}
+
+		htlcInterceptorClient, err := i.RouterClient.HtlcInterceptor(ctx)
+
+		if err == nil {
+			return htlcInterceptorClient, nil
+		} else if status.Code(err) != codes.Unavailable {
+			return nil, err
+		}
+
+		log.Print("Waiting for HTLC interceptor client")
+		time.Sleep(retryDelay * time.Millisecond)
+	}
 }
