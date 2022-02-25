@@ -32,7 +32,7 @@ func init() {
 
 	dataSourceName := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s", dbUser, dbPass, dbHost, dbName, sslMode)
 	d, err := sql.Open("postgres", dataSourceName)
-	
+
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -55,7 +55,10 @@ func main() {
 	defer clientConn.Close()
 
 	interceptor := intercept.NewInterceptor(repositoryService, clientConn)
-
-	go interceptor.InterceptHtlcs()
-	interceptor.MonitorHtlcEvents()
+	if err = interceptor.Register(); err == nil {
+		go interceptor.InterceptHtlcs()
+		go interceptor.SubscribeHtlcEvents()
+		go interceptor.SubscribeChannelEvents()
+		interceptor.SubscribeTransactions()
+	}
 }
