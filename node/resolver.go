@@ -28,6 +28,7 @@ func NewResolver(repositoryService *db.RepositoryService) *NodeResolver {
 func NewUpdateNodeParams(node db.Node) db.UpdateNodeParams {
 	return db.UpdateNodeParams{
 		ID:         node.ID,
+		Addr:       node.Addr,
 		Alias:      node.Alias,
 		Color:      node.Color,
 		CommitHash: node.CommitHash,
