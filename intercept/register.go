@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
@@ -42,40 +43,54 @@ func (i *Intercept) Register() error {
 			numChannels := int64(getInfoResponse.NumActiveChannels + getInfoResponse.NumInactiveChannels + getInfoResponse.NumPendingChannels)
 			numPeers := int64(getInfoResponse.NumPeers)
 
-			if n, err := i.NodeResolver.Repository.GetNodeByPubkey(ctx, getInfoResponse.IdentityPubkey); err == nil {
-				// Update node
-				updateNodeParams := node.NewUpdateNodeParams(n)
-				updateNodeParams.Alias = getInfoResponse.Alias
-				updateNodeParams.Color = getInfoResponse.Color
-				updateNodeParams.CommitHash = getInfoResponse.CommitHash
-				updateNodeParams.Version = getInfoResponse.Version
-				updateNodeParams.Channels = numChannels
-				updateNodeParams.Peers = numPeers
+			if addr := getClearnetUri(getInfoResponse.Uris); addr != nil {
+				if n, err := i.NodeResolver.Repository.GetNodeByPubkey(ctx, getInfoResponse.IdentityPubkey); err == nil {
+					// Update node
+					updateNodeParams := node.NewUpdateNodeParams(n)
+					updateNodeParams.Addr = *addr
+					updateNodeParams.Alias = getInfoResponse.Alias
+					updateNodeParams.Color = getInfoResponse.Color
+					updateNodeParams.CommitHash = getInfoResponse.CommitHash
+					updateNodeParams.Version = getInfoResponse.Version
+					updateNodeParams.Channels = numChannels
+					updateNodeParams.Peers = numPeers
 
-				i.NodeResolver.Repository.UpdateNode(ctx, updateNodeParams)
-			} else {
-				// Create node
-				createNodeParams := db.CreateNodeParams{
-					Pubkey:     getInfoResponse.IdentityPubkey,
-					Alias:      getInfoResponse.Alias,
-					Color:      getInfoResponse.Color,
-					CommitHash: getInfoResponse.CommitHash,
-					Version:    getInfoResponse.Version,
-					Channels:   numChannels,
-					Peers:      numPeers,
+					i.NodeResolver.Repository.UpdateNode(ctx, updateNodeParams)
+				} else {
+					// Create node
+					createNodeParams := db.CreateNodeParams{
+						Pubkey:     getInfoResponse.IdentityPubkey,
+						Addr:       *addr,
+						Alias:      getInfoResponse.Alias,
+						Color:      getInfoResponse.Color,
+						CommitHash: getInfoResponse.CommitHash,
+						Version:    getInfoResponse.Version,
+						Channels:   numChannels,
+						Peers:      numPeers,
+					}
+
+					i.NodeResolver.Repository.CreateNode(ctx, createNodeParams)
 				}
 
-				i.NodeResolver.Repository.CreateNode(ctx, createNodeParams)
+				log.Print("Registered node")
+				break
 			}
-
-			log.Print("Registered node")
-			break
 		}
 
 		waitingForSync = true
 		log.Printf("BlockHeight: %v", getInfoResponse.BlockHeight)
 		log.Printf("BestHeaderTimestamp: %v", getInfoResponse.BestHeaderTimestamp)
 		time.Sleep(6 * time.Second)
+	}
+
+	return nil
+}
+
+func getClearnetUri(uris []string) *string {
+	for _, uri := range uris {
+		if !strings.Contains(uri, "onion") {
+			return &uri
+		}
 	}
 
 	return nil
