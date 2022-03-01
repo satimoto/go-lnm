@@ -42,39 +42,38 @@ func (i *Intercept) Register() error {
 			ctx := context.Background()
 			numChannels := int64(getInfoResponse.NumActiveChannels + getInfoResponse.NumInactiveChannels + getInfoResponse.NumPendingChannels)
 			numPeers := int64(getInfoResponse.NumPeers)
+			addr := os.Getenv("LND_P2P_HOST")
 
-			if addr := getClearnetUri(getInfoResponse.Uris); addr != nil {
-				if n, err := i.NodeResolver.Repository.GetNodeByPubkey(ctx, getInfoResponse.IdentityPubkey); err == nil {
-					// Update node
-					updateNodeParams := node.NewUpdateNodeParams(n)
-					updateNodeParams.Addr = *addr
-					updateNodeParams.Alias = getInfoResponse.Alias
-					updateNodeParams.Color = getInfoResponse.Color
-					updateNodeParams.CommitHash = getInfoResponse.CommitHash
-					updateNodeParams.Version = getInfoResponse.Version
-					updateNodeParams.Channels = numChannels
-					updateNodeParams.Peers = numPeers
+			if n, err := i.NodeResolver.Repository.GetNodeByPubkey(ctx, getInfoResponse.IdentityPubkey); err == nil {
+				// Update node
+				updateNodeParams := node.NewUpdateNodeParams(n)
+				updateNodeParams.Addr = addr
+				updateNodeParams.Alias = getInfoResponse.Alias
+				updateNodeParams.Color = getInfoResponse.Color
+				updateNodeParams.CommitHash = getInfoResponse.CommitHash
+				updateNodeParams.Version = getInfoResponse.Version
+				updateNodeParams.Channels = numChannels
+				updateNodeParams.Peers = numPeers
 
-					i.NodeResolver.Repository.UpdateNode(ctx, updateNodeParams)
-				} else {
-					// Create node
-					createNodeParams := db.CreateNodeParams{
-						Pubkey:     getInfoResponse.IdentityPubkey,
-						Addr:       *addr,
-						Alias:      getInfoResponse.Alias,
-						Color:      getInfoResponse.Color,
-						CommitHash: getInfoResponse.CommitHash,
-						Version:    getInfoResponse.Version,
-						Channels:   numChannels,
-						Peers:      numPeers,
-					}
-
-					i.NodeResolver.Repository.CreateNode(ctx, createNodeParams)
+				i.NodeResolver.Repository.UpdateNode(ctx, updateNodeParams)
+			} else {
+				// Create node
+				createNodeParams := db.CreateNodeParams{
+					Pubkey:     getInfoResponse.IdentityPubkey,
+					Addr:       addr,
+					Alias:      getInfoResponse.Alias,
+					Color:      getInfoResponse.Color,
+					CommitHash: getInfoResponse.CommitHash,
+					Version:    getInfoResponse.Version,
+					Channels:   numChannels,
+					Peers:      numPeers,
 				}
 
-				log.Print("Registered node")
-				break
+				i.NodeResolver.Repository.CreateNode(ctx, createNodeParams)
 			}
+
+			log.Print("Registered node")
+			break
 		}
 
 		waitingForSync = true

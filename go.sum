@@ -882,6 +882,8 @@ github.com/satimoto/go-datastore v0.1.2-0.20220225120214-8dbd0f39cdb9 h1:+mNznka
 github.com/satimoto/go-datastore v0.1.2-0.20220225120214-8dbd0f39cdb9/go.mod h1:7c9FKADIp4N+5B84fmOc7PtFBH5KwSZmlbczs/2efV8=
 github.com/satimoto/go-datastore v0.1.2-0.20220225213440-5f4c0c959a53 h1:lv21kPY39hAwnZ53r2bnpTIsXh3W06uu+F5TF0+TysU=
 github.com/satimoto/go-datastore v0.1.2-0.20220225213440-5f4c0c959a53/go.mod h1:7c9FKADIp4N+5B84fmOc7PtFBH5KwSZmlbczs/2efV8=
+github.com/satimoto/go-datastore v0.1.2-0.20220226224054-2167d730b50c h1:RQ3CbCXiysdd2h5Nang2vE5TfX+f/nVF6qF/v2UpJCA=
+github.com/satimoto/go-datastore v0.1.2-0.20220226224054-2167d730b50c/go.mod h1:7c9FKADIp4N+5B84fmOc7PtFBH5KwSZmlbczs/2efV8=
 github.com/satimoto/go-datastore-mocks v0.1.2-0.20220113100024-deef28e93d8c h1:VNHqQknw1mRzqntqYsg4592WsTeTPJg/JCRahG4Jeuo=
 github.com/satimoto/go-datastore-mocks v0.1.2-0.20220113100024-deef28e93d8c/go.mod h1:N0MtHkLsJC9ynT5gZ2KgtuemXodGEFNiNAcVcN9v30E=
 github.com/satimoto/go-datastore-mocks v0.1.2-0.20220131130903-362d2fcccb67 h1:KYP5aYln70LWEKRjoEuMtFYbM/C0d9NOC/hXEZRnxEw=
@@ -900,6 +902,10 @@ github.com/satimoto/go-datastore-mocks v0.1.2-0.20220223085947-7a5acba248c1 h1:F
 github.com/satimoto/go-datastore-mocks v0.1.2-0.20220223085947-7a5acba248c1/go.mod h1:jmuPum/9fVZPOu/+CLQFvhFlqp7AhZW719RVZBqxiE0=
 github.com/satimoto/go-datastore-mocks v0.1.2-0.20220225121048-b31df3a69220 h1:Oou/QH28OtHAOuKyQnxx+E2jz+tzkhSOM/LRCnock7M=
 github.com/satimoto/go-datastore-mocks v0.1.2-0.20220225121048-b31df3a69220/go.mod h1:LWld2/LUL0EATxddgu7Ji6PHBEkml+8KInLoO3LN8Zc=
+github.com/satimoto/go-datastore-mocks v0.1.2-0.20220226224554-3c6723c5ad45 h1:XTDdKMYbNO5+HrandyAIWdOP51BzPod4xKEkL/73pR0=
+github.com/satimoto/go-datastore-mocks v0.1.2-0.20220226224554-3c6723c5ad45/go.mod h1:ywAsbddOxGBKlZ47uQEbrUU+xYcE8IGbnUcMltYUTtA=
+github.com/satimoto/go-datastore-mocks v0.1.2-0.20220226230047-bb7bd2b46605 h1:Ra7byensfu/yWq9w6lILClMSO+8AmeifMCc6Xe0Wj+Y=
+github.com/satimoto/go-datastore-mocks v0.1.2-0.20220226230047-bb7bd2b46605/go.mod h1:ywAsbddOxGBKlZ47uQEbrUU+xYcE8IGbnUcMltYUTtA=
 github.com/satori/go.uuid v1.2.0/go.mod h1:dA0hQrYB0VpLJoorglMZABFdXlWrHn1NEOzdhQKdks0=
 github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529/go.mod h1:DxrIzT+xaE7yg65j358z/aeFdxmN0P9QXhEzd20vsDc=
 github.com/shirou/gopsutil v0.0.0-20180427012116-c95755e4bcd7/go.mod h1:5b4v6he4MtMOwMlS0TUMTu2PcXUg8+E1lC7eC3UO/RA=

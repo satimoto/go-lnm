@@ -17,6 +17,7 @@ type ChannelRequestRepository interface {
 	ListUnsettledChannelRequestHtlcs(ctx context.Context, channelRequestID int64) ([]db.ChannelRequestHtlc, error)
 	UpdateChannelRequest(ctx context.Context, arg db.UpdateChannelRequestParams) (db.ChannelRequest, error)
 	UpdateChannelRequestByChannelPoint(ctx context.Context, arg db.UpdateChannelRequestByChannelPointParams) (db.ChannelRequest, error)
+	UpdateChannelRequestStatus(ctx context.Context, arg db.UpdateChannelRequestStatusParams) (db.ChannelRequest, error)
 	UpdateChannelRequestHtlc(ctx context.Context, arg db.UpdateChannelRequestHtlcParams) (db.ChannelRequestHtlc, error)
 }
 

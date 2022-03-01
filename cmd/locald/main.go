@@ -50,7 +50,7 @@ func main() {
 	credentials, err := lspUtil.NewCredential(string(lndTlsCert))
 	lspUtil.PanicOnError("Error creating transport credentials", err)
 
-	clientConn, err := grpc.Dial(os.Getenv("LND_HOST"), grpc.WithTransportCredentials(credentials))
+	clientConn, err := grpc.Dial(os.Getenv("LND_GRPC_HOST"), grpc.WithTransportCredentials(credentials))
 	lspUtil.PanicOnError("Error connecting to LND host", err)
 	defer clientConn.Close()
 

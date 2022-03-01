@@ -5,6 +5,8 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"log"
+	"math"
+	"math/rand"
 	"os"
 	"testing"
 	"time"
@@ -12,11 +14,13 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/invoicesrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
+	"github.com/lightningnetwork/lnd/lntypes"
 	"github.com/lightningnetwork/lnd/lnwire"
 	dbMocks "github.com/satimoto/go-datastore-mocks/db"
 	"github.com/satimoto/go-datastore/db"
 
-	interceptMocks "github.com/satimoto/go-lsp/intercept/mocks"
+	//interceptMocks "github.com/satimoto/go-lsp/intercept/mocks"
+	"github.com/satimoto/go-lsp/messages"
 	"github.com/satimoto/go-lsp/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -100,7 +104,7 @@ func TestInterceptor(t *testing.T) {
 	defer os.Unsetenv("LND_MACAROON")
 
 	aliceTlsCert, _ := base64.StdEncoding.DecodeString(aliceTlsCertBase64)
-	aliceMacaroon, _ := base64.StdEncoding.DecodeString(aliceMacaroonBase64)
+	//aliceMacaroon, _ := base64.StdEncoding.DecodeString(aliceMacaroonBase64)
 	aliceCredentials, _ := util.NewCredential(string(aliceTlsCert))
 	aliceClientConn, _ := grpc.Dial(aliceHost, grpc.WithTransportCredentials(aliceCredentials))
 	defer aliceClientConn.Close()
@@ -120,11 +124,11 @@ func TestInterceptor(t *testing.T) {
 
 	t.Run("Success request", func(t *testing.T) {
 		mockRepository := dbMocks.NewMockRepositoryService()
-		interceptor := interceptMocks.NewInterceptor(mockRepository, aliceClientConn)
-		aliceCtx := metadata.AppendToOutgoingContext(context.Background(), "macaroon", hex.EncodeToString(aliceMacaroon))
-		htlcInterceptorClient, err := interceptor.GetRouterClient().HtlcInterceptor(aliceCtx)
+		//interceptor := interceptMocks.NewInterceptor(mockRepository, aliceClientConn)
+		//aliceCtx := metadata.AppendToOutgoingContext(context.Background(), "macaroon", hex.EncodeToString(aliceMacaroon))
+		//htlcInterceptorClient, err := interceptor.GetRouterClient().HtlcInterceptor(aliceCtx)
 
-		go interceptor.InterceptHtlc(htlcInterceptorClient)
+		//go interceptor.InterceptHtlc(htlcInterceptorClient)
 
 		// Carol creates an incoming invoice
 		preimage, err := util.RandomPreimage()
@@ -135,7 +139,13 @@ func TestInterceptor(t *testing.T) {
 		carolLightningClient := lnrpc.NewLightningClient(carolClientConn)
 		carolCtx := metadata.AppendToOutgoingContext(context.Background(), "macaroon", hex.EncodeToString(carolMacaroon))
 
-		fakeChanID := &lnwire.ShortChannelID{BlockHeight: 1, TxIndex: 0, TxPosition: 0}
+		fakeChanID := &lnwire.ShortChannelID{
+			BlockHeight: uint32(rand.Intn(math.MaxUint32)), 
+			TxIndex: uint32(rand.Intn(math.MaxUint32)), 
+			TxPosition: uint16(rand.Intn(math.MaxUint16)),
+		}
+		t.Logf("fakeChanID: %v", fakeChanID.ToUint64())
+
 		routingHints := []*lnrpc.RouteHint{
 			{
 				HopHints: []*lnrpc.HopHint{
@@ -175,7 +185,6 @@ func TestInterceptor(t *testing.T) {
 			ChannelRequest: db.ChannelRequest{
 				Status:      db.ChannelRequestStatusREQUESTED,
 				Pubkey:      carolPubkey,
-				Preimage:    preimage[:],
 				PaymentHash: invoiceResponse.RHash,
 				PaymentAddr: invoiceResponse.PaymentAddr,
 				AmountMsat:  decodePayResponse.NumMsat,
@@ -287,7 +296,6 @@ func TestHodl(t *testing.T) {
 		})
 		log.Printf("Alice Payment Request: %v", aliceInvoiceResp.PaymentRequest)
 
-		
 		aliceInvoiceChannel := subscribeSingleInvoiceChannel(aliceInvoicesClient, aliceCtx, paymentHash[:])
 		aliceInvoiceUpdate1 := <-aliceInvoiceChannel
 		log.Printf("Alice Invoice %v: state %v", hex.EncodeToString(aliceInvoiceUpdate1.RHash), aliceInvoiceUpdate1.State)
@@ -340,10 +348,166 @@ func TestHodl(t *testing.T) {
 	})
 }
 
+func TestCustomMessages(t *testing.T) {
+	os.Setenv("LND_MACAROON", aliceMacaroonBase64)
+	defer os.Unsetenv("LND_MACAROON")
+
+	alicePubkeyBytes, _ := hex.DecodeString(alicePubkey)
+	aliceTlsCert, _ := base64.StdEncoding.DecodeString(aliceTlsCertBase64)
+	aliceMacaroon, _ := base64.StdEncoding.DecodeString(aliceMacaroonBase64)
+	aliceCredentials, _ := util.NewCredential(string(aliceTlsCert))
+	aliceClientConn, _ := grpc.Dial(aliceHost, grpc.WithTransportCredentials(aliceCredentials))
+	defer aliceClientConn.Close()
+
+	carolPubkeyBytes, _ := hex.DecodeString(carolPubkey)
+	carolTlsCert, _ := base64.StdEncoding.DecodeString(carolTlsCertBase64)
+	carolMacaroon, _ := base64.StdEncoding.DecodeString(carolMacaroonBase64)
+	carolCredentials, _ := util.NewCredential(string(carolTlsCert))
+	carolClientConn, _ := grpc.Dial(carolHost, grpc.WithTransportCredentials(carolCredentials))
+	defer carolClientConn.Close()
+
+	t.Run("Success request", func(t *testing.T) {
+		preimage, _ := util.RandomPreimage()
+		paymentHash := preimage.Hash()
+		log.Printf("preImage: %v", preimage.String())
+		log.Printf("paymentHash: %v", paymentHash.String())
+
+		carolLightningClient := lnrpc.NewLightningClient(carolClientConn)
+		carolCtx := metadata.AppendToOutgoingContext(context.Background(), "macaroon", hex.EncodeToString(carolMacaroon))
+		carolCustomMessagesChannel := subscribeCustomMessagesChannel(carolLightningClient, carolCtx)
+
+		aliceLightningClient := lnrpc.NewLightningClient(aliceClientConn)
+		aliceCtx := metadata.AppendToOutgoingContext(context.Background(), "macaroon", hex.EncodeToString(aliceMacaroon))
+		aliceCustomMessagesChannel := subscribeCustomMessagesChannel(aliceLightningClient, aliceCtx)
+
+		aliceLightningClient.SendCustomMessage(aliceCtx, &lnrpc.SendCustomMessageRequest{
+			Peer: carolPubkeyBytes,
+			Type: messages.CHANNELREQUEST_RECEIVE_PREIMAGE,
+			Data: []byte("Ping"),
+		})
+
+		<-carolCustomMessagesChannel
+
+		carolLightningClient.SendCustomMessage(carolCtx, &lnrpc.SendCustomMessageRequest{
+			Peer: alicePubkeyBytes,
+			Type: messages.CHANNELREQUEST_SEND_CHAN_ID,
+			Data: []byte("Pong"),
+		})
+
+		<-aliceCustomMessagesChannel
+
+		t.Errorf("End: %v", true)
+	})
+}
+
+func TestHodl2(t *testing.T) {
+	os.Setenv("LND_MACAROON", aliceMacaroonBase64)
+	defer os.Unsetenv("LND_MACAROON")
+
+	aliceTlsCert, _ := base64.StdEncoding.DecodeString(aliceTlsCertBase64)
+	aliceMacaroon, _ := base64.StdEncoding.DecodeString(aliceMacaroonBase64)
+	aliceCredentials, _ := util.NewCredential(string(aliceTlsCert))
+	aliceClientConn, _ := grpc.Dial(aliceHost, grpc.WithTransportCredentials(aliceCredentials))
+	defer aliceClientConn.Close()
+
+	bobTlsCert, _ := base64.StdEncoding.DecodeString(bobTlsCertBase64)
+	bobMacaroon, _ := base64.StdEncoding.DecodeString(bobMacaroonBase64)
+	bobCredentials, _ := util.NewCredential(string(bobTlsCert))
+	bobClientConn, _ := grpc.Dial(bobHost, grpc.WithTransportCredentials(bobCredentials))
+	defer bobClientConn.Close()
+
+	carolPubkeyBytes, _ := hex.DecodeString(carolPubkey)
+	carolTlsCert, _ := base64.StdEncoding.DecodeString(carolTlsCertBase64)
+	carolMacaroon, _ := base64.StdEncoding.DecodeString(carolMacaroonBase64)
+	carolCredentials, _ := util.NewCredential(string(carolTlsCert))
+	carolClientConn, _ := grpc.Dial(carolHost, grpc.WithTransportCredentials(carolCredentials))
+	defer carolClientConn.Close()
+
+	t.Run("Success request", func(t *testing.T) {
+		// Client Carol needs a channel
+		aliceLightningClient := lnrpc.NewLightningClient(aliceClientConn)
+		aliceRouterClient := routerrpc.NewRouterClient(aliceClientConn)
+		aliceCtx := metadata.AppendToOutgoingContext(context.Background(), "macaroon", hex.EncodeToString(aliceMacaroon))
+
+		bobRouterClient := routerrpc.NewRouterClient(bobClientConn)
+		bobCtx := metadata.AppendToOutgoingContext(context.Background(), "macaroon", hex.EncodeToString(bobMacaroon))
+
+		carolLightningClient := lnrpc.NewLightningClient(carolClientConn)
+		carolInvoicesClient := invoicesrpc.NewInvoicesClient(carolClientConn)
+		carolCtx := metadata.AppendToOutgoingContext(context.Background(), "macaroon", hex.EncodeToString(carolMacaroon))
+		carolCustomMessagesChannel := subscribeCustomMessagesChannel(carolLightningClient, carolCtx)
+
+		// 1. Carol request that alice creates a channel to her.
+		//    Alice creates a preimage and paymentHash, giving the paymentHash to Carol
+		preimage, _ := util.RandomPreimage()
+		paymentHash := preimage.Hash()
+		log.Printf("preImage: %v", preimage.String())
+		log.Printf("paymentHash: %v", paymentHash.String())
+
+		aliceHtlcEventsChannel := subscribeHtlcEventsChannel(aliceRouterClient, aliceCtx)
+
+		// 2. Carol creates a HODL invoice and will ask bob to settle it
+		//    The invoice includes a routing hint to hop via alice
+		fakeChanID := &lnwire.ShortChannelID{BlockHeight: 1, TxIndex: 0, TxPosition: 0}
+		routingHints := []*lnrpc.RouteHint{
+			{
+				HopHints: []*lnrpc.HopHint{
+					{
+						NodeId:                    alicePubkey,
+						ChanId:                    fakeChanID.ToUint64(),
+						FeeBaseMsat:               0,
+						FeeProportionalMillionths: 0,
+						CltvExpiryDelta:           40,
+					},
+				},
+			}}
+
+		carolInvoiceResp, _ := carolInvoicesClient.AddHoldInvoice(carolCtx, &invoicesrpc.AddHoldInvoiceRequest{
+			Hash:       paymentHash[:],
+			Value:      1000,
+			RouteHints: routingHints,
+		})
+		subscribeSingleInvoiceChannel(carolInvoicesClient, carolCtx, paymentHash[:])
+
+		// 3. Bob pays the invoice
+		bobRouterClient.SendPaymentV2(bobCtx, &routerrpc.SendPaymentRequest{
+			//FeeLimitMsat:   200,
+			PaymentRequest: carolInvoiceResp.PaymentRequest,
+			//RouteHints: getRoutingHints(t, bobLightningClient, bobCtx),
+			TimeoutSeconds: 6000,
+		})
+
+		// 4. Alice intercepts the HTLC
+		//    Sends carol the preimage
+		<-aliceHtlcEventsChannel
+
+		aliceLightningClient.SendCustomMessage(aliceCtx, &lnrpc.SendCustomMessageRequest{
+			Peer: carolPubkeyBytes,
+			Type: uint32(50001),
+			Data: []byte(preimage.String()),
+		})
+
+		// 5. Carol receives the preimage
+		//    Settles invoice
+		customMessage := <-carolCustomMessagesChannel
+		customMessagePreimage, _ := lntypes.MakePreimageFromStr(string(customMessage.Data))
+
+		carolInvoicesClient.SettleInvoice(carolCtx, &invoicesrpc.SettleInvoiceMsg{
+			Preimage: customMessagePreimage[:],
+		})
+
+		time.Sleep(2 * time.Second)
+
+		t.Errorf("End: %v", true)
+	})
+}
+
 func sendPaymentChannel(sendPaymentClient routerrpc.Router_SendPaymentV2Client) <-chan lnrpc.Payment {
 	paymentChan := make(chan lnrpc.Payment)
 
 	go func() {
+		defer close(paymentChan)
+
 		for {
 			payment, err := sendPaymentClient.Recv()
 
@@ -355,17 +519,65 @@ func sendPaymentChannel(sendPaymentClient routerrpc.Router_SendPaymentV2Client) 
 			log.Printf("Payment %v: state %v", payment.PaymentHash, payment.Status)
 			paymentChan <- *payment
 		}
-
-		close(paymentChan)
 	}()
 
 	return paymentChan
+}
+
+func subscribeCustomMessagesChannel(lightningClient lnrpc.LightningClient, ctx context.Context) <-chan lnrpc.CustomMessage {
+	customMessagesChan := make(chan lnrpc.CustomMessage)
+
+	go func() {
+		defer close(customMessagesChan)
+
+		subscribeCustomMessagesClient, _ := lightningClient.SubscribeCustomMessages(ctx, &lnrpc.SubscribeCustomMessagesRequest{})
+
+		for {
+			customMessage, err := subscribeCustomMessagesClient.Recv()
+
+			if err != nil {
+				log.Printf("Custom Mesage Error: %v", err)
+				break
+			}
+
+			log.Printf("Custom Message %v: type %v data: %v", hex.EncodeToString(customMessage.Peer), customMessage.Type, string(customMessage.Data))
+			customMessagesChan <- *customMessage
+		}
+	}()
+
+	return customMessagesChan
+}
+
+func subscribeHtlcEventsChannel(routerClient routerrpc.RouterClient, ctx context.Context) <-chan routerrpc.HtlcEvent {
+	htlcEventsChan := make(chan routerrpc.HtlcEvent)
+
+	go func() {
+		defer close(htlcEventsChan)
+
+		subscribeHtlcEventsClient, _ := routerClient.SubscribeHtlcEvents(ctx, &routerrpc.SubscribeHtlcEventsRequest{})
+
+		for {
+			htlcEvent, err := subscribeHtlcEventsClient.Recv()
+
+			if err != nil {
+				log.Printf("HTLC Event Error: %v", err)
+				break
+			}
+
+			log.Printf("HTLC Event %v", htlcEvent.EventType)
+			htlcEventsChan <- *htlcEvent
+		}
+	}()
+
+	return htlcEventsChan
 }
 
 func subscribeSingleInvoiceChannel(invoicesClient invoicesrpc.InvoicesClient, ctx context.Context, paymentHash []byte) <-chan lnrpc.Invoice {
 	invoiceChan := make(chan lnrpc.Invoice)
 
 	go func() {
+		defer close(invoiceChan)
+
 		subscribeSingleInvoiceClient, _ := invoicesClient.SubscribeSingleInvoice(ctx, &invoicesrpc.SubscribeSingleInvoiceRequest{
 			RHash: paymentHash,
 		})
@@ -381,8 +593,6 @@ func subscribeSingleInvoiceChannel(invoicesClient invoicesrpc.InvoicesClient, ct
 			log.Printf("Single Invoice %v: state %v", hex.EncodeToString(invoice.RHash), invoice.State)
 			invoiceChan <- *invoice
 		}
-
-		close(invoiceChan)
 	}()
 
 	return invoiceChan
@@ -392,6 +602,8 @@ func subscribeInvoicesChannel(lightningClient lnrpc.LightningClient, ctx context
 	invoiceChan := make(chan lnrpc.Invoice)
 
 	go func() {
+		defer close(invoiceChan)
+
 		subscribeInvoicesClient, _ := lightningClient.SubscribeInvoices(ctx, &lnrpc.InvoiceSubscription{})
 
 		for {
@@ -405,8 +617,6 @@ func subscribeInvoicesChannel(lightningClient lnrpc.LightningClient, ctx context
 			log.Printf("Invoice %v: state %v", hex.EncodeToString(invoice.RHash), invoice.State)
 			invoiceChan <- *invoice
 		}
-
-		close(invoiceChan)
 	}()
 
 	return invoiceChan

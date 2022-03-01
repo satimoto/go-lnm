@@ -1,16 +1,21 @@
 package intercept
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/hex"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
+	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
+	"github.com/lightningnetwork/lnd/lntypes"
 	"github.com/satimoto/go-datastore/db"
 	"github.com/satimoto/go-lsp/channelrequest"
+	"github.com/satimoto/go-lsp/messages"
 	"github.com/satimoto/go-lsp/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -26,14 +31,14 @@ func (i *Intercept) InterceptHtlcs() {
 	util.PanicOnError("Error creating HtlcInterceptor client", err)
 
 	for {
-		if err := i.InterceptHtlc(htlcInterceptorClient); err != nil {
+		if err := i.InterceptHtlc(macaroonCtx, htlcInterceptorClient); err != nil {
 			htlcInterceptorClient, err = i.waitForHtlcInterceptorClient(macaroonCtx, 100, 1000)
 			util.PanicOnError("Error creating HtlcInterceptor client", err)
 		}
 	}
 }
 
-func (i *Intercept) InterceptHtlc(htlcInterceptorClient routerrpc.Router_HtlcInterceptorClient) error {
+func (i *Intercept) InterceptHtlc(macaroonCtx context.Context, htlcInterceptorClient routerrpc.Router_HtlcInterceptorClient) error {
 	forwardHtlcInterceptRequest, err := htlcInterceptorClient.Recv()
 
 	if err != nil {
@@ -113,19 +118,51 @@ func (i *Intercept) InterceptHtlc(htlcInterceptorClient routerrpc.Router_HtlcInt
 
 			// All HTLCs received, settle the HTLCs
 			if updateChannelRequestParams.SettledMsat == channelRequest.AmountMsat {
-				updateChannelRequestParams.Status = db.ChannelRequestStatusSETTLINGHTLCS
-				channelRequestHtlcs, _ := i.ChannelRequestResolver.Repository.ListChannelRequestHtlcs(ctx, channelRequest.ID)
+				updateChannelRequestParams.Status = db.ChannelRequestStatusAWAITINGPREIMAGE
+				i.ChannelRequestResolver.Repository.UpdateChannelRequest(ctx, updateChannelRequestParams)
 
-				for _, channelRequestHtlc := range channelRequestHtlcs {
-					htlcInterceptorClient.Send(&routerrpc.ForwardHtlcInterceptResponse{
-						IncomingCircuitKey: &routerrpc.CircuitKey{
-							ChanId: uint64(channelRequestHtlc.ChanID),
-							HtlcId: uint64(channelRequestHtlc.HtlcID),
-						},
-						Action:   routerrpc.ResolveHoldForwardAction_SETTLE,
-						Preimage: channelRequest.Preimage,
-					})
-				}
+				pubkeyBytes, _ := hex.DecodeString(channelRequest.Pubkey)
+
+				// TODO: Ensure peer in online
+				i.LightningClient.SendCustomMessage(macaroonCtx, &lnrpc.SendCustomMessageRequest{
+					Peer: pubkeyBytes,
+					Type: messages.CHANNELREQUEST_SEND_CHAN_ID,
+					Data: []byte(strconv.FormatUint(forwardHtlcInterceptRequest.OutgoingRequestedChanId, 10)),
+				})
+
+				i.AddCustomMessageHandler(func(customMessage *lnrpc.CustomMessage, index string) {
+					// Received a preimage peer message from pubkey peer
+					if bytes.Compare(customMessage.Peer, pubkeyBytes) == 0 && customMessage.Type == messages.CHANNELREQUEST_RECEIVE_PREIMAGE {
+						if preimage, err := lntypes.MakePreimageFromStr(string(customMessage.Data)); err == nil {
+							paymentHash := preimage.Hash()
+
+							// Compare preimage hash to channel request payment hash
+							if bytes.Compare(paymentHash[:], channelRequest.PaymentHash) == 0 {
+								channelRequestHtlcs, _ := i.ChannelRequestResolver.Repository.ListChannelRequestHtlcs(ctx, channelRequest.ID)
+
+								i.ChannelRequestResolver.Repository.UpdateChannelRequestStatus(ctx, db.UpdateChannelRequestStatusParams{
+									ID:     channelRequest.ID,
+									Status: db.ChannelRequestStatusSETTLINGHTLCS,
+								})
+
+								for _, channelRequestHtlc := range channelRequestHtlcs {
+									htlcInterceptResponse := &routerrpc.ForwardHtlcInterceptResponse{
+										IncomingCircuitKey: &routerrpc.CircuitKey{
+											ChanId: uint64(channelRequestHtlc.ChanID),
+											HtlcId: uint64(channelRequestHtlc.HtlcID),
+										},
+										Action:   routerrpc.ResolveHoldForwardAction_SETTLE,
+										Preimage: preimage[:],
+									}
+
+									htlcInterceptorClient.Send(htlcInterceptResponse)
+								}
+
+								i.RemoveCustomMessageHandler(index)
+							}
+						}
+					}
+				})
 			}
 
 			i.ChannelRequestResolver.Repository.UpdateChannelRequest(ctx, updateChannelRequestParams)
