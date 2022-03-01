@@ -22,7 +22,7 @@ type Interceptor interface {
 	Register() error
 
 	InterceptHtlcs()
-	InterceptHtlc(htlcInterceptorClient routerrpc.Router_HtlcInterceptorClient) error
+	InterceptHtlc(ctx context.Context, htlcInterceptorClient routerrpc.Router_HtlcInterceptorClient) error
 
 	SubscribeChannelEvents()
 	SubscribeChannelEvent(subscribeChannelEventsClient lnrpc.Lightning_SubscribeChannelEventsClient) error
@@ -41,6 +41,8 @@ type Intercept struct {
 	lnrpc.LightningClient
 	routerrpc.RouterClient
 	chainrpc.ChainNotifierClient
+
+	customMessageHandlers map[string]customMessageHandler
 }
 
 func NewInterceptor(repositoryService *db.RepositoryService, clientConn *grpc.ClientConn) Interceptor {
@@ -54,6 +56,7 @@ func NewInterceptor(repositoryService *db.RepositoryService, clientConn *grpc.Cl
 		LightningClient:        lightningClient,
 		RouterClient:           routerClient,
 		ChainNotifierClient:    chainNotifierClient,
+		customMessageHandlers:  make(map[string]customMessageHandler),
 	}
 }
 
@@ -78,7 +81,7 @@ func (i *Intercept) monitorPaymentTimeout(ctx context.Context, htlcInterceptorCl
 			break
 		}
 
-		if channelRequest.Status != db.ChannelRequestStatusAWAITINGPAYMENTS {
+		if channelRequest.Status != db.ChannelRequestStatusAWAITINGPREIMAGE && channelRequest.Status != db.ChannelRequestStatusAWAITINGPAYMENTS {
 			log.Printf("Payment timeout ended (%v): %v", channelRequest.Status, paymentHashString)
 			break
 		}
