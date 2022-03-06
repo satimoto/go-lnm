@@ -25,14 +25,14 @@ func (i *Intercept) SubscribeChannelEvents() {
 	util.PanicOnError("Error creating SubscribeChannelEvents client", err)
 
 	for {
-		if err := i.SubscribeChannelEvent(subscribeChannelEventsClient); err != nil {
+		if err := i.SubscribeChannelEvent(macaroonCtx, subscribeChannelEventsClient); err != nil {
 			subscribeChannelEventsClient, err = i.waitForSubscribeChannelEventsClient(macaroonCtx, 100, 1000)
 			util.PanicOnError("Error creating SubscribeChannelEvents client", err)
 		}
 	}
 }
 
-func (i *Intercept) SubscribeChannelEvent(subscribeChannelEventsClient lnrpc.Lightning_SubscribeChannelEventsClient) error {
+func (i *Intercept) SubscribeChannelEvent(macaroonCtx context.Context, subscribeChannelEventsClient lnrpc.Lightning_SubscribeChannelEventsClient) error {
 	channelEvent, err := subscribeChannelEventsClient.Recv()
 
 	if err != nil {

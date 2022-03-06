@@ -25,13 +25,16 @@ type Interceptor interface {
 	InterceptHtlc(ctx context.Context, htlcInterceptorClient routerrpc.Router_HtlcInterceptorClient) error
 
 	SubscribeChannelEvents()
-	SubscribeChannelEvent(subscribeChannelEventsClient lnrpc.Lightning_SubscribeChannelEventsClient) error
+	SubscribeChannelEvent(ctx context.Context, subscribeChannelEventsClient lnrpc.Lightning_SubscribeChannelEventsClient) error
+
+	SubscribeCustomMessages()
+	SubscribeCustomMessage(ctx context.Context, subscribeCustomMessagesClient lnrpc.Lightning_SubscribeCustomMessagesClient) error
 
 	SubscribeHtlcEvents()
-	SubscribeHtlcEvent(subscribeHtlcEventsClient routerrpc.Router_SubscribeHtlcEventsClient) error
+	SubscribeHtlcEvent(ctx context.Context, subscribeHtlcEventsClient routerrpc.Router_SubscribeHtlcEventsClient) error
 
 	SubscribeTransactions()
-	SubscribeTransaction(subscribeTransactionsClient lnrpc.Lightning_SubscribeTransactionsClient) error
+	SubscribeTransaction(ctx context.Context, subscribeTransactionsClient lnrpc.Lightning_SubscribeTransactionsClient) error
 }
 
 type Intercept struct {
