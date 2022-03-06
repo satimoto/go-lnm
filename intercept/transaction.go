@@ -24,14 +24,14 @@ func (i *Intercept) SubscribeTransactions() {
 	util.PanicOnError("Error creating SubscribeTransactions client", err)
 
 	for {
-		if err := i.SubscribeTransaction(subscribeTransactionsClient); err != nil {
+		if err := i.SubscribeTransaction(macaroonCtx, subscribeTransactionsClient); err != nil {
 			subscribeTransactionsClient, err = i.waitForSubscribeTransactions(macaroonCtx, 100, 1000)
 			util.PanicOnError("Error creating SubscribeTransactions client", err)
 		}
 	}
 }
 
-func (i *Intercept) SubscribeTransaction(subscribeTransactionsClient lnrpc.Lightning_SubscribeTransactionsClient) error {
+func (i *Intercept) SubscribeTransaction(macaroonCtx context.Context, subscribeTransactionsClient lnrpc.Lightning_SubscribeTransactionsClient) error {
 	transaction, err := subscribeTransactionsClient.Recv()
 
 	if err != nil {

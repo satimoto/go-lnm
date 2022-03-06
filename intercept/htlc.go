@@ -106,11 +106,7 @@ func (i *Intercept) InterceptHtlc(macaroonCtx context.Context, htlcInterceptorCl
 				return nil
 			}
 
-			// Start payment timeout to cleanup failures
-			if channelRequest.Status == db.ChannelRequestStatusREQUESTED {
-				// TODO: Add monitoring task to worker group, this should prevent shutdown while awaiting payments
-				go i.monitorPaymentTimeout(ctx, htlcInterceptorClient, channelRequest.PaymentHash, 30)
-			}
+			startPaymentMonitor := channelRequest.Status == db.ChannelRequestStatusREQUESTED
 
 			updateChannelRequestParams := channelrequest.NewUpdateChannelRequestParams(channelRequest)
 			updateChannelRequestParams.Status = db.ChannelRequestStatusAWAITINGPAYMENTS
@@ -123,17 +119,16 @@ func (i *Intercept) InterceptHtlc(macaroonCtx context.Context, htlcInterceptorCl
 
 				pubkeyBytes, _ := hex.DecodeString(channelRequest.Pubkey)
 
-				// TODO: Ensure peer in online
-				i.LightningClient.SendCustomMessage(macaroonCtx, &lnrpc.SendCustomMessageRequest{
-					Peer: pubkeyBytes,
-					Type: messages.CHANNELREQUEST_SEND_CHAN_ID,
-					Data: []byte(strconv.FormatUint(forwardHtlcInterceptRequest.OutgoingRequestedChanId, 10)),
-				})
-
 				i.AddCustomMessageHandler(func(customMessage *lnrpc.CustomMessage, index string) {
 					// Received a preimage peer message from pubkey peer
-					if bytes.Compare(customMessage.Peer, pubkeyBytes) == 0 && customMessage.Type == messages.CHANNELREQUEST_RECEIVE_PREIMAGE {
-						if preimage, err := lntypes.MakePreimageFromStr(string(customMessage.Data)); err == nil {
+					pubkeyStr := hex.EncodeToString(customMessage.Peer)
+					dataStr := hex.EncodeToString(customMessage.Data)
+
+					log.Printf("Custom Message %v from %v: %v", customMessage.Type, pubkeyStr, dataStr)
+
+					if channelRequest.Pubkey == pubkeyStr && customMessage.Type == messages.CHANNELREQUEST_RECEIVE_PREIMAGE {
+						if preimage, err := lntypes.MakePreimageFromStr(dataStr); err == nil {
+							log.Printf("preimage: %v", preimage.String())
 							paymentHash := preimage.Hash()
 
 							// Compare preimage hash to channel request payment hash
@@ -163,9 +158,22 @@ func (i *Intercept) InterceptHtlc(macaroonCtx context.Context, htlcInterceptorCl
 						}
 					}
 				})
+
+				// TODO: Ensure peer in online
+				i.LightningClient.SendCustomMessage(macaroonCtx, &lnrpc.SendCustomMessageRequest{
+					Peer: pubkeyBytes,
+					Type: messages.CHANNELREQUEST_SEND_CHAN_ID,
+					Data: []byte(strconv.FormatUint(forwardHtlcInterceptRequest.OutgoingRequestedChanId, 10)),
+				})
 			}
 
 			i.ChannelRequestResolver.Repository.UpdateChannelRequest(ctx, updateChannelRequestParams)
+
+			// Start payment timeout to cleanup failures
+			if startPaymentMonitor {
+				// TODO: Add monitoring task to worker group, this should prevent shutdown while awaiting payments
+				go i.monitorPaymentTimeout(ctx, htlcInterceptorClient, channelRequest.PaymentHash, 30)
+			}
 		} else {
 			log.Printf("Invalid channel request state (%v): %v", channelRequest.Status, hex.EncodeToString(forwardHtlcInterceptRequest.PaymentHash))
 

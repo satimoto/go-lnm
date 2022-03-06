@@ -18,7 +18,7 @@ import (
 
 type customMessageHandler func(*lnrpc.CustomMessage, string)
 
-func (i *Intercept) SubscribeCustomMesssages() {
+func (i *Intercept) SubscribeCustomMessages() {
 	lndMacaroon, err := base64.StdEncoding.DecodeString(os.Getenv("LND_MACAROON"))
 	util.PanicOnError("Invalid LND Macaroon", err)
 
@@ -27,14 +27,14 @@ func (i *Intercept) SubscribeCustomMesssages() {
 	util.PanicOnError("Error creating SubscribeCustomMessages client", err)
 
 	for {
-		if err := i.SubscribeCustomMesssage(subscribeCustomMessagesClient); err != nil {
+		if err := i.SubscribeCustomMessage(macaroonCtx, subscribeCustomMessagesClient); err != nil {
 			subscribeCustomMessagesClient, err = i.waitForSubscribeCustomMessagesClient(macaroonCtx, 100, 1000)
 			util.PanicOnError("Error creating SubscribeCustomMessages client", err)
 		}
 	}
 }
 
-func (i *Intercept) SubscribeCustomMesssage(subscribeCustomMessagesClient lnrpc.Lightning_SubscribeCustomMessagesClient) error {
+func (i *Intercept) SubscribeCustomMessage(macaroonCtx context.Context, subscribeCustomMessagesClient lnrpc.Lightning_SubscribeCustomMessagesClient) error {
 	customMessage, err := subscribeCustomMessagesClient.Recv()
 
 	if err != nil {

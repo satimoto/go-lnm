@@ -28,14 +28,14 @@ func (i *Intercept) SubscribeHtlcEvents() {
 	util.PanicOnError("Error creating SubscribeHtlcEvents client", err)
 
 	for {
-		if err := i.SubscribeHtlcEvent(subscribeHtlcEventsClient); err != nil {
+		if err := i.SubscribeHtlcEvent(macaroonCtx, subscribeHtlcEventsClient); err != nil {
 			subscribeHtlcEventsClient, err = i.waitForSubscribeHtlcEventsClient(macaroonCtx, 100, 1000)
 			util.PanicOnError("Error creating SubscribeHtlcEvents client", err)
 		}
 	}
 }
 
-func (i *Intercept) SubscribeHtlcEvent(subscribeHtlcEventsClient routerrpc.Router_SubscribeHtlcEventsClient) error {
+func (i *Intercept) SubscribeHtlcEvent(macaroonCtx context.Context, subscribeHtlcEventsClient routerrpc.Router_SubscribeHtlcEventsClient) error {
 	htlcEvent, err := subscribeHtlcEventsClient.Recv()
 
 	if err != nil {
@@ -43,6 +43,8 @@ func (i *Intercept) SubscribeHtlcEvent(subscribeHtlcEventsClient routerrpc.Route
 
 		return err
 	}
+
+	log.Printf("HTLC Event: %v", htlcEvent.EventType)
 
 	/** HTLC Event received.
 	 *  Check that the event type is a Forward event and that is is successful.
@@ -63,7 +65,7 @@ func (i *Intercept) SubscribeHtlcEvent(subscribeHtlcEventsClient routerrpc.Route
 		if successEvent != nil {
 			ctx := context.Background()
 			getChannelRequestHtlcByCircuitKeyParams := db.GetChannelRequestHtlcByCircuitKeyParams{
-				ChanID: int64(htlcEvent.IncomingHtlcId),
+				ChanID: int64(htlcEvent.IncomingChannelId),
 				HtlcID: int64(htlcEvent.IncomingHtlcId),
 			}
 
@@ -74,15 +76,17 @@ func (i *Intercept) SubscribeHtlcEvent(subscribeHtlcEventsClient routerrpc.Route
 				})
 
 				unsettledChannelRequestHtlcs, _ := i.ChannelRequestResolver.Repository.ListUnsettledChannelRequestHtlcs(ctx, channelRequestHtlc.ChannelRequestID)
+				log.Printf("Unsettled HTLCs: %v", len(unsettledChannelRequestHtlcs))
 
 				if len(unsettledChannelRequestHtlcs) == 0 {
 					// TODO: Add creating channel task to worker group
 					if channelRequest, err := i.ChannelRequestResolver.Repository.GetChannelRequest(ctx, channelRequestHtlc.ChannelRequestID); err == nil {
 						if pubkeyBytes, err := hex.DecodeString(channelRequest.Pubkey); err == nil {
 							pushSat := int64(lnwire.MilliSatoshi(channelRequest.AmountMsat).ToSatoshis())
+							localFundingAmount := int64(float64(pushSat) * 1.25)
 							openChannelRequest := &lnrpc.OpenChannelRequest{
 								NodePubkey:         pubkeyBytes,
-								LocalFundingAmount: 0,
+								LocalFundingAmount: localFundingAmount,
 								PushSat:            pushSat,
 								TargetConf:         1,
 								MinConfs:           0,
@@ -90,7 +94,12 @@ func (i *Intercept) SubscribeHtlcEvent(subscribeHtlcEventsClient routerrpc.Route
 								SpendUnconfirmed:   true,
 							}
 
-							if channelPoint, err := i.LightningClient.OpenChannelSync(ctx, openChannelRequest); err == nil {
+							log.Printf("Opening channel to %v for %v sats", channelRequest.Pubkey, pushSat)
+
+							channelPoint, err := i.LightningClient.OpenChannelSync(macaroonCtx, openChannelRequest)
+							util.LogOnError("Error opening channel", err)
+
+							if err == nil {
 								updateChannelRequestParams := channelrequest.NewUpdateChannelRequestParams(channelRequest)
 								updateChannelRequestParams.FundingTxID = channelPoint.GetFundingTxidBytes()
 								updateChannelRequestParams.OutputIndex = util.SqlNullInt64(channelPoint.OutputIndex)

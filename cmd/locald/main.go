@@ -59,6 +59,7 @@ func main() {
 		go interceptor.InterceptHtlcs()
 		go interceptor.SubscribeHtlcEvents()
 		go interceptor.SubscribeChannelEvents()
+		go interceptor.SubscribeCustomMessages()
 		interceptor.SubscribeTransactions()
 	}
 }
