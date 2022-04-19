@@ -2,7 +2,7 @@ package mocks
 
 import (
 	mocks "github.com/satimoto/go-datastore-mocks/db"
-	"github.com/satimoto/go-lsp/channelrequest"
+	"github.com/satimoto/go-lsp/internal/channelrequest"
 )
 
 func NewResolver(repositoryService *mocks.MockRepositoryService) *channelrequest.ChannelRequestResolver {
