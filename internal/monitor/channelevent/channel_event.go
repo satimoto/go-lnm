@@ -10,30 +10,23 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/satimoto/go-datastore/db"
 	"github.com/satimoto/go-lsp/internal/channelrequest"
+	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/util"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type ChannelEventMonitor struct {
-	*grpc.ClientConn
-	lnrpc.LightningClient
-	*channelrequest.ChannelRequestResolver
-	MacaroonCtx           context.Context
-	ChannelEventsClient lnrpc.Lightning_SubscribeChannelEventsClient
+	LightningService       lightningnetwork.LightningNetwork
+	ChannelRequestResolver *channelrequest.ChannelRequestResolver
+	ChannelEventsClient    lnrpc.Lightning_SubscribeChannelEventsClient
 }
 
-func NewChannelEventMonitor(repositoryService *db.RepositoryService) *ChannelEventMonitor {
+func NewChannelEventMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) *ChannelEventMonitor {
 	return &ChannelEventMonitor{
+		LightningService: lightningService,
 		ChannelRequestResolver: channelrequest.NewResolver(repositoryService),
 	}
-}
-
-func (m *ChannelEventMonitor) SetClientConnection(clientConn *grpc.ClientConn, macaroonCtx context.Context) {
-	m.ClientConn = clientConn
-	m.LightningClient = lnrpc.NewLightningClient(clientConn)
-	m.MacaroonCtx = macaroonCtx
 }
 
 func (m *ChannelEventMonitor) StartMonitor(ctx context.Context, waitGroup *sync.WaitGroup) {
@@ -81,8 +74,8 @@ func (m *ChannelEventMonitor) handleChannelEvent(channelEvent lnrpc.ChannelEvent
 }
 
 func (m *ChannelEventMonitor) subscribeChannelEvents(channelEventChan chan<- lnrpc.ChannelEventUpdate) {
-	channelEventsClient, err := m.waitForSubscribeChannelEventsClient(m.MacaroonCtx, 0, 1000)
-	util.PanicOnError("Error creating Channel Events client", err)
+	channelEventsClient, err := m.waitForSubscribeChannelEventsClient(m.LightningService.GetMacaroonCtx(), 0, 1000)
+	util.PanicOnError("LSP012", "Error creating Channel Events client", err)
 
 	m.ChannelEventsClient = channelEventsClient
 
@@ -92,8 +85,8 @@ func (m *ChannelEventMonitor) subscribeChannelEvents(channelEventChan chan<- lnr
 		if err == nil {
 			channelEventChan <- *channelEvent
 		} else {
-			m.ChannelEventsClient, err = m.waitForSubscribeChannelEventsClient(m.MacaroonCtx, 100, 1000)
-			util.PanicOnError("Error creating Channel Events client", err)
+			m.ChannelEventsClient, err = m.waitForSubscribeChannelEventsClient(m.LightningService.GetMacaroonCtx(), 100, 1000)
+			util.PanicOnError("LSP013", "Error creating Channel Events client", err)
 		}
 	}
 }
@@ -101,7 +94,6 @@ func (m *ChannelEventMonitor) subscribeChannelEvents(channelEventChan chan<- lnr
 func (m *ChannelEventMonitor) waitForChannelEvents(ctx context.Context, waitGroup *sync.WaitGroup, channelEventChan chan lnrpc.ChannelEventUpdate) {
 	waitGroup.Add(1)
 	defer close(channelEventChan)
-	defer m.ClientConn.Close()
 	defer waitGroup.Done()
 
 	for {
@@ -121,7 +113,7 @@ func (m *ChannelEventMonitor) waitForSubscribeChannelEventsClient(ctx context.Co
 			time.Sleep(retryDelay * time.Millisecond)
 		}
 
-		subscribeChannelEventsClient, err := m.LightningClient.SubscribeChannelEvents(ctx, &lnrpc.ChannelEventSubscription{})
+		subscribeChannelEventsClient, err := m.LightningService.GetLightningClient().SubscribeChannelEvents(ctx, &lnrpc.ChannelEventSubscription{})
 
 		if err == nil {
 			return subscribeChannelEventsClient, nil

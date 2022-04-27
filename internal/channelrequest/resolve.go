@@ -32,13 +32,3 @@ func NewResolver(repositoryService *db.RepositoryService) *ChannelRequestResolve
 		Repository: repo,
 	}
 }
-
-func NewUpdateChannelRequestParams(channelRequest db.ChannelRequest) db.UpdateChannelRequestParams {
-	return db.UpdateChannelRequestParams{
-		ID:          channelRequest.ID,
-		Status:      channelRequest.Status,
-		SettledMsat: channelRequest.SettledMsat,
-		FundingTxID: channelRequest.FundingTxID,
-		OutputIndex: channelRequest.OutputIndex,
-	}
-}
