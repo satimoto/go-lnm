@@ -12,32 +12,23 @@ import (
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/satimoto/go-datastore/db"
 	"github.com/satimoto/go-lsp/internal/channelrequest"
+	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/util"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type HtlcEventMonitor struct {
-	*grpc.ClientConn
-	lnrpc.LightningClient
-	routerrpc.RouterClient
-	MacaroonCtx      context.Context
-	HtlcEventsClient routerrpc.Router_SubscribeHtlcEventsClient
-	*channelrequest.ChannelRequestResolver
+	LightningService       lightningnetwork.LightningNetwork
+	HtlcEventsClient       routerrpc.Router_SubscribeHtlcEventsClient
+	ChannelRequestResolver *channelrequest.ChannelRequestResolver
 }
 
-func NewHtlcEventMonitor(repositoryService *db.RepositoryService) *HtlcEventMonitor {
+func NewHtlcEventMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) *HtlcEventMonitor {
 	return &HtlcEventMonitor{
+		LightningService:       lightningService,
 		ChannelRequestResolver: channelrequest.NewResolver(repositoryService),
 	}
-}
-
-func (m *HtlcEventMonitor) SetClientConnection(clientConn *grpc.ClientConn, macaroonCtx context.Context) {
-	m.ClientConn = clientConn
-	m.LightningClient = lnrpc.NewLightningClient(clientConn)
-	m.RouterClient = routerrpc.NewRouterClient(clientConn)
-	m.MacaroonCtx = macaroonCtx
 }
 
 func (m *HtlcEventMonitor) StartMonitor(ctx context.Context, waitGroup *sync.WaitGroup) {
@@ -101,8 +92,8 @@ func (m *HtlcEventMonitor) handleHtlcEvent(htlcEvent routerrpc.HtlcEvent) {
 
 							log.Printf("Opening channel to %v for %v sats", channelRequest.Pubkey, pushSat)
 
-							channelPoint, err := m.LightningClient.OpenChannelSync(m.MacaroonCtx, openChannelRequest)
-							util.LogOnError("Error opening channel", err)
+							channelPoint, err := m.LightningService.GetLightningClient().OpenChannelSync(m.LightningService.GetMacaroonCtx(), openChannelRequest)
+							util.LogOnError("LSP005", "Error opening channel", err)
 
 							if err == nil {
 								updateChannelRequestParams := channelrequest.NewUpdateChannelRequestParams(channelRequest)
@@ -120,8 +111,8 @@ func (m *HtlcEventMonitor) handleHtlcEvent(htlcEvent routerrpc.HtlcEvent) {
 }
 
 func (m *HtlcEventMonitor) subscribeHtlcEventInterceptions(htlcEventChan chan<- routerrpc.HtlcEvent) {
-	htlcEventsClient, err := m.waitForSubscribeHtlcEventsClient(m.MacaroonCtx, 0, 1000)
-	util.PanicOnError("Error creating Htlc Events client", err)
+	htlcEventsClient, err := m.waitForSubscribeHtlcEventsClient(m.LightningService.GetMacaroonCtx(), 0, 1000)
+	util.PanicOnError("LSP018", "Error creating Htlc Events client", err)
 	m.HtlcEventsClient = htlcEventsClient
 
 	for {
@@ -130,8 +121,8 @@ func (m *HtlcEventMonitor) subscribeHtlcEventInterceptions(htlcEventChan chan<- 
 		if err == nil {
 			htlcEventChan <- *htlcInterceptRequest
 		} else {
-			m.HtlcEventsClient, err = m.waitForSubscribeHtlcEventsClient(m.MacaroonCtx, 100, 1000)
-			util.PanicOnError("Error creating Htlc Events client", err)
+			m.HtlcEventsClient, err = m.waitForSubscribeHtlcEventsClient(m.LightningService.GetMacaroonCtx(), 100, 1000)
+			util.PanicOnError("LSP019", "Error creating Htlc Events client", err)
 		}
 	}
 }
@@ -139,7 +130,6 @@ func (m *HtlcEventMonitor) subscribeHtlcEventInterceptions(htlcEventChan chan<- 
 func (m *HtlcEventMonitor) waitForHtlcEvents(ctx context.Context, waitGroup *sync.WaitGroup, htlcEventChan chan routerrpc.HtlcEvent) {
 	waitGroup.Add(1)
 	defer close(htlcEventChan)
-	defer m.ClientConn.Close()
 	defer waitGroup.Done()
 
 	for {
@@ -159,7 +149,7 @@ func (m *HtlcEventMonitor) waitForSubscribeHtlcEventsClient(ctx context.Context,
 			time.Sleep(retryDelay * time.Millisecond)
 		}
 
-		subscribeHtlcEventsClient, err := m.RouterClient.SubscribeHtlcEvents(ctx, &routerrpc.SubscribeHtlcEventsRequest{})
+		subscribeHtlcEventsClient, err := m.LightningService.GetRouterClient().SubscribeHtlcEvents(ctx, &routerrpc.SubscribeHtlcEventsRequest{})
 
 		if err == nil {
 			return subscribeHtlcEventsClient, nil

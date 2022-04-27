@@ -9,30 +9,23 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/satimoto/go-datastore/db"
 	"github.com/satimoto/go-lsp/internal/channelrequest"
+	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/util"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type TransactionMonitor struct {
-	*grpc.ClientConn
-	lnrpc.LightningClient
-	MacaroonCtx        context.Context
-	TransactionsClient lnrpc.Lightning_SubscribeTransactionsClient
-	*channelrequest.ChannelRequestResolver
+	LightningService       lightningnetwork.LightningNetwork
+	TransactionsClient     lnrpc.Lightning_SubscribeTransactionsClient
+	ChannelRequestResolver *channelrequest.ChannelRequestResolver
 }
 
-func NewTransactionMonitor(repositoryService *db.RepositoryService) *TransactionMonitor {
+func NewTransactionMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) *TransactionMonitor {
 	return &TransactionMonitor{
+		LightningService:       lightningService,
 		ChannelRequestResolver: channelrequest.NewResolver(repositoryService),
 	}
-}
-
-func (m *TransactionMonitor) SetClientConnection(clientConn *grpc.ClientConn, macaroonCtx context.Context) {
-	m.ClientConn = clientConn
-	m.LightningClient = lnrpc.NewLightningClient(clientConn)
-	m.MacaroonCtx = macaroonCtx
 }
 
 func (m *TransactionMonitor) StartMonitor(ctx context.Context, waitGroup *sync.WaitGroup) {
@@ -57,8 +50,8 @@ func (m *TransactionMonitor) handleTransaction(transaction lnrpc.Transaction) {
 }
 
 func (m *TransactionMonitor) subscribeTransactionInterceptions(transactionChan chan<- lnrpc.Transaction) {
-	htlcEventsClient, err := m.waitForSubscribeTransactionsClient(m.MacaroonCtx, 0, 1000)
-	util.PanicOnError("Error creating Transactions client", err)
+	htlcEventsClient, err := m.waitForSubscribeTransactionsClient(m.LightningService.GetMacaroonCtx(), 0, 1000)
+	util.PanicOnError("LSP022", "Error creating Transactions client", err)
 	m.TransactionsClient = htlcEventsClient
 
 	for {
@@ -67,8 +60,8 @@ func (m *TransactionMonitor) subscribeTransactionInterceptions(transactionChan c
 		if err == nil {
 			transactionChan <- *htlcInterceptRequest
 		} else {
-			m.TransactionsClient, err = m.waitForSubscribeTransactionsClient(m.MacaroonCtx, 100, 1000)
-			util.PanicOnError("Error creating Transactions client", err)
+			m.TransactionsClient, err = m.waitForSubscribeTransactionsClient(m.LightningService.GetMacaroonCtx(), 100, 1000)
+			util.PanicOnError("LSP023", "Error creating Transactions client", err)
 		}
 	}
 }
@@ -76,7 +69,6 @@ func (m *TransactionMonitor) subscribeTransactionInterceptions(transactionChan c
 func (m *TransactionMonitor) waitForTransactions(ctx context.Context, waitGroup *sync.WaitGroup, transactionChan chan lnrpc.Transaction) {
 	waitGroup.Add(1)
 	defer close(transactionChan)
-	defer m.ClientConn.Close()
 	defer waitGroup.Done()
 
 	for {
@@ -96,7 +88,7 @@ func (m *TransactionMonitor) waitForSubscribeTransactionsClient(ctx context.Cont
 			time.Sleep(retryDelay * time.Millisecond)
 		}
 
-		subscribeTransactionsClient, err := m.LightningClient.SubscribeTransactions(ctx, &lnrpc.GetTransactionsRequest{})
+		subscribeTransactionsClient, err := m.LightningService.GetLightningClient().SubscribeTransactions(ctx, &lnrpc.GetTransactionsRequest{})
 
 		if err == nil {
 			return subscribeTransactionsClient, nil

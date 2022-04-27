@@ -2,8 +2,6 @@ package monitor
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/hex"
 	"log"
 	"os"
 	"strings"
@@ -12,92 +10,71 @@ import (
 
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/satimoto/go-datastore/db"
+	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/monitor/channelevent"
 	"github.com/satimoto/go-lsp/internal/monitor/custommessage"
 	"github.com/satimoto/go-lsp/internal/monitor/htlc"
 	"github.com/satimoto/go-lsp/internal/monitor/htlcevent"
+	"github.com/satimoto/go-lsp/internal/monitor/invoice"
 	"github.com/satimoto/go-lsp/internal/monitor/transaction"
 	"github.com/satimoto/go-lsp/internal/node"
 	"github.com/satimoto/go-lsp/internal/util"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 )
 
 type Monitor struct {
-	*grpc.ClientConn
-	lnrpc.LightningClient
-	MacaroonCtx context.Context
-
-	*node.NodeResolver
-
-	*channelevent.ChannelEventMonitor
-	*custommessage.CustomMessageMonitor
-	*htlc.HtlcMonitor
-	*htlcevent.HtlcEventMonitor
-	*transaction.TransactionMonitor
+	LightningService     lightningnetwork.LightningNetwork
+	ShutdownCtx          context.Context
+	NodeResolver         *node.NodeResolver
+	ChannelEventMonitor  *channelevent.ChannelEventMonitor
+	CustomMessageMonitor *custommessage.CustomMessageMonitor
+	HtlcMonitor          *htlc.HtlcMonitor
+	HtlcEventMonitor     *htlcevent.HtlcEventMonitor
+	InvoiceMonitor       *invoice.InvoiceMonitor
+	TransactionMonitor   *transaction.TransactionMonitor
 }
 
-func NewMonitor(repositoryService *db.RepositoryService) *Monitor {
-	lndTlsCert, err := base64.StdEncoding.DecodeString(os.Getenv("LND_TLS_CERT"))
-	util.PanicOnError("Invalid LND TLS Certificate", err)
-
-	credentials, err := util.NewCredential(string(lndTlsCert))
-	util.PanicOnError("Error creating transport credentials", err)
-
-	clientConn, err := grpc.Dial(os.Getenv("LND_GRPC_HOST"), grpc.WithTransportCredentials(credentials))
-	util.PanicOnError("Error connecting to LND host", err)
-
-	lndMacaroon, err := base64.StdEncoding.DecodeString(os.Getenv("LND_MACAROON"))
-	util.PanicOnError("Invalid LND Macaroon", err)
-
-	macaroonCtx := metadata.AppendToOutgoingContext(context.Background(), "macaroon", hex.EncodeToString(lndMacaroon))
-	customMessageMonitor := custommessage.NewCustomMessageMonitor(repositoryService)
+func NewMonitor(shutdownCtx context.Context, repositoryService *db.RepositoryService) *Monitor {
+	lightningService := lightningnetwork.NewService()
+	customMessageMonitor := custommessage.NewCustomMessageMonitor(repositoryService, lightningService)
 
 	return &Monitor{
-		ClientConn:      clientConn,
-		LightningClient: lnrpc.NewLightningClient(clientConn),
-		MacaroonCtx:     macaroonCtx,
-
-		NodeResolver: node.NewResolver(repositoryService),
-
-		ChannelEventMonitor:  channelevent.NewChannelEventMonitor(repositoryService),
+		LightningService:     lightningService,
+		ShutdownCtx:          shutdownCtx,
+		NodeResolver:         node.NewResolver(repositoryService),
+		ChannelEventMonitor:  channelevent.NewChannelEventMonitor(repositoryService, lightningService),
 		CustomMessageMonitor: customMessageMonitor,
-		HtlcMonitor:          htlc.NewHtlcMonitor(repositoryService, customMessageMonitor),
-		HtlcEventMonitor:     htlcevent.NewHtlcEventMonitor(repositoryService),
-		TransactionMonitor:   transaction.NewTransactionMonitor(repositoryService),
+		HtlcMonitor:          htlc.NewHtlcMonitor(repositoryService, lightningService, customMessageMonitor),
+		HtlcEventMonitor:     htlcevent.NewHtlcEventMonitor(repositoryService, lightningService),
+		InvoiceMonitor:       invoice.NewInvoiceMonitor(repositoryService, lightningService),
+		TransactionMonitor:   transaction.NewTransactionMonitor(repositoryService, lightningService),
 	}
 }
 
-func (m *Monitor) StartMonitor(ctx context.Context, waitGroup *sync.WaitGroup) {
+func (m *Monitor) StartMonitor(waitGroup *sync.WaitGroup) {
 	err := m.register()
-	util.PanicOnError("Error registering LSP", err)
+	util.PanicOnError("LSP010", "Error registering LSP", err)
 
-	m.ChannelEventMonitor.SetClientConnection(m.ClientConn, m.MacaroonCtx)
-	m.CustomMessageMonitor.SetClientConnection(m.ClientConn, m.MacaroonCtx)
-	m.HtlcMonitor.SetClientConnection(m.ClientConn, m.MacaroonCtx)
-	m.HtlcEventMonitor.SetClientConnection(m.ClientConn, m.MacaroonCtx)
-	m.TransactionMonitor.SetClientConnection(m.ClientConn, m.MacaroonCtx)
-
-	m.ChannelEventMonitor.StartMonitor(ctx, waitGroup)
-	m.CustomMessageMonitor.StartMonitor(ctx, waitGroup)
-	m.HtlcMonitor.StartMonitor(ctx, waitGroup)
-	m.HtlcEventMonitor.StartMonitor(ctx, waitGroup)
-	m.TransactionMonitor.StartMonitor(ctx, waitGroup)
+	m.ChannelEventMonitor.StartMonitor(m.ShutdownCtx, waitGroup)
+	m.CustomMessageMonitor.StartMonitor(m.ShutdownCtx, waitGroup)
+	m.HtlcMonitor.StartMonitor(m.ShutdownCtx, waitGroup)
+	m.HtlcEventMonitor.StartMonitor(m.ShutdownCtx, waitGroup)
+	m.InvoiceMonitor.StartMonitor(m.ShutdownCtx, waitGroup)
+	m.TransactionMonitor.StartMonitor(m.ShutdownCtx, waitGroup)
 }
 
 func (m *Monitor) register() error {
 	waitingForSync := false
 
 	for {
-		getInfoResponse, err := m.LightningClient.GetInfo(m.MacaroonCtx, &lnrpc.GetInfoRequest{})
+		getInfoResponse, err := m.LightningService.GetLightningClient().GetInfo(m.LightningService.GetMacaroonCtx(), &lnrpc.GetInfoRequest{})
 
 		if err != nil {
-			log.Printf("Error getting info: %v", err)
+			util.LogOnError("LSP004", "Error getting info", err)
 			return err
 		}
 
 		ip, err := util.GetIPAddress()
-		util.PanicOnError("Error getting IP address", err)
+		util.PanicOnError("LSP011", "Error getting IP address", err)
 
 		if !waitingForSync {
 			log.Print("Registering node")

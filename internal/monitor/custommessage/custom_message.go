@@ -9,8 +9,8 @@ import (
 
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/satimoto/go-datastore/db"
+	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/util"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -18,23 +18,16 @@ import (
 type customMessageHandler func(lnrpc.CustomMessage, string)
 
 type CustomMessageMonitor struct {
-	*grpc.ClientConn
-	lnrpc.LightningClient
-	MacaroonCtx           context.Context
+	LightningService      lightningnetwork.LightningNetwork
 	CustomMessagesClient  lnrpc.Lightning_SubscribeCustomMessagesClient
 	CustomMessageHandlers map[string]customMessageHandler
 }
 
-func NewCustomMessageMonitor(repositoryService *db.RepositoryService) *CustomMessageMonitor {
+func NewCustomMessageMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) *CustomMessageMonitor {
 	return &CustomMessageMonitor{
+		LightningService:      lightningService,
 		CustomMessageHandlers: make(map[string]customMessageHandler),
 	}
-}
-
-func (m *CustomMessageMonitor) SetClientConnection(clientConn *grpc.ClientConn, macaroonCtx context.Context) {
-	m.ClientConn = clientConn
-	m.LightningClient = lnrpc.NewLightningClient(clientConn)
-	m.MacaroonCtx = macaroonCtx
 }
 
 func (m *CustomMessageMonitor) StartMonitor(ctx context.Context, waitGroup *sync.WaitGroup) {
@@ -61,8 +54,8 @@ func (m *CustomMessageMonitor) handleCustomMessage(customMessage lnrpc.CustomMes
 }
 
 func (m *CustomMessageMonitor) subscribeCustomMessages(customMessageChan chan<- lnrpc.CustomMessage) {
-	customMessagesClient, err := m.waitForSubscribeCustomMessagesClient(m.MacaroonCtx, 0, 1000)
-	util.PanicOnError("Error creating Custom Messages client", err)
+	customMessagesClient, err := m.waitForSubscribeCustomMessagesClient(m.LightningService.GetMacaroonCtx(), 0, 1000)
+	util.PanicOnError("LSP014", "Error creating Custom Messages client", err)
 
 	m.CustomMessagesClient = customMessagesClient
 
@@ -72,8 +65,8 @@ func (m *CustomMessageMonitor) subscribeCustomMessages(customMessageChan chan<- 
 		if err == nil {
 			customMessageChan <- *channelEvent
 		} else {
-			m.CustomMessagesClient, err = m.waitForSubscribeCustomMessagesClient(m.MacaroonCtx, 100, 1000)
-			util.PanicOnError("Error creating Custom Messages client", err)
+			m.CustomMessagesClient, err = m.waitForSubscribeCustomMessagesClient(m.LightningService.GetMacaroonCtx(), 100, 1000)
+			util.PanicOnError("LSP015", "Error creating Custom Messages client", err)
 		}
 	}
 }
@@ -81,7 +74,6 @@ func (m *CustomMessageMonitor) subscribeCustomMessages(customMessageChan chan<- 
 func (m *CustomMessageMonitor) waitForCustomMessages(ctx context.Context, waitGroup *sync.WaitGroup, customMessageChan chan lnrpc.CustomMessage) {
 	waitGroup.Add(1)
 	defer close(customMessageChan)
-	defer m.ClientConn.Close()
 	defer waitGroup.Done()
 
 	for {
@@ -101,7 +93,7 @@ func (m *CustomMessageMonitor) waitForSubscribeCustomMessagesClient(ctx context.
 			time.Sleep(retryDelay * time.Millisecond)
 		}
 
-		subscribeCustomMessagesClient, err := m.LightningClient.SubscribeCustomMessages(ctx, &lnrpc.SubscribeCustomMessagesRequest{})
+		subscribeCustomMessagesClient, err := m.LightningService.GetLightningClient().SubscribeCustomMessages(ctx, &lnrpc.SubscribeCustomMessagesRequest{})
 
 		if err == nil {
 			return subscribeCustomMessagesClient, nil

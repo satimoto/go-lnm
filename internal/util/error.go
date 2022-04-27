@@ -4,14 +4,16 @@ import (
 	"log"
 )
 
-func LogOnError(message string, err error) {
+func LogOnError(code string, message string, err error) {
 	if err != nil {
-		log.Printf("%s: %v", message, err)
+		log.Printf("%s: %s", code, message)
+		log.Printf("%s: %v", code, err)
 	}
 }
 
-func PanicOnError(message string, err error) {
+func PanicOnError(code string, message string, err error) {
 	if err != nil {
-		log.Fatalf("%s: %v", message, err)
+		log.Fatalf("%s: %s", code, message)
+		log.Fatalf("%s: %v", code, err)
 	}
 }

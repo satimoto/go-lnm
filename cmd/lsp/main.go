@@ -14,6 +14,8 @@ import (
 	"github.com/satimoto/go-datastore/db"
 	"github.com/satimoto/go-datastore/util"
 	"github.com/satimoto/go-lsp/internal/monitor"
+	"github.com/satimoto/go-lsp/internal/rest"
+	"github.com/satimoto/go-lsp/internal/rpc"
 )
 
 var (
@@ -47,11 +49,17 @@ func main() {
 	log.Printf("Starting up LSP server")
 	repositoryService := db.NewRepositoryService(database)
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
+	shutdownCtx, cancelFunc := context.WithCancel(context.Background())
 	waitGroup := &sync.WaitGroup{}
 
-	monitor := monitor.NewMonitor(repositoryService)
-	monitor.StartMonitor(ctx, waitGroup)
+	restService := rest.NewRest(database)
+	restService.StartRest(shutdownCtx, waitGroup)
+
+	rpcService := rpc.NewRpc(shutdownCtx, database)
+	rpcService.StartRpc(waitGroup)
+
+	monitor := monitor.NewMonitor(shutdownCtx, repositoryService)
+	monitor.StartMonitor(waitGroup)
 
 	sigtermChan := make(chan os.Signal)
 	signal.Notify(sigtermChan, syscall.SIGINT, syscall.SIGTERM)

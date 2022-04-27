@@ -14,36 +14,27 @@ import (
 	"github.com/lightningnetwork/lnd/lntypes"
 	"github.com/satimoto/go-datastore/db"
 	"github.com/satimoto/go-lsp/internal/channelrequest"
+	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/messages"
 	"github.com/satimoto/go-lsp/internal/monitor/custommessage"
 	"github.com/satimoto/go-lsp/internal/util"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type HtlcMonitor struct {
-	*grpc.ClientConn
-	lnrpc.LightningClient
-	routerrpc.RouterClient
-	MacaroonCtx           context.Context
-	HtlcInterceptorClient routerrpc.Router_HtlcInterceptorClient
-	*channelrequest.ChannelRequestResolver
-	*custommessage.CustomMessageMonitor
+	LightningService       lightningnetwork.LightningNetwork
+	HtlcInterceptorClient  routerrpc.Router_HtlcInterceptorClient
+	ChannelRequestResolver *channelrequest.ChannelRequestResolver
+	CustomMessageMonitor   *custommessage.CustomMessageMonitor
 }
 
-func NewHtlcMonitor(repositoryService *db.RepositoryService, customMessageMonitor *custommessage.CustomMessageMonitor) *HtlcMonitor {
+func NewHtlcMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork, customMessageMonitor *custommessage.CustomMessageMonitor) *HtlcMonitor {
 	return &HtlcMonitor{
+		LightningService:       lightningService,
 		ChannelRequestResolver: channelrequest.NewResolver(repositoryService),
 		CustomMessageMonitor:   customMessageMonitor,
 	}
-}
-
-func (m *HtlcMonitor) SetClientConnection(clientConn *grpc.ClientConn, macaroonCtx context.Context) {
-	m.ClientConn = clientConn
-	m.LightningClient = lnrpc.NewLightningClient(clientConn)
-	m.RouterClient = routerrpc.NewRouterClient(clientConn)
-	m.MacaroonCtx = macaroonCtx
 }
 
 func (m *HtlcMonitor) StartMonitor(ctx context.Context, waitGroup *sync.WaitGroup) {
@@ -106,7 +97,7 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 			}
 
 			if _, err := m.ChannelRequestResolver.Repository.CreateChannelRequestHtlc(ctx, channelRequestHtlcParams); err != nil {
-				log.Printf("Error creating channel request HTLC: %v", err)
+				util.LogOnError("LSP024", "Error creating channel request HTLC", err)
 				m.HtlcInterceptorClient.Send(&routerrpc.ForwardHtlcInterceptResponse{
 					IncomingCircuitKey: htlcInterceptRequest.IncomingCircuitKey,
 					Action:             routerrpc.ResolveHoldForwardAction_FAIL,
@@ -168,7 +159,7 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 				})
 
 				// TODO: Ensure peer in online
-				m.LightningClient.SendCustomMessage(m.MacaroonCtx, &lnrpc.SendCustomMessageRequest{
+				m.LightningService.GetLightningClient().SendCustomMessage(m.LightningService.GetMacaroonCtx(), &lnrpc.SendCustomMessageRequest{
 					Peer: pubkeyBytes,
 					Type: messages.CHANNELREQUEST_SEND_CHAN_ID,
 					Data: []byte(strconv.FormatUint(htlcInterceptRequest.OutgoingRequestedChanId, 10)),
@@ -183,8 +174,8 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 				go m.waitForPaymentTimeout(ctx, channelRequest.PaymentHash, 30)
 			}
 		} else {
-			log.Printf("Invalid channel request state (%v): %v", channelRequest.Status, hex.EncodeToString(htlcInterceptRequest.PaymentHash))
-
+			log.Printf("LSP025: Invalid channel request state")
+			log.Printf("LSP025: Status=%v, PaymentHash=%v", channelRequest.Status, hex.EncodeToString(htlcInterceptRequest.PaymentHash))
 			m.HtlcInterceptorClient.Send(&routerrpc.ForwardHtlcInterceptResponse{
 				IncomingCircuitKey: htlcInterceptRequest.IncomingCircuitKey,
 				Action:             routerrpc.ResolveHoldForwardAction_FAIL,
@@ -199,8 +190,8 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 }
 
 func (m *HtlcMonitor) subscribeHtlcInterceptions(htlcInterceptChan chan<- routerrpc.ForwardHtlcInterceptRequest) {
-	htlcInterceptorClient, err := m.waitForHtlcInterceptorClient(m.MacaroonCtx, 0, 1000)
-	util.PanicOnError("Error creating Htlcs client", err)
+	htlcInterceptorClient, err := m.waitForHtlcInterceptorClient(m.LightningService.GetMacaroonCtx(), 0, 1000)
+	util.PanicOnError("LSP016", "Error creating Htlcs client", err)
 	m.HtlcInterceptorClient = htlcInterceptorClient
 
 	for {
@@ -209,8 +200,8 @@ func (m *HtlcMonitor) subscribeHtlcInterceptions(htlcInterceptChan chan<- router
 		if err == nil {
 			htlcInterceptChan <- *htlcInterceptRequest
 		} else {
-			m.HtlcInterceptorClient, err = m.waitForHtlcInterceptorClient(m.MacaroonCtx, 100, 1000)
-			util.PanicOnError("Error creating Htlcs client", err)
+			m.HtlcInterceptorClient, err = m.waitForHtlcInterceptorClient(m.LightningService.GetMacaroonCtx(), 100, 1000)
+			util.PanicOnError("LSP017", "Error creating Htlcs client", err)
 		}
 	}
 }
@@ -218,7 +209,6 @@ func (m *HtlcMonitor) subscribeHtlcInterceptions(htlcInterceptChan chan<- router
 func (m *HtlcMonitor) waitForHtlcs(ctx context.Context, waitGroup *sync.WaitGroup, htlcInterceptChan chan routerrpc.ForwardHtlcInterceptRequest) {
 	waitGroup.Add(1)
 	defer close(htlcInterceptChan)
-	defer m.ClientConn.Close()
 	defer waitGroup.Done()
 
 	for {
@@ -238,7 +228,7 @@ func (m *HtlcMonitor) waitForHtlcInterceptorClient(ctx context.Context, initialD
 			time.Sleep(retryDelay * time.Millisecond)
 		}
 
-		htlcInterceptorClient, err := m.RouterClient.HtlcInterceptor(ctx)
+		htlcInterceptorClient, err := m.LightningService.GetRouterClient().HtlcInterceptor(ctx)
 
 		if err == nil {
 			return htlcInterceptorClient, nil
@@ -260,7 +250,8 @@ func (m *HtlcMonitor) waitForPaymentTimeout(ctx context.Context, paymentHash []b
 		channelRequest, err := m.ChannelRequestResolver.Repository.GetChannelRequestByPaymentHash(ctx, paymentHash)
 
 		if err != nil {
-			log.Printf("Error getting channel request: %v", err)
+			log.Printf("LSP026: Error getting channel request")
+			log.Printf("LSP026: %v", err)
 			break
 		}
 
