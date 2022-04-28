@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/satimoto/go-datastore/db"
+	dbUtil "github.com/satimoto/go-datastore/util"
 	"github.com/satimoto/go-lsp/internal/util"
 	"github.com/satimoto/go-ocpi-api/ocpirpc/commandrpc"
 	"github.com/satimoto/go-ocpi-api/ocpirpc/tokenrpc"
@@ -29,6 +30,14 @@ func (r *SessionResolver) MonitorSession(ctx context.Context, session db.Session
 		}
 
 		if connector.TariffID.Valid {
+			location, err := r.LocationResolver.Repository.GetLocation(ctx, session.LocationID)
+
+			if err != nil {
+				util.LogOnError("LSP038", "Error retreiving session location", err)
+				log.Printf("LSP038: SessionUid=%v, LocationID=%v", session.Uid, session.LocationID)
+				return
+			}
+
 			tariff, err := r.TariffResolver.Repository.GetTariffByUid(ctx, connector.TariffID.String)
 
 			if err != nil {
@@ -38,7 +47,17 @@ func (r *SessionResolver) MonitorSession(ctx context.Context, session db.Session
 			}
 
 			tariffIto := r.TariffResolver.CreateTariffIto(ctx, tariff)
+			user, err := r.UserResolver.Repository.GetUserByTokenID(ctx, session.TokenID)
+
+			if err != nil {
+				util.LogOnError("LSP037", "Error retreiving user from session token", err)
+				log.Printf("LSP037: SessionUid=%v, TokenID=%v", session.Uid, session.TokenID)
+				return
+			}
+
+			taxPercent := r.CountryAccountResolver.GetTaxPercentByCountry(ctx, location.Country, dbUtil.GetEnvFloat64("DEFAULT_TAX_PERCENT", 20))
 			invoiceInterval := calculateInvoiceInterval(connector.Wattage)
+			log.Printf("MonitorSession for %s running each %v seconds", session.Uid, invoiceInterval/time.Second)
 
 			for {
 				// Wait for invoice interval
@@ -91,16 +110,21 @@ func (r *SessionResolver) MonitorSession(ctx context.Context, session db.Session
 					break
 				}
 
-				amountInvoiced := calculateAmountInvoiced(sessionInvoices)
+				invoicedAmount := calculateAmountInvoiced(sessionInvoices)
 				sessionIto := r.CreateSessionIto(ctx, session)
-				latestAmount := r.ProcessChargingPeriods(sessionIto, tariffIto, time.Now())
+				sessionAmount := r.ProcessChargingPeriods(sessionIto, tariffIto, time.Now())
 
-				if latestAmount > amountInvoiced {
-					amountFiat := amountInvoiced - latestAmount
-					amountMsat := int64(amountFiat * 2500000)
-					// TODO: get exchange rate
+				// Add commission
+				commissionAmount := (sessionAmount / 100.0) * user.CommissionPercent
+				sessionAmount += commissionAmount
+				// Add tax
+				taxAmount := (sessionAmount / 100.0) * taxPercent
+				sessionAmount += taxAmount
 
-					r.IssueLightningInvoice(ctx, session, amountFiat, amountMsat)
+				if sessionAmount > invoicedAmount {
+					invoiceAmount := invoicedAmount - sessionAmount
+
+					r.IssueLightningInvoice(ctx, session, invoiceAmount, commissionAmount, taxAmount)
 				}
 			}
 		}

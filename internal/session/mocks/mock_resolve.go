@@ -2,6 +2,7 @@ package mocks
 
 import (
 	mocks "github.com/satimoto/go-datastore-mocks/db"
+	countryaccount "github.com/satimoto/go-lsp/internal/countryaccount/mocks"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	location "github.com/satimoto/go-lsp/internal/location/mocks"
 	"github.com/satimoto/go-lsp/internal/notification"
@@ -15,12 +16,13 @@ func NewResolver(repositoryService *mocks.MockRepositoryService) *session.Sessio
 	repo := session.SessionRepository(repositoryService)
 
 	return &session.SessionResolver{
-		Repository:          repo,
-		LightningService:    lightningnetwork.NewService(),
-		NotificationService: notification.NewService(),
-		OcpiService:         ocpi.NewService(),
-		LocationResolver:    location.NewResolver(repositoryService),
-		TariffResolver:      tariff.NewResolver(repositoryService),
-		UserResolver:        user.NewResolver(repositoryService),
+		Repository:             repo,
+		LightningService:       lightningnetwork.NewService(),
+		NotificationService:    notification.NewService(),
+		OcpiService:            ocpi.NewService(),
+		CountryAccountResolver: countryaccount.NewResolver(repositoryService),
+		LocationResolver:       location.NewResolver(repositoryService),
+		TariffResolver:         tariff.NewResolver(repositoryService),
+		UserResolver:           user.NewResolver(repositoryService),
 	}
 }

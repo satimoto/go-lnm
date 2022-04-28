@@ -82,7 +82,7 @@ func (rs *RestService) listenAndServe() {
 }
 
 func (rs *RestService) shutdown() {
-	timeout := util.ParseInt32(os.Getenv("SHUTDOWN_TIMEOUT"), 20)
+	timeout := util.GetEnvInt32("SHUTDOWN_TIMEOUT", 20)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
