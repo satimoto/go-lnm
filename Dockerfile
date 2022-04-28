@@ -1,10 +1,13 @@
-FROM golang:1.16-alpine AS build
+FROM golang:alpine AS build-env
+
+RUN mkdir /app
 WORKDIR /app
+
 COPY . .
-RUN go mod download
-RUN go build -o build/satimotod cmd/satimotod/main.go
+RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags '-s -w' -o /go/bin/app cmd/lsp/main.go
 
 FROM scratch
-WORKDIR /app
-COPY --from=build /build/satimotod .
-CMD [ "./satimotod" ]
+
+COPY --from=build-env /go/bin/app /go/bin/app
+EXPOSE 9002 50002
+CMD [ "/go/bin/app" ]
