@@ -92,7 +92,7 @@ func (m *HtlcEventMonitor) handleHtlcEvent(htlcEvent routerrpc.HtlcEvent) {
 
 							log.Printf("Opening channel to %v for %v sats", channelRequest.Pubkey, pushSat)
 
-							channelPoint, err := m.LightningService.GetLightningClient().OpenChannelSync(m.LightningService.GetMacaroonCtx(), openChannelRequest)
+							channelPoint, err := m.LightningService.OpenChannelSync(openChannelRequest)
 							util.LogOnError("LSP005", "Error opening channel", err)
 
 							if err == nil {
@@ -111,7 +111,7 @@ func (m *HtlcEventMonitor) handleHtlcEvent(htlcEvent routerrpc.HtlcEvent) {
 }
 
 func (m *HtlcEventMonitor) subscribeHtlcEventInterceptions(htlcEventChan chan<- routerrpc.HtlcEvent) {
-	htlcEventsClient, err := m.waitForSubscribeHtlcEventsClient(m.LightningService.GetMacaroonCtx(), 0, 1000)
+	htlcEventsClient, err := m.waitForSubscribeHtlcEventsClient(0, 1000)
 	util.PanicOnError("LSP018", "Error creating Htlc Events client", err)
 	m.HtlcEventsClient = htlcEventsClient
 
@@ -121,7 +121,7 @@ func (m *HtlcEventMonitor) subscribeHtlcEventInterceptions(htlcEventChan chan<- 
 		if err == nil {
 			htlcEventChan <- *htlcInterceptRequest
 		} else {
-			m.HtlcEventsClient, err = m.waitForSubscribeHtlcEventsClient(m.LightningService.GetMacaroonCtx(), 100, 1000)
+			m.HtlcEventsClient, err = m.waitForSubscribeHtlcEventsClient(100, 1000)
 			util.PanicOnError("LSP019", "Error creating Htlc Events client", err)
 		}
 	}
@@ -143,13 +143,13 @@ func (m *HtlcEventMonitor) waitForHtlcEvents(ctx context.Context, waitGroup *syn
 	}
 }
 
-func (m *HtlcEventMonitor) waitForSubscribeHtlcEventsClient(ctx context.Context, initialDelay, retryDelay time.Duration) (routerrpc.Router_SubscribeHtlcEventsClient, error) {
+func (m *HtlcEventMonitor) waitForSubscribeHtlcEventsClient(initialDelay, retryDelay time.Duration) (routerrpc.Router_SubscribeHtlcEventsClient, error) {
 	for {
 		if initialDelay > 0 {
 			time.Sleep(retryDelay * time.Millisecond)
 		}
 
-		subscribeHtlcEventsClient, err := m.LightningService.GetRouterClient().SubscribeHtlcEvents(ctx, &routerrpc.SubscribeHtlcEventsRequest{})
+		subscribeHtlcEventsClient, err := m.LightningService.SubscribeHtlcEvents(&routerrpc.SubscribeHtlcEventsRequest{})
 
 		if err == nil {
 			return subscribeHtlcEventsClient, nil

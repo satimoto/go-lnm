@@ -74,7 +74,7 @@ func (m *ChannelEventMonitor) handleChannelEvent(channelEvent lnrpc.ChannelEvent
 }
 
 func (m *ChannelEventMonitor) subscribeChannelEvents(channelEventChan chan<- lnrpc.ChannelEventUpdate) {
-	channelEventsClient, err := m.waitForSubscribeChannelEventsClient(m.LightningService.GetMacaroonCtx(), 0, 1000)
+	channelEventsClient, err := m.waitForSubscribeChannelEventsClient(0, 1000)
 	util.PanicOnError("LSP012", "Error creating Channel Events client", err)
 
 	m.ChannelEventsClient = channelEventsClient
@@ -85,7 +85,7 @@ func (m *ChannelEventMonitor) subscribeChannelEvents(channelEventChan chan<- lnr
 		if err == nil {
 			channelEventChan <- *channelEvent
 		} else {
-			m.ChannelEventsClient, err = m.waitForSubscribeChannelEventsClient(m.LightningService.GetMacaroonCtx(), 100, 1000)
+			m.ChannelEventsClient, err = m.waitForSubscribeChannelEventsClient(100, 1000)
 			util.PanicOnError("LSP013", "Error creating Channel Events client", err)
 		}
 	}
@@ -107,13 +107,13 @@ func (m *ChannelEventMonitor) waitForChannelEvents(ctx context.Context, waitGrou
 	}
 }
 
-func (m *ChannelEventMonitor) waitForSubscribeChannelEventsClient(ctx context.Context, initialDelay, retryDelay time.Duration) (lnrpc.Lightning_SubscribeChannelEventsClient, error) {
+func (m *ChannelEventMonitor) waitForSubscribeChannelEventsClient(initialDelay, retryDelay time.Duration) (lnrpc.Lightning_SubscribeChannelEventsClient, error) {
 	for {
 		if initialDelay > 0 {
 			time.Sleep(retryDelay * time.Millisecond)
 		}
 
-		subscribeChannelEventsClient, err := m.LightningService.GetLightningClient().SubscribeChannelEvents(ctx, &lnrpc.ChannelEventSubscription{})
+		subscribeChannelEventsClient, err := m.LightningService.SubscribeChannelEvents(&lnrpc.ChannelEventSubscription{})
 
 		if err == nil {
 			return subscribeChannelEventsClient, nil

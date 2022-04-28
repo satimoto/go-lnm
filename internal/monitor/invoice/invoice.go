@@ -69,7 +69,7 @@ func (m *InvoiceMonitor) handleInvoice(invoice lnrpc.Invoice) {
 }
 
 func (m *InvoiceMonitor) subscribeInvoiceInterceptions(invoiceChan chan<- lnrpc.Invoice) {
-	invoicesClient, err := m.waitForSubscribeInvoicesClient(m.LightningService.GetMacaroonCtx(), 0, 1000)
+	invoicesClient, err := m.waitForSubscribeInvoicesClient(0, 1000)
 	util.PanicOnError("LSP020", "Error creating Invoices client", err)
 	m.InvoicesClient = invoicesClient
 
@@ -79,7 +79,7 @@ func (m *InvoiceMonitor) subscribeInvoiceInterceptions(invoiceChan chan<- lnrpc.
 		if err == nil {
 			invoiceChan <- *invoice
 		} else {
-			m.InvoicesClient, err = m.waitForSubscribeInvoicesClient(m.LightningService.GetMacaroonCtx(), 100, 1000)
+			m.InvoicesClient, err = m.waitForSubscribeInvoicesClient(100, 1000)
 			util.PanicOnError("LSP021", "Error creating Invoices client", err)
 		}
 	}
@@ -121,13 +121,13 @@ func (m *InvoiceMonitor) waitForInvoiceExpiry(ctx context.Context, invoice lnrpc
 	}
 }
 
-func (m *InvoiceMonitor) waitForSubscribeInvoicesClient(ctx context.Context, initialDelay, retryDelay time.Duration) (lnrpc.Lightning_SubscribeInvoicesClient, error) {
+func (m *InvoiceMonitor) waitForSubscribeInvoicesClient(initialDelay, retryDelay time.Duration) (lnrpc.Lightning_SubscribeInvoicesClient, error) {
 	for {
 		if initialDelay > 0 {
 			time.Sleep(retryDelay * time.Millisecond)
 		}
 
-		subscribeInvoicesClient, err := m.LightningService.GetLightningClient().SubscribeInvoices(ctx, &lnrpc.InvoiceSubscription{})
+		subscribeInvoicesClient, err := m.LightningService.SubscribeInvoices(&lnrpc.InvoiceSubscription{})
 
 		if err == nil {
 			return subscribeInvoicesClient, nil

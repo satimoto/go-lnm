@@ -24,7 +24,7 @@ func (r *SessionResolver) IssueLightningInvoice(ctx context.Context, session db.
 		return
 	}
 
-	invoice, err := r.LightningService.GetLightningClient().AddInvoice(r.LightningService.GetMacaroonCtx(), &lnrpc.Invoice{
+	invoice, err := r.LightningService.AddInvoice(&lnrpc.Invoice{
 		RPreimage: preimage[:],
 		ValueMsat: amountMsat,
 	})

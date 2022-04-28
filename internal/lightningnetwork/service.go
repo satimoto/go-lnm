@@ -14,9 +14,16 @@ import (
 )
 
 type LightningNetwork interface {
-	GetLightningClient() lnrpc.LightningClient
-	GetRouterClient() routerrpc.RouterClient
-	GetMacaroonCtx() context.Context
+	AddInvoice(in *lnrpc.Invoice, opts ...grpc.CallOption) (*lnrpc.AddInvoiceResponse, error)
+	GetInfo(in *lnrpc.GetInfoRequest, opts ...grpc.CallOption) (*lnrpc.GetInfoResponse, error)
+	HtlcInterceptor(opts ...grpc.CallOption) (routerrpc.Router_HtlcInterceptorClient, error)
+	OpenChannelSync(in *lnrpc.OpenChannelRequest, opts ...grpc.CallOption) (*lnrpc.ChannelPoint, error)
+	SendCustomMessage(in *lnrpc.SendCustomMessageRequest, opts ...grpc.CallOption) (*lnrpc.SendCustomMessageResponse, error)
+	SubscribeChannelEvents(in *lnrpc.ChannelEventSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeChannelEventsClient, error)
+	SubscribeCustomMessages(in *lnrpc.SubscribeCustomMessagesRequest, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeCustomMessagesClient, error)
+	SubscribeHtlcEvents(in *routerrpc.SubscribeHtlcEventsRequest, opts ...grpc.CallOption) (routerrpc.Router_SubscribeHtlcEventsClient, error)
+	SubscribeInvoices(in *lnrpc.InvoiceSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeInvoicesClient, error)
+	SubscribeTransactions(in *lnrpc.GetTransactionsRequest, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeTransactionsClient, error)
 }
 
 type LightningNetworkService struct {
@@ -47,7 +54,47 @@ func NewService() LightningNetwork {
 	}
 }
 
-func (s *LightningNetworkService) GetLightningClient() lnrpc.LightningClient {
+func (s *LightningNetworkService) AddInvoice(in *lnrpc.Invoice, opts ...grpc.CallOption) (*lnrpc.AddInvoiceResponse, error) {
+	return s.getLightningClient().AddInvoice(s.macaroonCtx, in, opts...)
+}
+
+func (s *LightningNetworkService) GetInfo(in *lnrpc.GetInfoRequest, opts ...grpc.CallOption) (*lnrpc.GetInfoResponse, error) {
+	return s.getLightningClient().GetInfo(s.macaroonCtx, in, opts...)
+}
+
+func (s *LightningNetworkService) HtlcInterceptor(opts ...grpc.CallOption) (routerrpc.Router_HtlcInterceptorClient, error) {
+	return s.getRouterClient().HtlcInterceptor(s.macaroonCtx, opts...)
+}
+
+func (s *LightningNetworkService) OpenChannelSync(in *lnrpc.OpenChannelRequest, opts ...grpc.CallOption) (*lnrpc.ChannelPoint, error) {
+	return s.getLightningClient().OpenChannelSync(s.macaroonCtx, in, opts...)
+}
+
+func (s *LightningNetworkService) SendCustomMessage(in *lnrpc.SendCustomMessageRequest, opts ...grpc.CallOption) (*lnrpc.SendCustomMessageResponse, error) {
+	return s.getLightningClient().SendCustomMessage(s.macaroonCtx, in, opts...)
+}
+
+func (s *LightningNetworkService) SubscribeChannelEvents(in *lnrpc.ChannelEventSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeChannelEventsClient, error) {
+	return s.getLightningClient().SubscribeChannelEvents(s.macaroonCtx, in, opts...)
+}
+
+func (s *LightningNetworkService) SubscribeCustomMessages(in *lnrpc.SubscribeCustomMessagesRequest, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeCustomMessagesClient, error) {
+	return s.getLightningClient().SubscribeCustomMessages(s.macaroonCtx, in, opts...)
+}
+
+func (s *LightningNetworkService) SubscribeHtlcEvents(in *routerrpc.SubscribeHtlcEventsRequest, opts ...grpc.CallOption) (routerrpc.Router_SubscribeHtlcEventsClient, error) {
+	return s.getRouterClient().SubscribeHtlcEvents(s.macaroonCtx, in, opts...)
+}
+
+func (s *LightningNetworkService) SubscribeInvoices(in *lnrpc.InvoiceSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeInvoicesClient, error) {
+	return s.getLightningClient().SubscribeInvoices(s.macaroonCtx, in, opts...)
+}
+
+func (s *LightningNetworkService) SubscribeTransactions(in *lnrpc.GetTransactionsRequest, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeTransactionsClient, error) {
+	return s.getLightningClient().SubscribeTransactions(s.macaroonCtx, in, opts...)
+}
+
+func (s *LightningNetworkService) getLightningClient() lnrpc.LightningClient {
 	if s.lightningClient == nil {
 		lc := lnrpc.NewLightningClient(s.clientConn)
 		s.lightningClient = &lc
@@ -56,7 +103,7 @@ func (s *LightningNetworkService) GetLightningClient() lnrpc.LightningClient {
 	return *s.lightningClient
 }
 
-func (s *LightningNetworkService) GetRouterClient() routerrpc.RouterClient {
+func (s *LightningNetworkService) getRouterClient() routerrpc.RouterClient {
 	if s.routerClient == nil {
 		rc := routerrpc.NewRouterClient(s.clientConn)
 		s.routerClient = &rc
@@ -65,6 +112,6 @@ func (s *LightningNetworkService) GetRouterClient() routerrpc.RouterClient {
 	return *s.routerClient
 }
 
-func (s *LightningNetworkService) GetMacaroonCtx() context.Context {
+func (s *LightningNetworkService) getMacaroonCtx() context.Context {
 	return s.macaroonCtx
 }

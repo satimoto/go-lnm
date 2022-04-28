@@ -50,7 +50,7 @@ func (m *TransactionMonitor) handleTransaction(transaction lnrpc.Transaction) {
 }
 
 func (m *TransactionMonitor) subscribeTransactionInterceptions(transactionChan chan<- lnrpc.Transaction) {
-	htlcEventsClient, err := m.waitForSubscribeTransactionsClient(m.LightningService.GetMacaroonCtx(), 0, 1000)
+	htlcEventsClient, err := m.waitForSubscribeTransactionsClient(0, 1000)
 	util.PanicOnError("LSP022", "Error creating Transactions client", err)
 	m.TransactionsClient = htlcEventsClient
 
@@ -60,7 +60,7 @@ func (m *TransactionMonitor) subscribeTransactionInterceptions(transactionChan c
 		if err == nil {
 			transactionChan <- *htlcInterceptRequest
 		} else {
-			m.TransactionsClient, err = m.waitForSubscribeTransactionsClient(m.LightningService.GetMacaroonCtx(), 100, 1000)
+			m.TransactionsClient, err = m.waitForSubscribeTransactionsClient(100, 1000)
 			util.PanicOnError("LSP023", "Error creating Transactions client", err)
 		}
 	}
@@ -82,13 +82,13 @@ func (m *TransactionMonitor) waitForTransactions(ctx context.Context, waitGroup 
 	}
 }
 
-func (m *TransactionMonitor) waitForSubscribeTransactionsClient(ctx context.Context, initialDelay, retryDelay time.Duration) (lnrpc.Lightning_SubscribeTransactionsClient, error) {
+func (m *TransactionMonitor) waitForSubscribeTransactionsClient(initialDelay, retryDelay time.Duration) (lnrpc.Lightning_SubscribeTransactionsClient, error) {
 	for {
 		if initialDelay > 0 {
 			time.Sleep(retryDelay * time.Millisecond)
 		}
 
-		subscribeTransactionsClient, err := m.LightningService.GetLightningClient().SubscribeTransactions(ctx, &lnrpc.GetTransactionsRequest{})
+		subscribeTransactionsClient, err := m.LightningService.SubscribeTransactions(&lnrpc.GetTransactionsRequest{})
 
 		if err == nil {
 			return subscribeTransactionsClient, nil
