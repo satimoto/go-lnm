@@ -1,6 +1,7 @@
 package ocpi
 
 import (
+	"context"
 	"os"
 
 	"github.com/satimoto/go-lsp/internal/util"
@@ -10,8 +11,8 @@ import (
 )
 
 type Ocpi interface {
-	GetCommandClient() commandrpc.CommandServiceClient
-	GetTokenClient() tokenrpc.TokenServiceClient
+	StopSession(ctx context.Context, in *commandrpc.StopSessionRequest, opts ...grpc.CallOption) (*commandrpc.StopSessionResponse, error)
+	UpdateTokens(ctx context.Context, in *tokenrpc.UpdateTokensRequest, opts ...grpc.CallOption) (*tokenrpc.UpdateTokensResponse, error)
 }
 
 type OcpiService struct {
@@ -29,7 +30,15 @@ func NewService() Ocpi {
 	}
 }
 
-func (s *OcpiService) GetCommandClient() commandrpc.CommandServiceClient {
+func (s *OcpiService) StopSession(ctx context.Context, in *commandrpc.StopSessionRequest, opts ...grpc.CallOption) (*commandrpc.StopSessionResponse, error) {
+	return s.getCommandClient().StopSession(ctx, in, opts...)
+}
+
+func (s *OcpiService) UpdateTokens(ctx context.Context, in *tokenrpc.UpdateTokensRequest, opts ...grpc.CallOption) (*tokenrpc.UpdateTokensResponse, error) {
+	return s.getTokenClient().UpdateTokens(ctx, in, opts...)
+}
+
+func (s *OcpiService) getCommandClient() commandrpc.CommandServiceClient {
 	if s.commandClient == nil {
 		client := commandrpc.NewCommandServiceClient(s.clientConn)
 		s.commandClient = &client
@@ -38,7 +47,7 @@ func (s *OcpiService) GetCommandClient() commandrpc.CommandServiceClient {
 	return *s.commandClient
 }
 
-func (s *OcpiService) GetTokenClient() tokenrpc.TokenServiceClient {
+func (s *OcpiService) getTokenClient() tokenrpc.TokenServiceClient {
 	if s.commandClient == nil {
 		client := tokenrpc.NewTokenServiceClient(s.clientConn)
 		s.tokenClient = &client

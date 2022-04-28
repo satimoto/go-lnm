@@ -89,7 +89,7 @@ func (r *SessionResolver) MonitorSession(ctx context.Context, session db.Session
 					// Kill session
 					// Suspend tokens until balance is settled
 					// TODO: handle expired invoices, reissue invoices on request
-					r.OcpiService.GetCommandClient().StopSession(ctx, &commandrpc.StopSessionRequest{
+					r.OcpiService.StopSession(ctx, &commandrpc.StopSessionRequest{
 						SessionUid: session.Uid,
 					})
 
@@ -101,7 +101,7 @@ func (r *SessionResolver) MonitorSession(ctx context.Context, session db.Session
 						break
 					}	
 
-					r.OcpiService.GetTokenClient().UpdateTokens(ctx, &tokenrpc.UpdateTokensRequest{
+					r.OcpiService.UpdateTokens(ctx, &tokenrpc.UpdateTokensRequest{
 						UserId: user.ID,
 						Allowed: string(db.TokenAllowedTypeNOCREDIT),
 						Whitelist: string(db.TokenWhitelistTypeNEVER),

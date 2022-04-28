@@ -66,7 +66,7 @@ func (m *Monitor) register() error {
 	waitingForSync := false
 
 	for {
-		getInfoResponse, err := m.LightningService.GetLightningClient().GetInfo(m.LightningService.GetMacaroonCtx(), &lnrpc.GetInfoRequest{})
+		getInfoResponse, err := m.LightningService.GetInfo(&lnrpc.GetInfoRequest{})
 
 		if err != nil {
 			util.LogOnError("LSP004", "Error getting info", err)

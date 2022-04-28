@@ -159,7 +159,7 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 				})
 
 				// TODO: Ensure peer in online
-				m.LightningService.GetLightningClient().SendCustomMessage(m.LightningService.GetMacaroonCtx(), &lnrpc.SendCustomMessageRequest{
+				m.LightningService.SendCustomMessage(&lnrpc.SendCustomMessageRequest{
 					Peer: pubkeyBytes,
 					Type: messages.CHANNELREQUEST_SEND_CHAN_ID,
 					Data: []byte(strconv.FormatUint(htlcInterceptRequest.OutgoingRequestedChanId, 10)),
@@ -190,7 +190,7 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 }
 
 func (m *HtlcMonitor) subscribeHtlcInterceptions(htlcInterceptChan chan<- routerrpc.ForwardHtlcInterceptRequest) {
-	htlcInterceptorClient, err := m.waitForHtlcInterceptorClient(m.LightningService.GetMacaroonCtx(), 0, 1000)
+	htlcInterceptorClient, err := m.waitForHtlcInterceptorClient(0, 1000)
 	util.PanicOnError("LSP016", "Error creating Htlcs client", err)
 	m.HtlcInterceptorClient = htlcInterceptorClient
 
@@ -200,7 +200,7 @@ func (m *HtlcMonitor) subscribeHtlcInterceptions(htlcInterceptChan chan<- router
 		if err == nil {
 			htlcInterceptChan <- *htlcInterceptRequest
 		} else {
-			m.HtlcInterceptorClient, err = m.waitForHtlcInterceptorClient(m.LightningService.GetMacaroonCtx(), 100, 1000)
+			m.HtlcInterceptorClient, err = m.waitForHtlcInterceptorClient(100, 1000)
 			util.PanicOnError("LSP017", "Error creating Htlcs client", err)
 		}
 	}
@@ -222,13 +222,13 @@ func (m *HtlcMonitor) waitForHtlcs(ctx context.Context, waitGroup *sync.WaitGrou
 	}
 }
 
-func (m *HtlcMonitor) waitForHtlcInterceptorClient(ctx context.Context, initialDelay, retryDelay time.Duration) (routerrpc.Router_HtlcInterceptorClient, error) {
+func (m *HtlcMonitor) waitForHtlcInterceptorClient(initialDelay, retryDelay time.Duration) (routerrpc.Router_HtlcInterceptorClient, error) {
 	for {
 		if initialDelay > 0 {
 			time.Sleep(retryDelay * time.Millisecond)
 		}
 
-		htlcInterceptorClient, err := m.LightningService.GetRouterClient().HtlcInterceptor(ctx)
+		htlcInterceptorClient, err := m.LightningService.HtlcInterceptor()
 
 		if err == nil {
 			return htlcInterceptorClient, nil

@@ -3,10 +3,10 @@ package mocks
 import (
 	mocks "github.com/satimoto/go-datastore-mocks/db"
 	countryaccount "github.com/satimoto/go-lsp/internal/countryaccount/mocks"
-	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	lightningnetwork "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
 	location "github.com/satimoto/go-lsp/internal/location/mocks"
-	"github.com/satimoto/go-lsp/internal/notification"
-	"github.com/satimoto/go-lsp/internal/ocpi"
+	notification "github.com/satimoto/go-lsp/internal/notification/mocks"
+	ocpi "github.com/satimoto/go-lsp/internal/ocpi/mocks"
 	"github.com/satimoto/go-lsp/internal/session"
 	tariff "github.com/satimoto/go-lsp/internal/tariff/mocks"
 	user "github.com/satimoto/go-lsp/internal/user/mocks"
