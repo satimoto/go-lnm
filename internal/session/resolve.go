@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/satimoto/go-datastore/db"
+	"github.com/satimoto/go-lsp/internal/countryaccount"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/location"
 	"github.com/satimoto/go-lsp/internal/notification"
@@ -23,13 +24,14 @@ type SessionRepository interface {
 }
 
 type SessionResolver struct {
-	Repository          SessionRepository
-	LightningService    lightningnetwork.LightningNetwork
-	NotificationService notification.Notification
-	OcpiService         ocpi.Ocpi
-	LocationResolver    *location.LocationResolver
-	TariffResolver      *tariff.TariffResolver
-	UserResolver        *user.UserResolver
+	Repository             SessionRepository
+	LightningService       lightningnetwork.LightningNetwork
+	NotificationService    notification.Notification
+	OcpiService            ocpi.Ocpi
+	CountryAccountResolver *countryaccount.CountryAccountResolver
+	LocationResolver       *location.LocationResolver
+	TariffResolver         *tariff.TariffResolver
+	UserResolver           *user.UserResolver
 }
 
 func NewResolver(repositoryService *db.RepositoryService) *SessionResolver {
@@ -37,12 +39,13 @@ func NewResolver(repositoryService *db.RepositoryService) *SessionResolver {
 	repo := SessionRepository(repositoryService)
 
 	return &SessionResolver{
-		Repository:          repo,
-		LightningService:    lightningService,
-		OcpiService:         ocpi.NewService(),
-		NotificationService: notification.NewService(),
-		LocationResolver:    location.NewResolver(repositoryService),
-		TariffResolver:      tariff.NewResolver(repositoryService),
-		UserResolver:        user.NewResolver(repositoryService),
+		Repository:             repo,
+		LightningService:       lightningService,
+		OcpiService:            ocpi.NewService(),
+		NotificationService:    notification.NewService(),
+		CountryAccountResolver: countryaccount.NewResolver(repositoryService),
+		LocationResolver:       location.NewResolver(repositoryService),
+		TariffResolver:         tariff.NewResolver(repositoryService),
+		UserResolver:           user.NewResolver(repositoryService),
 	}
 }

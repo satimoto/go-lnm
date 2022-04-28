@@ -6,12 +6,9 @@ import (
 	"github.com/satimoto/go-datastore/db"
 )
 
-func NewCreateSessionInvoiceParams(sessionID int64, amountFiat float64, amountMsat int64, paymentRequest string) db.CreateSessionInvoiceParams {
+func NewCreateSessionInvoiceParams(sessionID int64) db.CreateSessionInvoiceParams {
 	return db.CreateSessionInvoiceParams{
 		SessionID: sessionID,
-		AmountFiat: amountFiat,
-		AmountMsat: amountMsat,
-		PaymentRequest: paymentRequest,
 		Settled: false,
 		Expired: false,
 		LastUpdated: time.Now(),

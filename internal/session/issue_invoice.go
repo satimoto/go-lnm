@@ -10,7 +10,12 @@ import (
 	"github.com/satimoto/go-lsp/internal/util"
 )
 
-func (r *SessionResolver) IssueLightningInvoice(ctx context.Context, session db.Session, amountFiat float64, amountMsat int64) {
+func (r *SessionResolver) IssueLightningInvoice(ctx context.Context, session db.Session, invoiceAmount float64, commissionAmount float64, taxAmount float64) {
+	amountMsat := int64(invoiceAmount * 2500000)
+	commissionMsat := int64(commissionAmount * 2500000)
+	taxMsat := int64(taxAmount * 2500000)
+	// TODO: get exchange rate
+
 	preimage, err := lightningnetwork.RandomPreimage()
 
 	if err != nil {
@@ -30,7 +35,15 @@ func (r *SessionResolver) IssueLightningInvoice(ctx context.Context, session db.
 		return
 	}
 
-	sessionInvoiceParams := NewCreateSessionInvoiceParams(session.ID, amountFiat, amountMsat, invoice.PaymentRequest)
+	sessionInvoiceParams := NewCreateSessionInvoiceParams(session.ID)
+	sessionInvoiceParams.AmountFiat = invoiceAmount
+	sessionInvoiceParams.AmountMsat = amountMsat
+	sessionInvoiceParams.CommissionFiat = commissionAmount
+	sessionInvoiceParams.CommissionMsat = commissionMsat
+	sessionInvoiceParams.TaxFiat = taxAmount
+	sessionInvoiceParams.TaxMsat = taxMsat
+	sessionInvoiceParams.PaymentRequest = invoice.PaymentRequest
+
 	sessionInvoice, err := r.Repository.CreateSessionInvoice(ctx, sessionInvoiceParams)
 
 	if err != nil {
@@ -40,5 +53,5 @@ func (r *SessionResolver) IssueLightningInvoice(ctx context.Context, session db.
 	}
 
 	// TODO: Send user device notification
-	r.SendNotification(session, sessionInvoice) 
+	r.SendNotification(session, sessionInvoice)
 }
