@@ -15,18 +15,18 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type customMessageHandler func(lnrpc.CustomMessage, string)
+type CustomMessageHandler func(lnrpc.CustomMessage, string)
 
 type CustomMessageMonitor struct {
 	LightningService      lightningnetwork.LightningNetwork
 	CustomMessagesClient  lnrpc.Lightning_SubscribeCustomMessagesClient
-	CustomMessageHandlers map[string]customMessageHandler
+	CustomMessageHandlers map[string]CustomMessageHandler
 }
 
 func NewCustomMessageMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) *CustomMessageMonitor {
 	return &CustomMessageMonitor{
 		LightningService:      lightningService,
-		CustomMessageHandlers: make(map[string]customMessageHandler),
+		CustomMessageHandlers: make(map[string]CustomMessageHandler),
 	}
 }
 
@@ -38,7 +38,7 @@ func (m *CustomMessageMonitor) StartMonitor(ctx context.Context, waitGroup *sync
 	go m.subscribeCustomMessages(customMessageChan)
 }
 
-func (m *CustomMessageMonitor) AddHandler(handler customMessageHandler) {
+func (m *CustomMessageMonitor) AddHandler(handler CustomMessageHandler) {
 	index := strconv.FormatInt(time.Now().UnixNano(), 10)
 	m.CustomMessageHandlers[index] = handler
 }

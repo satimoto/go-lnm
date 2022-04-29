@@ -7,16 +7,19 @@ import (
 
 type MockSubscribeHtlcEventsClient struct {
 	grpc.ClientStream
+	recvChan <-chan *routerrpc.HtlcEvent
 }
 
-func NewMockSubscribeHtlcEventsClient() routerrpc.Router_SubscribeHtlcEventsClient {
+func NewMockSubscribeHtlcEventsClient(recvChan <-chan *routerrpc.HtlcEvent) routerrpc.Router_SubscribeHtlcEventsClient {
 	clientStream := NewMockClientStream()
 	return &MockSubscribeHtlcEventsClient{
 		ClientStream: clientStream,
+		recvChan: recvChan,
 	}
 }
 
 func (c *MockSubscribeHtlcEventsClient) Recv() (*routerrpc.HtlcEvent, error) {
-	return &routerrpc.HtlcEvent{}, nil
+	receive := <-c.recvChan
+	return receive, nil
 }
 

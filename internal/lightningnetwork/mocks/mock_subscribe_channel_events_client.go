@@ -7,15 +7,18 @@ import (
 
 type MockSubscribeChannelEventsClient struct {
 	grpc.ClientStream
+	recvChan <-chan *lnrpc.ChannelEventUpdate
 }
 
-func NewMockSubscribeChannelEventsClient() lnrpc.Lightning_SubscribeChannelEventsClient {
+func NewMockSubscribeChannelEventsClient(recvChan <-chan *lnrpc.ChannelEventUpdate) lnrpc.Lightning_SubscribeChannelEventsClient {
 	clientStream := NewMockClientStream()
 	return &MockSubscribeChannelEventsClient{
 		ClientStream: clientStream,
+		recvChan: recvChan,
 	}
 }
 
 func (c *MockSubscribeChannelEventsClient) Recv() (*lnrpc.ChannelEventUpdate, error) {
-	return &lnrpc.ChannelEventUpdate{}, nil
+	receive := <-c.recvChan
+	return receive, nil
 }

@@ -7,16 +7,19 @@ import (
 
 type MockSubscribeTransactionsClient struct {
 	grpc.ClientStream
+	recvChan <-chan *lnrpc.Transaction
 }
 
-func NewMockSubscribeTransactionsClient() lnrpc.Lightning_SubscribeTransactionsClient {
+func NewMockSubscribeTransactionsClient(recvChan <-chan *lnrpc.Transaction) lnrpc.Lightning_SubscribeTransactionsClient {
 	clientStream := NewMockClientStream()
 	return &MockSubscribeTransactionsClient{
 		ClientStream: clientStream,
+		recvChan: recvChan,
 	}
 }
 
 func (c *MockSubscribeTransactionsClient) Recv() (*lnrpc.Transaction, error) {
-	return &lnrpc.Transaction{}, nil
+	receive := <-c.recvChan
+	return receive, nil
 }
 

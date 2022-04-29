@@ -5,6 +5,8 @@ import (
 
 	dbMocks "github.com/satimoto/go-datastore-mocks/db"
 	"github.com/satimoto/go-datastore/util"
+	lightningnetworkMocks "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
+	ocpiMocks "github.com/satimoto/go-lsp/internal/ocpi/mocks"
 	"github.com/satimoto/go-lsp/internal/session"
 	sessionsMocks "github.com/satimoto/go-lsp/internal/session/mocks"
 	"github.com/satimoto/go-lsp/internal/tariff"
@@ -180,7 +182,9 @@ func TestProcessChargingPeriods(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.desc, func(t *testing.T) {
 			mockRepository := dbMocks.NewMockRepositoryService()
-			sessionResolver := sessionsMocks.NewResolver(mockRepository)
+			mockLightningService := lightningnetworkMocks.NewService()
+			mockOcpiService := ocpiMocks.NewService()
+			sessionResolver := sessionsMocks.NewResolver(mockRepository, mockLightningService, mockOcpiService)
 
 			sessionIto := session.SessionIto{}
 			json.Unmarshal(tc.session, &sessionIto)
@@ -342,7 +346,9 @@ func TestProcessChargingPeriods2(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.desc, func(t *testing.T) {
 			mockRepository := dbMocks.NewMockRepositoryService()
-			sessionResolver := sessionsMocks.NewResolver(mockRepository)
+			mockLightningService := lightningnetworkMocks.NewService()
+			mockOcpiService := ocpiMocks.NewService()
+			sessionResolver := sessionsMocks.NewResolver(mockRepository, mockLightningService, mockOcpiService)
 
 			sessionIto := session.SessionIto{}
 			json.Unmarshal(tc.session, &sessionIto)
