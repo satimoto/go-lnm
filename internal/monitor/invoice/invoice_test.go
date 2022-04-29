@@ -57,7 +57,7 @@ func TestInvoice(t *testing.T) {
 		mockRepository.SetGetSessionInvoiceByPaymentRequestMockData(dbMocks.SessionInvoiceMockData{
 			SessionInvoice: db.SessionInvoice{
 				PaymentRequest: "TestPaymentRequest",
-				Settled:        false,
+				IsSettled:      false,
 			},
 		})
 
@@ -74,7 +74,7 @@ func TestInvoice(t *testing.T) {
 			t.Error(err)
 		}
 
-		if sessionInvoice.Settled != true {
+		if sessionInvoice.IsSettled != true {
 			t.Error("Session not settled")
 		}
 

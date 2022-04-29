@@ -24,7 +24,7 @@ func (r *SessionResolver) MonitorSession(ctx context.Context, session db.Session
 		connector, err := r.LocationResolver.Repository.GetConnector(ctx, session.ConnectorID)
 
 		if err != nil {
-			util.LogOnError("LSP001", "Error retreiving session connector", err)
+			util.LogOnError("LSP001", "Error retrieving session connector", err)
 			log.Printf("LSP001: SessionUid=%v, ConnectorID=%v", session.Uid, session.ConnectorID)
 			return
 		}
@@ -33,7 +33,7 @@ func (r *SessionResolver) MonitorSession(ctx context.Context, session db.Session
 			location, err := r.LocationResolver.Repository.GetLocation(ctx, session.LocationID)
 
 			if err != nil {
-				util.LogOnError("LSP038", "Error retreiving session location", err)
+				util.LogOnError("LSP038", "Error retrieving session location", err)
 				log.Printf("LSP038: SessionUid=%v, LocationID=%v", session.Uid, session.LocationID)
 				return
 			}
@@ -41,7 +41,7 @@ func (r *SessionResolver) MonitorSession(ctx context.Context, session db.Session
 			tariff, err := r.TariffResolver.Repository.GetTariffByUid(ctx, connector.TariffID.String)
 
 			if err != nil {
-				util.LogOnError("LSP002", "Error retreiving session tariff", err)
+				util.LogOnError("LSP002", "Error retrieving session tariff", err)
 				log.Printf("LSP002: SessionUid=%v, TariffID=%v", session.Uid, connector.TariffID.String)
 				return
 			}
@@ -50,7 +50,7 @@ func (r *SessionResolver) MonitorSession(ctx context.Context, session db.Session
 			user, err := r.UserResolver.Repository.GetUserByTokenID(ctx, session.TokenID)
 
 			if err != nil {
-				util.LogOnError("LSP037", "Error retreiving user from session token", err)
+				util.LogOnError("LSP037", "Error retrieving user from session token", err)
 				log.Printf("LSP037: SessionUid=%v, TokenID=%v", session.Uid, session.TokenID)
 				return
 			}
@@ -67,11 +67,11 @@ func (r *SessionResolver) MonitorSession(ctx context.Context, session db.Session
 				session, err = r.Repository.GetSessionByUid(ctx, session.Uid)
 
 				if err != nil {
-					util.LogOnError("LSP032", "Error retreiving session", err)
+					util.LogOnError("LSP032", "Error retrieving session", err)
 					log.Printf("LSP032: SessionUid=%v", session.Uid)
 					continue
 				}
-	
+
 				if session.Status == db.SessionStatusTypeCOMPLETED || session.Status == db.SessionStatusTypeINVALID {
 					// End monitoring, let the CDR issue the final invoice
 					break
@@ -80,7 +80,7 @@ func (r *SessionResolver) MonitorSession(ctx context.Context, session db.Session
 				sessionInvoices, err := r.Repository.ListSessionInvoices(ctx, session.ID)
 
 				if err != nil {
-					util.LogOnError("LSP033", "Error retreiving session invoices", err)
+					util.LogOnError("LSP033", "Error retrieving session invoices", err)
 					log.Printf("LSP033: SessionUid=%v", session.Uid)
 					continue
 				}
@@ -96,17 +96,25 @@ func (r *SessionResolver) MonitorSession(ctx context.Context, session db.Session
 					user, err := r.UserResolver.Repository.GetUserByTokenID(ctx, session.TokenID)
 
 					if err != nil {
-						util.LogOnError("LSP035", "Error retreiving token user", err)
+						util.LogOnError("LSP035", "Error retrieving token user", err)
 						log.Printf("LSP035: TokenID=%v", session.TokenID)
 						break
-					}	
+					}
 
-					r.OcpiService.UpdateTokens(ctx, &tokenrpc.UpdateTokensRequest{
-						UserId: user.ID,
-						Allowed: string(db.TokenAllowedTypeNOCREDIT),
+					// Lock user tokens until all session invoices are settled
+					updateTokensRequest := &tokenrpc.UpdateTokensRequest{
+						UserId:    user.ID,
+						Allowed:   string(db.TokenAllowedTypeNOCREDIT),
 						Whitelist: string(db.TokenWhitelistTypeNEVER),
-					})
-					
+					}
+
+					_, err = r.OcpiService.UpdateTokens(ctx, updateTokensRequest)
+
+					if err != nil {
+						util.LogOnError("LSP042", "Error updating tokens", err)
+						log.Printf("LSP042: Params=%#v", updateTokensRequest)
+					}
+
 					break
 				}
 

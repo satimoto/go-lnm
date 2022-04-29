@@ -7,6 +7,7 @@ import (
 )
 
 type UserRepository interface {
+	GetUserBySessionID(ctx context.Context, id int64) (db.User, error)
 	GetUserByTokenID(ctx context.Context, id int64) (db.User, error)
 }
 
