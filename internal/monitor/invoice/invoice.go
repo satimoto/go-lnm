@@ -11,6 +11,7 @@ import (
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/session"
 	"github.com/satimoto/go-lsp/internal/util"
+	"github.com/satimoto/go-ocpi-api/ocpirpc/tokenrpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -45,6 +46,7 @@ func (m *InvoiceMonitor) handleInvoice(invoice lnrpc.Invoice) {
 	 *  Check that the invoice is settled.
 	 *  Find a Session Invoice that has a matching payment request.
 	 *  Set the Session Invoice as settled.
+	 *  Get users unsettled session invoices, if all are settled then unlock tokens
 	 */
 	ctx := context.Background()
 
@@ -52,14 +54,48 @@ func (m *InvoiceMonitor) handleInvoice(invoice lnrpc.Invoice) {
 		if invoice.Settled {
 			// Settle session invoice
 			updateSessionInvoiceParams := session.NewUpdateSessionInvoiceParams(sessionInvoice)
-			updateSessionInvoiceParams.Settled = invoice.Settled
+			updateSessionInvoiceParams.IsSettled = invoice.Settled
 
 			_, err = m.SessionResolver.Repository.UpdateSessionInvoice(ctx, updateSessionInvoiceParams)
-			// TODO: Resume user tokens if all invoices are settled
 
 			if err != nil {
 				util.LogOnError("LSP027", "Error updating session invoice", err)
 				log.Printf("LSP027: Params=%#v", updateSessionInvoiceParams)
+				return
+			}
+
+			// Get the user from the session ID
+			user, err := m.SessionResolver.UserResolver.Repository.GetUserBySessionID(ctx, sessionInvoice.SessionID)
+
+			if err != nil {
+				util.LogOnError("LSP039", "Error retrieving session user", err)
+				log.Printf("LSP039: SessionID=%v", sessionInvoice.SessionID)
+				return
+			}
+
+			// List users unsettled session invoices
+			sessionInvoices, err := m.SessionResolver.Repository.ListUnsettledSessionInvoicesByUserID(ctx, user.ID)
+
+			if err != nil {
+				util.LogOnError("LSP040", "Error retrieving user unsettled session invoices", err)
+				log.Printf("LSP040: SessionID=%v, UserID=%v", sessionInvoice.SessionID, user.ID)
+				return
+			}
+
+			// If there are no unsettled invoices then unlock user tokens
+			if len(sessionInvoices) == 0 {
+				updateTokensRequest := &tokenrpc.UpdateTokensRequest{
+					UserId:    user.ID,
+					Allowed:   string(db.TokenAllowedTypeALLOWED),
+					Whitelist: string(db.TokenWhitelistTypeALLOWED),
+				}
+
+				_, err := m.SessionResolver.OcpiService.UpdateTokens(ctx, updateTokensRequest)
+
+				if err != nil {
+					util.LogOnError("LSP041", "Error updating tokens", err)
+					log.Printf("LSP041: Params=%#v", updateTokensRequest)
+				}	
 			}
 		} else {
 			// Monitor expiry of invoice
@@ -107,9 +143,9 @@ func (m *InvoiceMonitor) waitForInvoiceExpiry(ctx context.Context, invoice lnrpc
 	time.Sleep(expiry)
 
 	if sessionInvoice, err := m.SessionResolver.Repository.GetSessionInvoiceByPaymentRequest(ctx, invoice.PaymentRequest); err == nil {
-		if !sessionInvoice.Settled && !sessionInvoice.Expired {
+		if !sessionInvoice.IsSettled && !sessionInvoice.IsExpired {
 			updateSessionInvoiceParams := session.NewUpdateSessionInvoiceParams(sessionInvoice)
-			updateSessionInvoiceParams.Expired = true
+			updateSessionInvoiceParams.IsExpired = true
 
 			_, err = m.SessionResolver.Repository.UpdateSessionInvoice(ctx, updateSessionInvoiceParams)
 

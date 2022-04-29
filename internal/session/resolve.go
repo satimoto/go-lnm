@@ -20,6 +20,7 @@ type SessionRepository interface {
 	ListChargingPeriodDimensions(ctx context.Context, chargingPeriodID int64) ([]db.ChargingPeriodDimension, error)
 	ListSessionChargingPeriods(ctx context.Context, sessionID int64) ([]db.ChargingPeriod, error)
 	ListSessionInvoices(ctx context.Context, sessionID int64) ([]db.SessionInvoice, error)
+	ListUnsettledSessionInvoicesByUserID(ctx context.Context, userID int64) ([]db.SessionInvoice, error)
 	UpdateSessionInvoice(ctx context.Context, arg db.UpdateSessionInvoiceParams) (db.SessionInvoice, error)
 }
 

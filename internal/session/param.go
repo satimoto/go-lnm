@@ -8,18 +8,18 @@ import (
 
 func NewCreateSessionInvoiceParams(sessionID int64) db.CreateSessionInvoiceParams {
 	return db.CreateSessionInvoiceParams{
-		SessionID: sessionID,
-		Settled: false,
-		Expired: false,
+		SessionID:   sessionID,
+		IsSettled:   false,
+		IsExpired:   false,
 		LastUpdated: time.Now(),
-}
+	}
 }
 
 func NewUpdateSessionInvoiceParams(sessionInvoice db.SessionInvoice) db.UpdateSessionInvoiceParams {
 	return db.UpdateSessionInvoiceParams{
 		ID:          sessionInvoice.ID,
-		Settled:     sessionInvoice.Settled,
-		Expired:     sessionInvoice.Expired,
+		IsSettled:   sessionInvoice.IsSettled,
+		IsExpired:   sessionInvoice.IsExpired,
 		LastUpdated: time.Now(),
 	}
 }

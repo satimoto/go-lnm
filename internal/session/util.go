@@ -89,7 +89,7 @@ func getPriceComponents(elements []*tariff.ElementIto, startDatetime time.Time, 
 
 func hasUnsettledInvoices(sessionInvoices []db.SessionInvoice) bool {
 	for _, sessionInvoice := range sessionInvoices {
-		if !sessionInvoice.Settled {
+		if !sessionInvoice.IsSettled {
 			return true
 		}
 	}
