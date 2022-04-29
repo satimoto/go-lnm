@@ -12,14 +12,14 @@ import (
 	user "github.com/satimoto/go-lsp/internal/user/mocks"
 )
 
-func NewResolver(repositoryService *mocks.MockRepositoryService) *session.SessionResolver {
+func NewResolver(repositoryService *mocks.MockRepositoryService, lightningService *lightningnetwork.MockLightningNetworkService, ocpiService *ocpi.MockOcpiService) *session.SessionResolver {
 	repo := session.SessionRepository(repositoryService)
 
 	return &session.SessionResolver{
 		Repository:             repo,
-		LightningService:       lightningnetwork.NewService(),
+		LightningService:       lightningService,
 		NotificationService:    notification.NewService(),
-		OcpiService:            ocpi.NewService(),
+		OcpiService:            ocpiService,
 		CountryAccountResolver: countryaccount.NewResolver(repositoryService),
 		LocationResolver:       location.NewResolver(repositoryService),
 		TariffResolver:         tariff.NewResolver(repositoryService),
