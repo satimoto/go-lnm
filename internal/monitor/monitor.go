@@ -10,6 +10,7 @@ import (
 
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/satimoto/go-datastore/db"
+	dbUtil "github.com/satimoto/go-datastore/util"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/monitor/channelevent"
 	"github.com/satimoto/go-lsp/internal/monitor/custommessage"
@@ -52,7 +53,7 @@ func NewMonitor(shutdownCtx context.Context, repositoryService *db.RepositorySer
 
 func (m *Monitor) StartMonitor(waitGroup *sync.WaitGroup) {
 	err := m.register()
-	util.PanicOnError("LSP010", "Error registering LSP", err)
+	dbUtil.PanicOnError("LSP010", "Error registering LSP", err)
 
 	m.ChannelEventMonitor.StartMonitor(m.ShutdownCtx, waitGroup)
 	m.CustomMessageMonitor.StartMonitor(m.ShutdownCtx, waitGroup)
@@ -69,12 +70,12 @@ func (m *Monitor) register() error {
 		getInfoResponse, err := m.LightningService.GetInfo(&lnrpc.GetInfoRequest{})
 
 		if err != nil {
-			util.LogOnError("LSP004", "Error getting info", err)
+			dbUtil.LogOnError("LSP004", "Error getting info", err)
 			return err
 		}
 
 		ip, err := util.GetIPAddress()
-		util.PanicOnError("LSP011", "Error getting IP address", err)
+		dbUtil.PanicOnError("LSP011", "Error getting IP address", err)
 
 		if !waitingForSync {
 			log.Print("Registering node")

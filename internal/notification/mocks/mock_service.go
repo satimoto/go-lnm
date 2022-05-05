@@ -1,12 +1,8 @@
 package mocks
 
-import (
-	"github.com/satimoto/go-lsp/internal/notification"
-)
-
 type MockNotificationService struct{}
 
-func NewService() notification.Notification {
+func NewService() *MockNotificationService {
 	return &MockNotificationService{}
 }
 

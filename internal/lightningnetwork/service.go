@@ -8,6 +8,7 @@ import (
 
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
+	dbUtil "github.com/satimoto/go-datastore/util"
 	"github.com/satimoto/go-lsp/internal/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -35,16 +36,16 @@ type LightningNetworkService struct {
 
 func NewService() LightningNetwork {
 	lndTlsCert, err := base64.StdEncoding.DecodeString(os.Getenv("LND_TLS_CERT"))
-	util.PanicOnError("LSP006", "Invalid LND TLS Certificate", err)
+	dbUtil.PanicOnError("LSP006", "Invalid LND TLS Certificate", err)
 
 	credentials, err := util.NewCredential(string(lndTlsCert))
-	util.PanicOnError("LSP007", "Error creating transport credentials", err)
+	dbUtil.PanicOnError("LSP007", "Error creating transport credentials", err)
 
 	clientConn, err := grpc.Dial(os.Getenv("LND_GRPC_HOST"), grpc.WithTransportCredentials(credentials))
-	util.PanicOnError("LSP008", "Error connecting to LND host", err)
+	dbUtil.PanicOnError("LSP008", "Error connecting to LND host", err)
 
 	lndMacaroon, err := base64.StdEncoding.DecodeString(os.Getenv("LND_MACAROON"))
-	util.PanicOnError("LSP009", "Invalid LND Macaroon", err)
+	dbUtil.PanicOnError("LSP009", "Invalid LND Macaroon", err)
 
 	macaroonCtx := metadata.AppendToOutgoingContext(context.Background(), "macaroon", hex.EncodeToString(lndMacaroon))
 

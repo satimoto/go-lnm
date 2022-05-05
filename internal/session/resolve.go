@@ -8,13 +8,14 @@ import (
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/location"
 	"github.com/satimoto/go-lsp/internal/notification"
-	"github.com/satimoto/go-lsp/internal/ocpi"
 	"github.com/satimoto/go-lsp/internal/tariff"
 	"github.com/satimoto/go-lsp/internal/user"
+	"github.com/satimoto/go-ocpi-api/pkg/ocpi"
 )
 
 type SessionRepository interface {
 	CreateSessionInvoice(ctx context.Context, arg db.CreateSessionInvoiceParams) (db.SessionInvoice, error)
+	GetSessionByAuthorizationID(ctx context.Context, authorizationID string) (db.Session, error)
 	GetSessionByUid(ctx context.Context, uid string) (db.Session, error)
 	GetSessionInvoiceByPaymentRequest(ctx context.Context, paymentRequest string) (db.SessionInvoice, error)
 	ListChargingPeriodDimensions(ctx context.Context, chargingPeriodID int64) ([]db.ChargingPeriodDimension, error)
@@ -36,17 +37,20 @@ type SessionResolver struct {
 }
 
 func NewResolver(repositoryService *db.RepositoryService) *SessionResolver {
-	lightningService := lightningnetwork.NewService()
+	return NewResolverWithServices(repositoryService, lightningnetwork.NewService(), notification.NewService(), ocpi.NewService())
+}
+
+func NewResolverWithServices(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork, notificationService notification.Notification, ocpiService ocpi.Ocpi) *SessionResolver {
 	repo := SessionRepository(repositoryService)
 
 	return &SessionResolver{
 		Repository:             repo,
 		LightningService:       lightningService,
-		OcpiService:            ocpi.NewService(),
-		NotificationService:    notification.NewService(),
+		OcpiService:            ocpiService,
+		NotificationService:    notificationService,
 		CountryAccountResolver: countryaccount.NewResolver(repositoryService),
 		LocationResolver:       location.NewResolver(repositoryService),
 		TariffResolver:         tariff.NewResolver(repositoryService),
-		UserResolver:           user.NewResolver(repositoryService),
+		UserResolver:           user.NewResolverWithServices(repositoryService, ocpiService),
 	}
 }

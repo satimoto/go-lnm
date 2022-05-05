@@ -9,8 +9,10 @@ import (
 
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/satimoto/go-datastore/db"
+	dbUtil "github.com/satimoto/go-datastore/util"
 	"github.com/satimoto/go-lsp/internal/channelrequest"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	"github.com/satimoto/go-lsp/internal/user"
 	"github.com/satimoto/go-lsp/internal/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -18,14 +20,16 @@ import (
 
 type ChannelEventMonitor struct {
 	LightningService       lightningnetwork.LightningNetwork
-	ChannelRequestResolver *channelrequest.ChannelRequestResolver
 	ChannelEventsClient    lnrpc.Lightning_SubscribeChannelEventsClient
+	ChannelRequestResolver *channelrequest.ChannelRequestResolver
+	UserResolver           *user.UserResolver
 }
 
 func NewChannelEventMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) *ChannelEventMonitor {
 	return &ChannelEventMonitor{
-		LightningService: lightningService,
+		LightningService:       lightningService,
 		ChannelRequestResolver: channelrequest.NewResolver(repositoryService),
+		UserResolver:           user.NewResolver(repositoryService),
 	}
 }
 
@@ -46,6 +50,7 @@ func (m *ChannelEventMonitor) handleChannelEvent(channelEvent lnrpc.ChannelEvent
 
 	ctx := context.Background()
 
+	// TODO: restrict user if all channels are closed
 	switch channelEvent.Type {
 	case lnrpc.ChannelEventUpdate_PENDING_OPEN_CHANNEL:
 		pendingOpenChannel := channelEvent.GetPendingOpenChannel()
@@ -54,7 +59,7 @@ func (m *ChannelEventMonitor) handleChannelEvent(channelEvent lnrpc.ChannelEvent
 
 		m.ChannelRequestResolver.Repository.UpdateChannelRequestByChannelPoint(ctx, db.UpdateChannelRequestByChannelPointParams{
 			FundingTxID: pendingOpenChannel.Txid,
-			OutputIndex: util.SqlNullInt64(pendingOpenChannel.OutputIndex),
+			OutputIndex: dbUtil.SqlNullInt64(pendingOpenChannel.OutputIndex),
 			Status:      db.ChannelRequestStatusOPENINGCHANNEL,
 		})
 		break
@@ -63,19 +68,43 @@ func (m *ChannelEventMonitor) handleChannelEvent(channelEvent lnrpc.ChannelEvent
 		txid, outputIndex, _ := util.ConvertChannelPoint(openChannel.ChannelPoint)
 		log.Printf("Txid: %v", hex.EncodeToString(txid))
 		log.Printf("OutputIndex: %v", outputIndex)
-
-		m.ChannelRequestResolver.Repository.UpdateChannelRequestByChannelPoint(ctx, db.UpdateChannelRequestByChannelPointParams{
+		
+		updateChannelRequestByChannelPointParams := db.UpdateChannelRequestByChannelPointParams{
 			FundingTxID: txid,
-			OutputIndex: util.SqlNullInt64(outputIndex),
+			OutputIndex: dbUtil.SqlNullInt64(outputIndex),
 			Status:      db.ChannelRequestStatusCOMPLETED,
-		})
+		}
+
+		channelRequest, err := m.ChannelRequestResolver.Repository.UpdateChannelRequestByChannelPoint(ctx, updateChannelRequestByChannelPointParams)
+
+		if err != nil {
+			dbUtil.LogOnError("LSP047", "Error updating channel request", err)
+			log.Printf("LSP047: Params=%#v", updateChannelRequestByChannelPointParams)
+			return
+		}
+
+		user, err := m.UserResolver.Repository.GetUser(ctx, channelRequest.UserID)
+
+		if err != nil {
+			dbUtil.LogOnError("LSP048", "Error retieving channel request user", err)
+			log.Printf("LSP048: ChannelRequestID=%v, UserID=%v", channelRequest.ID, channelRequest.UserID)
+			return
+		}
+
+		err = m.UserResolver.UnrestrictUser(ctx, user)
+		
+		if err != nil {
+			dbUtil.LogOnError("LSP049", "Error unrestricting user", err)
+			log.Printf("LSP049: ChannelRequestID=%v, UserID=%v", channelRequest.ID, channelRequest.UserID)
+		}
+	
 		break
 	}
 }
 
 func (m *ChannelEventMonitor) subscribeChannelEvents(channelEventChan chan<- lnrpc.ChannelEventUpdate) {
 	channelEventsClient, err := m.waitForSubscribeChannelEventsClient(0, 1000)
-	util.PanicOnError("LSP012", "Error creating Channel Events client", err)
+	dbUtil.PanicOnError("LSP012", "Error creating Channel Events client", err)
 
 	m.ChannelEventsClient = channelEventsClient
 
@@ -86,7 +115,7 @@ func (m *ChannelEventMonitor) subscribeChannelEvents(channelEventChan chan<- lnr
 			channelEventChan <- *channelEvent
 		} else {
 			m.ChannelEventsClient, err = m.waitForSubscribeChannelEventsClient(100, 1000)
-			util.PanicOnError("LSP013", "Error creating Channel Events client", err)
+			dbUtil.PanicOnError("LSP013", "Error creating Channel Events client", err)
 		}
 	}
 }

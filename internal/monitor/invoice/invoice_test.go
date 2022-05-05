@@ -12,7 +12,8 @@ import (
 	"github.com/satimoto/go-datastore/db"
 	lightningnetworkMocks "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
 	invoiceMocks "github.com/satimoto/go-lsp/internal/monitor/invoice/mocks"
-	ocpiMocks "github.com/satimoto/go-lsp/internal/ocpi/mocks"
+	notificationMocks "github.com/satimoto/go-lsp/internal/notification/mocks"
+	ocpiMocks "github.com/satimoto/go-ocpi-api/pkg/ocpi/mocks"
 
 	"testing"
 )
@@ -25,8 +26,9 @@ func TestInvoice(t *testing.T) {
 
 		mockRepository := dbMocks.NewMockRepositoryService()
 		mockLightningService := lightningnetworkMocks.NewService()
+		mockNotificationService := notificationMocks.NewService()
 		mockOcpiService := ocpiMocks.NewService()
-		invoiceMonitor := invoiceMocks.NewInvoiceMonitor(mockRepository, mockLightningService, mockOcpiService)
+		invoiceMonitor := invoiceMocks.NewInvoiceMonitor(mockRepository, mockLightningService, mockNotificationService, mockOcpiService)
 		recvChan := mockLightningService.NewSubscribeInvoicesMockData()
 
 		invoiceMonitor.StartMonitor(shutdownCtx, waitGroup)
@@ -49,7 +51,8 @@ func TestInvoice(t *testing.T) {
 		mockRepository := dbMocks.NewMockRepositoryService()
 		mockLightningService := lightningnetworkMocks.NewService()
 		mockOcpiService := ocpiMocks.NewService()
-		invoiceMonitor := invoiceMocks.NewInvoiceMonitor(mockRepository, mockLightningService, mockOcpiService)
+		mockNotificationService := notificationMocks.NewService()
+		invoiceMonitor := invoiceMocks.NewInvoiceMonitor(mockRepository, mockLightningService, mockNotificationService, mockOcpiService)
 		recvChan := mockLightningService.NewSubscribeInvoicesMockData()
 
 		invoiceMonitor.StartMonitor(shutdownCtx, waitGroup)

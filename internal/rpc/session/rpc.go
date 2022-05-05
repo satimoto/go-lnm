@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 
-	"github.com/satimoto/go-ocpi-api/ocpirpc/sessionrpc"
+	"github.com/satimoto/go-ocpi-api/ocpirpc"
 )
 
-func (r *RpcSessionResolver) SessionStarted(ctx context.Context, input *sessionrpc.SessionStartedRequest) (*sessionrpc.SessionStartedResponse, error) {
+func (r *RpcSessionResolver) SessionCreated(ctx context.Context, input *ocpirpc.SessionCreatedRequest) (*ocpirpc.SessionCreatedResponse, error) {
 	if input != nil {
 		session, err := r.SessionResolver.Repository.GetSessionByUid(ctx, input.SessionUid)
 
@@ -17,8 +17,8 @@ func (r *RpcSessionResolver) SessionStarted(ctx context.Context, input *sessionr
 
 		go r.SessionResolver.MonitorSession(ctx, session)
 
-		return &sessionrpc.SessionStartedResponse{}, nil
+		return &ocpirpc.SessionCreatedResponse{}, nil
 	}
 
-	return nil, errors.New("Missing SessionStartedRequest")
+	return nil, errors.New("Missing session created request")
 }
