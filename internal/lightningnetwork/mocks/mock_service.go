@@ -1,6 +1,7 @@
 package mocks
 
 import (
+	"encoding/hex"
 	"errors"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
@@ -10,7 +11,7 @@ import (
 
 
 type MockLightningNetworkService struct {
-	addInvoiceMockData              []*lnrpc.AddInvoiceResponse
+	addInvoiceMockData              []*lnrpc.Invoice
 	getInfoMockData                 []*lnrpc.GetInfoResponse
 	htlcInterceptorMockData         []routerrpc.Router_HtlcInterceptorClient
 	openChannelSyncMockData         []*lnrpc.ChannelPoint
@@ -27,17 +28,22 @@ func NewService() *MockLightningNetworkService {
 }
 
 func (s *MockLightningNetworkService) AddInvoice(in *lnrpc.Invoice, opts ...grpc.CallOption) (*lnrpc.AddInvoiceResponse, error) {
+	s.addInvoiceMockData = append(s.addInvoiceMockData, in)
+
+	return &lnrpc.AddInvoiceResponse{
+		RHash: in.RHash,
+		PaymentRequest: hex.EncodeToString(in.RPreimage),
+	}, nil
+}
+
+func (s *MockLightningNetworkService) GetAddInvoiceMockData() (*lnrpc.Invoice, error) {
 	if len(s.addInvoiceMockData) == 0 {
-		return &lnrpc.AddInvoiceResponse{}, errors.New("NotFound")
+		return &lnrpc.Invoice{}, errors.New("NotFound")
 	}
 
 	response := s.addInvoiceMockData[0]
 	s.addInvoiceMockData = s.addInvoiceMockData[1:]
 	return response, nil
-}
-
-func (s *MockLightningNetworkService) SetAddInvoiceMockData(mockData *lnrpc.AddInvoiceResponse) {
-	s.addInvoiceMockData = append(s.addInvoiceMockData, mockData)
 }
 
 func (s *MockLightningNetworkService) GetInfo(in *lnrpc.GetInfoRequest, opts ...grpc.CallOption) (*lnrpc.GetInfoResponse, error) {

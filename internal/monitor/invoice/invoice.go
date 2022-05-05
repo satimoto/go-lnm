@@ -8,10 +8,9 @@ import (
 
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/satimoto/go-datastore/db"
+	"github.com/satimoto/go-datastore/util"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/session"
-	"github.com/satimoto/go-lsp/internal/util"
-	"github.com/satimoto/go-ocpi-api/ocpirpc/tokenrpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -84,18 +83,12 @@ func (m *InvoiceMonitor) handleInvoice(invoice lnrpc.Invoice) {
 
 			// If there are no unsettled invoices then unlock user tokens
 			if len(sessionInvoices) == 0 {
-				updateTokensRequest := &tokenrpc.UpdateTokensRequest{
-					UserId:    user.ID,
-					Allowed:   string(db.TokenAllowedTypeALLOWED),
-					Whitelist: string(db.TokenWhitelistTypeALLOWED),
-				}
-
-				_, err := m.SessionResolver.OcpiService.UpdateTokens(ctx, updateTokensRequest)
+				err = m.SessionResolver.UserResolver.UnrestrictUser(ctx, user)
 
 				if err != nil {
-					util.LogOnError("LSP041", "Error updating tokens", err)
-					log.Printf("LSP041: Params=%#v", updateTokensRequest)
-				}	
+					util.LogOnError("LSP041", "Error unrestricting user", err)
+					log.Printf("LSP041: SessionID=%v, UserID=%v", sessionInvoice.SessionID, user.ID)
+				}
 			}
 		} else {
 			// Monitor expiry of invoice

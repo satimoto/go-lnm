@@ -6,23 +6,23 @@ import (
 	lightningnetwork "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
 	location "github.com/satimoto/go-lsp/internal/location/mocks"
 	notification "github.com/satimoto/go-lsp/internal/notification/mocks"
-	ocpi "github.com/satimoto/go-lsp/internal/ocpi/mocks"
+	ocpi "github.com/satimoto/go-ocpi-api/pkg/ocpi/mocks"
 	"github.com/satimoto/go-lsp/internal/session"
 	tariff "github.com/satimoto/go-lsp/internal/tariff/mocks"
 	user "github.com/satimoto/go-lsp/internal/user/mocks"
 )
 
-func NewResolver(repositoryService *mocks.MockRepositoryService, lightningService *lightningnetwork.MockLightningNetworkService, ocpiService *ocpi.MockOcpiService) *session.SessionResolver {
+func NewResolver(repositoryService *mocks.MockRepositoryService, lightningService *lightningnetwork.MockLightningNetworkService, notificationService *notification.MockNotificationService, ocpiService *ocpi.MockOcpiService) *session.SessionResolver {
 	repo := session.SessionRepository(repositoryService)
 
 	return &session.SessionResolver{
 		Repository:             repo,
 		LightningService:       lightningService,
-		NotificationService:    notification.NewService(),
+		NotificationService:    notificationService,
 		OcpiService:            ocpiService,
 		CountryAccountResolver: countryaccount.NewResolver(repositoryService),
 		LocationResolver:       location.NewResolver(repositoryService),
 		TariffResolver:         tariff.NewResolver(repositoryService),
-		UserResolver:           user.NewResolver(repositoryService),
+		UserResolver:           user.NewResolverWithServices(repositoryService, ocpiService),
 	}
 }

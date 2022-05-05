@@ -6,10 +6,8 @@ import (
 	"time"
 
 	"github.com/satimoto/go-datastore/db"
-	dbUtil "github.com/satimoto/go-datastore/util"
-	"github.com/satimoto/go-lsp/internal/util"
-	"github.com/satimoto/go-ocpi-api/ocpirpc/commandrpc"
-	"github.com/satimoto/go-ocpi-api/ocpirpc/tokenrpc"
+	"github.com/satimoto/go-datastore/util"
+	"github.com/satimoto/go-ocpi-api/ocpirpc"
 )
 
 func (r *SessionResolver) MonitorSession(ctx context.Context, session db.Session) {
@@ -47,15 +45,15 @@ func (r *SessionResolver) MonitorSession(ctx context.Context, session db.Session
 			}
 
 			tariffIto := r.TariffResolver.CreateTariffIto(ctx, tariff)
-			user, err := r.UserResolver.Repository.GetUserByTokenID(ctx, session.TokenID)
+			user, err := r.UserResolver.Repository.GetUser(ctx, session.UserID)
 
 			if err != nil {
-				util.LogOnError("LSP037", "Error retrieving user from session token", err)
-				log.Printf("LSP037: SessionUid=%v, TokenID=%v", session.Uid, session.TokenID)
+				util.LogOnError("LSP037", "Error retrieving user from session", err)
+				log.Printf("LSP037: SessionUid=%v, UserID=%v", session.Uid, session.UserID)
 				return
 			}
 
-			taxPercent := r.CountryAccountResolver.GetTaxPercentByCountry(ctx, location.Country, dbUtil.GetEnvFloat64("DEFAULT_TAX_PERCENT", 20))
+			taxPercent := r.CountryAccountResolver.GetTaxPercentByCountry(ctx, location.Country, util.GetEnvFloat64("DEFAULT_TAX_PERCENT", 20))
 			invoiceInterval := calculateInvoiceInterval(connector.Wattage)
 			log.Printf("MonitorSession for %s running each %v seconds", session.Uid, invoiceInterval/time.Second)
 
@@ -89,50 +87,31 @@ func (r *SessionResolver) MonitorSession(ctx context.Context, session db.Session
 					// Kill session
 					// Suspend tokens until balance is settled
 					// TODO: handle expired invoices, reissue invoices on request
-					r.OcpiService.StopSession(ctx, &commandrpc.StopSessionRequest{
+					r.OcpiService.StopSession(ctx, &ocpirpc.StopSessionRequest{
 						SessionUid: session.Uid,
 					})
 
-					user, err := r.UserResolver.Repository.GetUserByTokenID(ctx, session.TokenID)
-
-					if err != nil {
-						util.LogOnError("LSP035", "Error retrieving token user", err)
-						log.Printf("LSP035: TokenID=%v", session.TokenID)
-						break
-					}
-
 					// Lock user tokens until all session invoices are settled
-					updateTokensRequest := &tokenrpc.UpdateTokensRequest{
-						UserId:    user.ID,
-						Allowed:   string(db.TokenAllowedTypeNOCREDIT),
-						Whitelist: string(db.TokenWhitelistTypeNEVER),
-					}
-
-					_, err = r.OcpiService.UpdateTokens(ctx, updateTokensRequest)
+					err = r.UserResolver.RestrictUser(ctx, user)
 
 					if err != nil {
-						util.LogOnError("LSP042", "Error updating tokens", err)
-						log.Printf("LSP042: Params=%#v", updateTokensRequest)
+						util.LogOnError("LSP042", "Error restricting user", err)
+						log.Printf("LSP042: SessionUID=%v, UserID=%v", session.Uid, session.UserID)
+						return
 					}
 
 					break
 				}
 
-				invoicedAmount := calculateAmountInvoiced(sessionInvoices)
+				invoicedAmount := CalculateAmountInvoiced(sessionInvoices)
 				sessionIto := r.CreateSessionIto(ctx, session)
 				sessionAmount := r.ProcessChargingPeriods(sessionIto, tariffIto, time.Now())
+				totalAmount, _, _ := CalculateCommission(sessionAmount, user.CommissionPercent, taxPercent)
 
-				// Add commission
-				commissionAmount := (sessionAmount / 100.0) * user.CommissionPercent
-				sessionAmount += commissionAmount
-				// Add tax
-				taxAmount := (sessionAmount / 100.0) * taxPercent
-				sessionAmount += taxAmount
+				if totalAmount > invoicedAmount {
+					invoiceAmount, invoiceCommission, invoiceTax := CalculateCommission(totalAmount - invoicedAmount, user.CommissionPercent, taxPercent)
 
-				if sessionAmount > invoicedAmount {
-					invoiceAmount := invoicedAmount - sessionAmount
-
-					r.IssueLightningInvoice(ctx, session, invoiceAmount, commissionAmount, taxAmount)
+					r.IssueLightningInvoice(ctx, session, invoiceAmount, invoiceCommission, invoiceTax)
 				}
 			}
 		}

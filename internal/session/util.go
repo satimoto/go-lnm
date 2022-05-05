@@ -10,7 +10,7 @@ import (
 	"github.com/satimoto/go-lsp/internal/tariff"
 )
 
-func calculateAmountInvoiced(sessionInvoices []db.SessionInvoice) float64 {
+func CalculateAmountInvoiced(sessionInvoices []db.SessionInvoice) float64 {
 	amountFiat := float64(0)
 
 	for _, sessionInvoice := range sessionInvoices {
@@ -18,6 +18,15 @@ func calculateAmountInvoiced(sessionInvoices []db.SessionInvoice) float64 {
 	}
 
 	return amountFiat
+}
+
+func CalculateCommission(amount float64, commissionPercent float64, taxPercent float64) (total float64, commission float64, tax float64) {
+	commission = (amount / 100.0) * commissionPercent
+	total = amount + commission
+	tax = (total / 100.0) * taxPercent
+	total += tax
+
+	return total, commission, tax
 }
 
 func calculateCost(priceComponent *tariff.PriceComponentIto, volume float64, factor float64) float64 {

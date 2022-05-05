@@ -6,8 +6,8 @@ import (
 
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/satimoto/go-datastore/db"
+	"github.com/satimoto/go-datastore/util"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
-	"github.com/satimoto/go-lsp/internal/util"
 )
 
 func (r *SessionResolver) IssueLightningInvoice(ctx context.Context, session db.Session, invoiceAmount float64, commissionAmount float64, taxAmount float64) {
@@ -35,7 +35,7 @@ func (r *SessionResolver) IssueLightningInvoice(ctx context.Context, session db.
 		return
 	}
 
-	sessionInvoiceParams := NewCreateSessionInvoiceParams(session.ID)
+	sessionInvoiceParams := NewCreateSessionInvoiceParams(session)
 	sessionInvoiceParams.AmountFiat = invoiceAmount
 	sessionInvoiceParams.AmountMsat = amountMsat
 	sessionInvoiceParams.CommissionFiat = commissionAmount

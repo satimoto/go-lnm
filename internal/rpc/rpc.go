@@ -10,9 +10,9 @@ import (
 	"sync"
 
 	"github.com/satimoto/go-datastore/db"
+	"github.com/satimoto/go-datastore/util"
 	"github.com/satimoto/go-lsp/internal/rpc/session"
-	"github.com/satimoto/go-lsp/internal/util"
-	"github.com/satimoto/go-ocpi-api/ocpirpc/sessionrpc"
+	"github.com/satimoto/go-ocpi-api/ocpirpc"
 	"google.golang.org/grpc"
 )
 
@@ -59,7 +59,7 @@ func (rs *RpcService) listenAndServe() {
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%s", os.Getenv("RPC_PORT")))
 	util.PanicOnError("LSP028", "Error creating network address", err)
 
-	sessionrpc.RegisterSessionServiceServer(rs.Server, rs.RpcSessionResolver)
+	ocpirpc.RegisterSessionServiceServer(rs.Server, rs.RpcSessionResolver)
 
 	err = rs.Server.Serve(listener)
 	util.LogOnError("LSP029", "Error in Rpc service", err)
