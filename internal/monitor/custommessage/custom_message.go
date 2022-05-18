@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
-	"github.com/satimoto/go-datastore/db"
-	"github.com/satimoto/go-datastore/util"
+	"github.com/satimoto/go-datastore/pkg/db"
+	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

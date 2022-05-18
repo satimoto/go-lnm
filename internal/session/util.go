@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/satimoto/go-datastore/db"
-	"github.com/satimoto/go-datastore/util"
+	"github.com/satimoto/go-datastore/pkg/db"
+	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/tariff"
 )
 
@@ -39,7 +39,6 @@ func calculateCost(priceComponent *tariff.PriceComponentIto, volume float64, fac
 
 	return calculateRoundedValue(pricePerStep*roundedSteps, priceRound.Granularity, priceRound.Rule)
 }
-
 
 func getPriceComponentRounding(priceComponentRounding *tariff.PriceComponentRoundingIto, granularity db.RoundingGranularity, rule db.RoundingRule) tariff.PriceComponentRoundingIto {
 	if priceComponentRounding != nil {

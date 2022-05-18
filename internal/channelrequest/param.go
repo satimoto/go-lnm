@@ -1,6 +1,6 @@
 package channelrequest
 
-import "github.com/satimoto/go-datastore/db"
+import "github.com/satimoto/go-datastore/pkg/db"
 
 func NewUpdateChannelRequestParams(channelRequest db.ChannelRequest) db.UpdateChannelRequestParams {
 	return db.UpdateChannelRequestParams{

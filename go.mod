@@ -6,9 +6,8 @@ require (
 	github.com/joho/godotenv v1.4.0
 	github.com/lightningnetwork/lnd v0.14.2-beta.rc2
 	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
-	github.com/satimoto/go-datastore v0.1.2-0.20220506113557-5240743992e9
-	github.com/satimoto/go-datastore-mocks v0.1.2-0.20220504074702-16bc0e03a445
-	github.com/satimoto/go-ocpi-api v0.0.3-0.20220518064509-629fe41bca23
+	github.com/satimoto/go-datastore v0.1.2-0.20220518204540-92340686583d
+	github.com/satimoto/go-ocpi-api v0.0.3-0.20220518210005-014a687a70dc
 	google.golang.org/grpc v1.46.0
 )
 
@@ -48,7 +47,6 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.0.1 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
@@ -139,7 +137,5 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
-
-require github.com/go-chi/cors v1.2.0 // indirect
 
 replace git.schwanenlied.me/yawning/bsaes.git => github.com/Yawning/bsaes v0.0.0-20180720073208-c0276d75487e

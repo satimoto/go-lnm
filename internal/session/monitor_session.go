@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/satimoto/go-datastore/db"
-	"github.com/satimoto/go-datastore/util"
+	"github.com/satimoto/go-datastore/pkg/db"
+	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-ocpi-api/ocpirpc"
 )
 
@@ -109,7 +109,7 @@ func (r *SessionResolver) MonitorSession(ctx context.Context, session db.Session
 				totalAmount, _, _ := CalculateCommission(sessionAmount, user.CommissionPercent, taxPercent)
 
 				if totalAmount > invoicedAmount {
-					invoiceAmount, invoiceCommission, invoiceTax := CalculateCommission(totalAmount - invoicedAmount, user.CommissionPercent, taxPercent)
+					invoiceAmount, invoiceCommission, invoiceTax := CalculateCommission(totalAmount-invoicedAmount, user.CommissionPercent, taxPercent)
 
 					r.IssueLightningInvoice(ctx, session, invoiceAmount, invoiceCommission, invoiceTax)
 				}

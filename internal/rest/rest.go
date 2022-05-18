@@ -16,8 +16,8 @@ import (
 	"github.com/go-chi/render"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/satimoto/go-datastore/db"
-	"github.com/satimoto/go-datastore/util"
+	"github.com/satimoto/go-datastore/pkg/db"
+	"github.com/satimoto/go-datastore/pkg/util"
 )
 
 type Rest interface {

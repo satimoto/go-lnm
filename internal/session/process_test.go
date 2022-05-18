@@ -3,14 +3,14 @@ package session_test
 import (
 	"encoding/json"
 
-	dbMocks "github.com/satimoto/go-datastore-mocks/db"
-	"github.com/satimoto/go-datastore/util"
+	dbMocks "github.com/satimoto/go-datastore/pkg/db/mocks"
+	"github.com/satimoto/go-datastore/pkg/util"
 	lightningnetworkMocks "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
 	notificationMocks "github.com/satimoto/go-lsp/internal/notification/mocks"
-	ocpiMocks "github.com/satimoto/go-ocpi-api/pkg/ocpi/mocks"
 	"github.com/satimoto/go-lsp/internal/session"
 	sessionsMocks "github.com/satimoto/go-lsp/internal/session/mocks"
 	"github.com/satimoto/go-lsp/internal/tariff"
+	ocpiMocks "github.com/satimoto/go-ocpi-api/pkg/ocpi/mocks"
 
 	"testing"
 )

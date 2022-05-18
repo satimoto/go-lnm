@@ -1,7 +1,7 @@
 package session
 
 import (
-	"github.com/satimoto/go-datastore/db"
+	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-lsp/internal/session"
 )
 
@@ -15,7 +15,7 @@ type RpcSessionResolver struct {
 func NewResolver(repositoryService *db.RepositoryService) *RpcSessionResolver {
 	repo := RpcSessionRepository(repositoryService)
 	return &RpcSessionResolver{
-		Repository:         repo,
-		SessionResolver:    session.NewResolver(repositoryService),
+		Repository:      repo,
+		SessionResolver: session.NewResolver(repositoryService),
 	}
 }

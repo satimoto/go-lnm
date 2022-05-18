@@ -3,7 +3,7 @@ package session
 import (
 	"time"
 
-	"github.com/satimoto/go-datastore/db"
+	"github.com/satimoto/go-datastore/pkg/db"
 )
 
 func NewCreateSessionInvoiceParams(session db.Session) db.CreateSessionInvoiceParams {
