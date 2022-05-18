@@ -6,9 +6,9 @@ require (
 	github.com/joho/godotenv v1.4.0
 	github.com/lightningnetwork/lnd v0.14.2-beta.rc2
 	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
-	github.com/satimoto/go-datastore v0.1.2-0.20220504150421-789db4316b88
+	github.com/satimoto/go-datastore v0.1.2-0.20220506113557-5240743992e9
 	github.com/satimoto/go-datastore-mocks v0.1.2-0.20220504074702-16bc0e03a445
-	github.com/satimoto/go-ocpi-api v0.0.3-0.20220505111627-5db273004e67
+	github.com/satimoto/go-ocpi-api v0.0.3-0.20220518064509-629fe41bca23
 	google.golang.org/grpc v1.46.0
 )
 

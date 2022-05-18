@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"os"
 
 	"github.com/satimoto/go-datastore/db"
 	"github.com/satimoto/go-ocpi-api/pkg/ocpi"
@@ -20,7 +21,9 @@ type UserResolver struct {
 }
 
 func NewResolver(repositoryService *db.RepositoryService) *UserResolver {
-	return NewResolverWithServices(repositoryService, ocpi.NewService())
+	ocpiService := ocpi.NewService(os.Getenv("OCPI_RPC_ADDRESS"))
+
+	return NewResolverWithServices(repositoryService, ocpiService)
 }
 
 func NewResolverWithServices(repositoryService *db.RepositoryService, ocpiService ocpi.Ocpi) *UserResolver {
