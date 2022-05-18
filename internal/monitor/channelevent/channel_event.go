@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
-	"github.com/satimoto/go-datastore/db"
-	dbUtil "github.com/satimoto/go-datastore/util"
+	"github.com/satimoto/go-datastore/pkg/db"
+	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/channelrequest"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/user"
@@ -68,7 +68,7 @@ func (m *ChannelEventMonitor) handleChannelEvent(channelEvent lnrpc.ChannelEvent
 		txid, outputIndex, _ := util.ConvertChannelPoint(openChannel.ChannelPoint)
 		log.Printf("Txid: %v", hex.EncodeToString(txid))
 		log.Printf("OutputIndex: %v", outputIndex)
-		
+
 		updateChannelRequestByChannelPointParams := db.UpdateChannelRequestByChannelPointParams{
 			FundingTxID: txid,
 			OutputIndex: dbUtil.SqlNullInt64(outputIndex),
@@ -92,12 +92,12 @@ func (m *ChannelEventMonitor) handleChannelEvent(channelEvent lnrpc.ChannelEvent
 		}
 
 		err = m.UserResolver.UnrestrictUser(ctx, user)
-		
+
 		if err != nil {
 			dbUtil.LogOnError("LSP049", "Error unrestricting user", err)
 			log.Printf("LSP049: ChannelRequestID=%v, UserID=%v", channelRequest.ID, channelRequest.UserID)
 		}
-	
+
 		break
 	}
 }

@@ -9,8 +9,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/satimoto/go-datastore/db"
-	"github.com/satimoto/go-datastore/util"
+	"github.com/satimoto/go-datastore/pkg/db"
+	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/rpc/session"
 	"github.com/satimoto/go-ocpi-api/ocpirpc"
 	"google.golang.org/grpc"

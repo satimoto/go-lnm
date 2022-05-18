@@ -16,9 +16,9 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
 	"github.com/lightningnetwork/lnd/lntypes"
 	"github.com/lightningnetwork/lnd/lnwire"
-	dbMocks "github.com/satimoto/go-datastore-mocks/db"
-	"github.com/satimoto/go-datastore/db"
-	dbUtil "github.com/satimoto/go-datastore/util"
+	"github.com/satimoto/go-datastore/pkg/db"
+	dbMocks "github.com/satimoto/go-datastore/pkg/db/mocks"
+	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 
 	//interceptMocks "github.com/satimoto/go-lsp/intercept/mocks"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
@@ -120,7 +120,7 @@ func TestInterceptor(t *testing.T) {
 	carolPubkey := carolPubkey
 	carolTlsCert, _ := base64.StdEncoding.DecodeString(carolTlsCertBase64)
 	carolMacaroon, _ := base64.StdEncoding.DecodeString(carolMacaroonBase64)
-	carolCredentials, _ := util.NewCredential(string(carolTlsCert)) 
+	carolCredentials, _ := util.NewCredential(string(carolTlsCert))
 	carolClientConn, _ := grpc.Dial(carolHost, grpc.WithTransportCredentials(carolCredentials))
 	defer carolClientConn.Close()
 
@@ -142,9 +142,9 @@ func TestInterceptor(t *testing.T) {
 		carolCtx := metadata.AppendToOutgoingContext(context.Background(), "macaroon", hex.EncodeToString(carolMacaroon))
 
 		fakeChanID := &lnwire.ShortChannelID{
-			BlockHeight: uint32(rand.Intn(math.MaxUint32)), 
-			TxIndex: uint32(rand.Intn(math.MaxUint32)), 
-			TxPosition: uint16(rand.Intn(math.MaxUint16)),
+			BlockHeight: uint32(rand.Intn(math.MaxUint32)),
+			TxIndex:     uint32(rand.Intn(math.MaxUint32)),
+			TxPosition:  uint16(rand.Intn(math.MaxUint16)),
 		}
 		t.Logf("fakeChanID: %v", fakeChanID.ToUint64())
 

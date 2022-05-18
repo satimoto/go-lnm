@@ -3,7 +3,7 @@ package session
 import (
 	"time"
 
-	"github.com/satimoto/go-datastore/db"
+	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-lsp/internal/tariff"
 )
 
@@ -53,17 +53,17 @@ func (r *SessionResolver) ProcessChargingPeriods(sessionIto *SessionIto, tariffI
 
 		if energyPriceComponent := getPriceComponentByType(priceComponents, db.TariffDimensionENERGY); energyPriceComponent != nil {
 			cost := calculateCost(energyPriceComponent, energyVolume, 1)
-			totalAmount = calculateRoundedValue(totalAmount + cost, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
+			totalAmount = calculateRoundedValue(totalAmount+cost, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
 		}
 
 		if timePriceComponent := getPriceComponentByType(priceComponents, db.TariffDimensionTIME); timePriceComponent != nil {
 			cost := calculateCost(timePriceComponent, timeVolume, 3600)
-			totalAmount = calculateRoundedValue(totalAmount + cost, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
+			totalAmount = calculateRoundedValue(totalAmount+cost, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
 		}
 
 		if parkingTimePriceComponent := getPriceComponentByType(priceComponents, db.TariffDimensionPARKINGTIME); parkingTimePriceComponent != nil {
 			cost := calculateCost(parkingTimePriceComponent, parkingTimeVolume, 3600)
-			totalAmount = calculateRoundedValue(totalAmount + cost, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
+			totalAmount = calculateRoundedValue(totalAmount+cost, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
 		}
 	}
 

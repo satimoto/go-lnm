@@ -1,7 +1,7 @@
 package mocks
 
 import (
-	mocks "github.com/satimoto/go-datastore-mocks/db"
+	mocks "github.com/satimoto/go-datastore/pkg/db/mocks"
 	lightningnetwork "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
 	"github.com/satimoto/go-lsp/internal/monitor/invoice"
 	notification "github.com/satimoto/go-lsp/internal/notification/mocks"

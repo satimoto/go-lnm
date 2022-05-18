@@ -9,8 +9,9 @@ import (
 	"time"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
-	"github.com/satimoto/go-datastore/db"
-	dbUtil "github.com/satimoto/go-datastore/util"
+	"github.com/satimoto/go-datastore/pkg/db"
+	"github.com/satimoto/go-datastore/pkg/node"
+	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/monitor/channelevent"
 	"github.com/satimoto/go-lsp/internal/monitor/custommessage"
@@ -18,7 +19,6 @@ import (
 	"github.com/satimoto/go-lsp/internal/monitor/htlcevent"
 	"github.com/satimoto/go-lsp/internal/monitor/invoice"
 	"github.com/satimoto/go-lsp/internal/monitor/transaction"
-	"github.com/satimoto/go-lsp/internal/node"
 	"github.com/satimoto/go-lsp/internal/util"
 )
 

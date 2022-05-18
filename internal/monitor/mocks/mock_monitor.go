@@ -3,7 +3,8 @@ package mocks
 import (
 	"context"
 
-	mocks "github.com/satimoto/go-datastore-mocks/db"
+	mocks "github.com/satimoto/go-datastore/pkg/db/mocks"
+	node "github.com/satimoto/go-datastore/pkg/node/mocks"
 	lightningnetwork "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
 	"github.com/satimoto/go-lsp/internal/monitor"
 	channelevent "github.com/satimoto/go-lsp/internal/monitor/channelevent/mocks"
@@ -12,7 +13,6 @@ import (
 	htlcevent "github.com/satimoto/go-lsp/internal/monitor/htlcevent/mocks"
 	invoice "github.com/satimoto/go-lsp/internal/monitor/invoice/mocks"
 	transaction "github.com/satimoto/go-lsp/internal/monitor/transaction/mocks"
-	node "github.com/satimoto/go-lsp/internal/node/mocks"
 	notification "github.com/satimoto/go-lsp/internal/notification/mocks"
 	ocpi "github.com/satimoto/go-ocpi-api/pkg/ocpi/mocks"
 )

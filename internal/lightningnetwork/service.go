@@ -8,7 +8,7 @@ import (
 
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
-	dbUtil "github.com/satimoto/go-datastore/util"
+	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"

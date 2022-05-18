@@ -1,9 +1,9 @@
 package mocks
 
 import (
-	mocks "github.com/satimoto/go-datastore-mocks/db"
-	ocpi "github.com/satimoto/go-ocpi-api/pkg/ocpi/mocks"
+	mocks "github.com/satimoto/go-datastore/pkg/db/mocks"
 	"github.com/satimoto/go-lsp/internal/user"
+	ocpi "github.com/satimoto/go-ocpi-api/pkg/ocpi/mocks"
 )
 
 func NewResolver(repositoryService *mocks.MockRepositoryService) *user.UserResolver {

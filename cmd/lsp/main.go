@@ -11,8 +11,8 @@ import (
 	"syscall"
 
 	_ "github.com/joho/godotenv/autoload"
-	"github.com/satimoto/go-datastore/db"
-	"github.com/satimoto/go-datastore/util"
+	"github.com/satimoto/go-datastore/pkg/db"
+	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/monitor"
 	"github.com/satimoto/go-lsp/internal/rest"
 	"github.com/satimoto/go-lsp/internal/rpc"
@@ -45,7 +45,7 @@ func init() {
 
 func main() {
 	defer database.Close()
-	
+
 	log.Printf("Starting up LSP server")
 	repositoryService := db.NewRepositoryService(database)
 
