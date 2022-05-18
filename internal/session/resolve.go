@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"os"
 
 	"github.com/satimoto/go-datastore/db"
 	"github.com/satimoto/go-lsp/internal/countryaccount"
@@ -37,7 +38,11 @@ type SessionResolver struct {
 }
 
 func NewResolver(repositoryService *db.RepositoryService) *SessionResolver {
-	return NewResolverWithServices(repositoryService, lightningnetwork.NewService(), notification.NewService(), ocpi.NewService())
+	lightningService := lightningnetwork.NewService()
+	notificationService := notification.NewService()
+	ocpiService := ocpi.NewService(os.Getenv("OCPI_RPC_ADDRESS"))
+
+	return NewResolverWithServices(repositoryService, lightningService, notificationService, ocpiService)
 }
 
 func NewResolverWithServices(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork, notificationService notification.Notification, ocpiService ocpi.Ocpi) *SessionResolver {

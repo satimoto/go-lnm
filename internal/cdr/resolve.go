@@ -2,6 +2,7 @@ package cdr
 
 import (
 	"context"
+	"os"
 
 	"github.com/satimoto/go-datastore/db"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
@@ -25,7 +26,12 @@ type CdrResolver struct {
 func NewResolver(repositoryService *db.RepositoryService) *CdrResolver {
 	lightningService := lightningnetwork.NewService()
 	notificationService := notification.NewService()
-	ocpiService := ocpi.NewService()
+	ocpiService := ocpi.NewService(os.Getenv("OCPI_RPC_ADDRESS"))
+
+	return NewResolverWithServices(repositoryService, lightningService, notificationService, ocpiService)
+}
+
+func NewResolverWithServices(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork, notificationService notification.Notification, ocpiService ocpi.Ocpi) *CdrResolver {
 	repo := CdrRepository(repositoryService)
 
 	return &CdrResolver{
