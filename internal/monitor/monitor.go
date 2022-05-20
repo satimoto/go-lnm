@@ -25,7 +25,7 @@ import (
 type Monitor struct {
 	LightningService     lightningnetwork.LightningNetwork
 	ShutdownCtx          context.Context
-	NodeResolver         *node.NodeResolver
+	NodeRepository       node.NodeRepository
 	ChannelEventMonitor  *channelevent.ChannelEventMonitor
 	CustomMessageMonitor *custommessage.CustomMessageMonitor
 	HtlcMonitor          *htlc.HtlcMonitor
@@ -41,7 +41,7 @@ func NewMonitor(shutdownCtx context.Context, repositoryService *db.RepositorySer
 	return &Monitor{
 		LightningService:     lightningService,
 		ShutdownCtx:          shutdownCtx,
-		NodeResolver:         node.NewResolver(repositoryService),
+		NodeRepository:       node.NewRepository(repositoryService),
 		ChannelEventMonitor:  channelevent.NewChannelEventMonitor(repositoryService, lightningService),
 		CustomMessageMonitor: customMessageMonitor,
 		HtlcMonitor:          htlc.NewHtlcMonitor(repositoryService, lightningService, customMessageMonitor),
@@ -92,7 +92,7 @@ func (m *Monitor) register() error {
 			numPeers := int64(getInfoResponse.NumPeers)
 			addr := os.Getenv("LND_P2P_HOST")
 
-			if n, err := m.NodeResolver.Repository.GetNodeByPubkey(ctx, getInfoResponse.IdentityPubkey); err == nil {
+			if n, err := m.NodeRepository.GetNodeByPubkey(ctx, getInfoResponse.IdentityPubkey); err == nil {
 				// Update node
 				updateNodeParams := node.NewUpdateNodeParams(n)
 				updateNodeParams.NodeAddr = addr
@@ -104,7 +104,7 @@ func (m *Monitor) register() error {
 				updateNodeParams.Channels = numChannels
 				updateNodeParams.Peers = numPeers
 
-				m.NodeResolver.Repository.UpdateNode(ctx, updateNodeParams)
+				m.NodeRepository.UpdateNode(ctx, updateNodeParams)
 			} else {
 				// Create node
 				createNodeParams := db.CreateNodeParams{
@@ -119,7 +119,7 @@ func (m *Monitor) register() error {
 					Peers:      numPeers,
 				}
 
-				m.NodeResolver.Repository.CreateNode(ctx, createNodeParams)
+				m.NodeRepository.CreateNode(ctx, createNodeParams)
 			}
 
 			log.Print("Registered node")

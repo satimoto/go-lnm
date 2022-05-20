@@ -2,9 +2,9 @@ package mocks
 
 import (
 	mocks "github.com/satimoto/go-datastore/pkg/db/mocks"
+	location "github.com/satimoto/go-datastore/pkg/location/mocks"
 	countryaccount "github.com/satimoto/go-lsp/internal/countryaccount/mocks"
 	lightningnetwork "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
-	location "github.com/satimoto/go-lsp/internal/location/mocks"
 	notification "github.com/satimoto/go-lsp/internal/notification/mocks"
 	"github.com/satimoto/go-lsp/internal/session"
 	tariff "github.com/satimoto/go-lsp/internal/tariff/mocks"
@@ -21,7 +21,7 @@ func NewResolver(repositoryService *mocks.MockRepositoryService, lightningServic
 		NotificationService:    notificationService,
 		OcpiService:            ocpiService,
 		CountryAccountResolver: countryaccount.NewResolver(repositoryService),
-		LocationResolver:       location.NewResolver(repositoryService),
+		LocationRepository:     location.NewRepository(repositoryService),
 		TariffResolver:         tariff.NewResolver(repositoryService),
 		UserResolver:           user.NewResolverWithServices(repositoryService, ocpiService),
 	}

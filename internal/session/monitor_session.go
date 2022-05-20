@@ -19,7 +19,7 @@ func (r *SessionResolver) MonitorSession(ctx context.Context, session db.Session
 	 */
 
 	if session.Status == db.SessionStatusTypeACTIVE || session.Status == db.SessionStatusTypePENDING {
-		connector, err := r.LocationResolver.Repository.GetConnector(ctx, session.ConnectorID)
+		connector, err := r.LocationRepository.GetConnector(ctx, session.ConnectorID)
 
 		if err != nil {
 			util.LogOnError("LSP001", "Error retrieving session connector", err)
@@ -28,7 +28,7 @@ func (r *SessionResolver) MonitorSession(ctx context.Context, session db.Session
 		}
 
 		if connector.TariffID.Valid {
-			location, err := r.LocationResolver.Repository.GetLocation(ctx, session.LocationID)
+			location, err := r.LocationRepository.GetLocation(ctx, session.LocationID)
 
 			if err != nil {
 				util.LogOnError("LSP038", "Error retrieving session location", err)
