@@ -23,7 +23,7 @@ func NewMonitor(shutdownCtx context.Context, repositoryService *mocks.MockReposi
 	return &monitor.Monitor{
 		LightningService:     lightningService,
 		ShutdownCtx:          shutdownCtx,
-		NodeResolver:         node.NewResolver(repositoryService),
+		NodeRepository:       node.NewRepository(repositoryService),
 		ChannelEventMonitor:  channelevent.NewChannelEventMonitor(repositoryService, lightningService),
 		CustomMessageMonitor: customMessageMonitor,
 		HtlcMonitor:          htlc.NewHtlcMonitor(repositoryService, lightningService, customMessageMonitor),

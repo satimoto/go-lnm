@@ -40,7 +40,7 @@ func (r *CdrResolver) ProcessCdr(ctx context.Context, cdr db.Cdr) error {
 	}
 
 	invoicedAmount := session.CalculateAmountInvoiced(sessionInvoices)
-	location, err := r.SessionResolver.LocationResolver.Repository.GetLocation(ctx, sess.LocationID)
+	location, err := r.SessionResolver.LocationRepository.GetLocation(ctx, sess.LocationID)
 
 	if err != nil {
 		util.LogOnError("LSP045", "Error retrieving session location", err)

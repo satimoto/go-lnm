@@ -5,9 +5,9 @@ import (
 	"os"
 
 	"github.com/satimoto/go-datastore/pkg/db"
+	"github.com/satimoto/go-datastore/pkg/location"
 	"github.com/satimoto/go-lsp/internal/countryaccount"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
-	"github.com/satimoto/go-lsp/internal/location"
 	"github.com/satimoto/go-lsp/internal/notification"
 	"github.com/satimoto/go-lsp/internal/tariff"
 	"github.com/satimoto/go-lsp/internal/user"
@@ -32,7 +32,7 @@ type SessionResolver struct {
 	NotificationService    notification.Notification
 	OcpiService            ocpi.Ocpi
 	CountryAccountResolver *countryaccount.CountryAccountResolver
-	LocationResolver       *location.LocationResolver
+	LocationRepository     location.LocationRepository
 	TariffResolver         *tariff.TariffResolver
 	UserResolver           *user.UserResolver
 }
@@ -54,7 +54,7 @@ func NewResolverWithServices(repositoryService *db.RepositoryService, lightningS
 		OcpiService:            ocpiService,
 		NotificationService:    notificationService,
 		CountryAccountResolver: countryaccount.NewResolver(repositoryService),
-		LocationResolver:       location.NewResolver(repositoryService),
+		LocationRepository:     location.NewRepository(repositoryService),
 		TariffResolver:         tariff.NewResolver(repositoryService),
 		UserResolver:           user.NewResolverWithServices(repositoryService, ocpiService),
 	}
