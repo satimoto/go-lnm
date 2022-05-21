@@ -3,6 +3,7 @@ package mocks
 import (
 	mocks "github.com/satimoto/go-datastore/pkg/db/mocks"
 	location "github.com/satimoto/go-datastore/pkg/location/mocks"
+	sessionMocks "github.com/satimoto/go-datastore/pkg/session/mocks"
 	countryaccount "github.com/satimoto/go-lsp/internal/countryaccount/mocks"
 	lightningnetwork "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
 	notification "github.com/satimoto/go-lsp/internal/notification/mocks"
@@ -13,10 +14,8 @@ import (
 )
 
 func NewResolver(repositoryService *mocks.MockRepositoryService, lightningService *lightningnetwork.MockLightningNetworkService, notificationService *notification.MockNotificationService, ocpiService *ocpi.MockOcpiService) *session.SessionResolver {
-	repo := session.SessionRepository(repositoryService)
-
 	return &session.SessionResolver{
-		Repository:             repo,
+		Repository:             sessionMocks.NewRepository(repositoryService),
 		LightningService:       lightningService,
 		NotificationService:    notificationService,
 		OcpiService:            ocpiService,

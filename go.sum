@@ -659,6 +659,8 @@ github.com/satimoto/go-datastore v0.1.2-0.20220520202023-b9b1ee595a88 h1:KTmpnkP
 github.com/satimoto/go-datastore v0.1.2-0.20220520202023-b9b1ee595a88/go.mod h1:gz81qrvwGFlGiHKrIDcHSkEbmSEhpMZvFRuZaVj2AUw=
 github.com/satimoto/go-datastore v0.1.2-0.20220520202327-c9e349e59975 h1:VsyQjsg2NlawsCXV1Y0+E1rrmv7+I4raPLRbyb5TNPw=
 github.com/satimoto/go-datastore v0.1.2-0.20220520202327-c9e349e59975/go.mod h1:gz81qrvwGFlGiHKrIDcHSkEbmSEhpMZvFRuZaVj2AUw=
+github.com/satimoto/go-datastore v0.1.2-0.20220521062808-8a3a3b259227 h1:llZlwMgIwdCuMC5d/pS7y9n8UZOlFIUQf3J8z2MqMJk=
+github.com/satimoto/go-datastore v0.1.2-0.20220521062808-8a3a3b259227/go.mod h1:gz81qrvwGFlGiHKrIDcHSkEbmSEhpMZvFRuZaVj2AUw=
 github.com/satimoto/go-ocpi-api v0.0.3-0.20220518210005-014a687a70dc h1:/xPbJe3Mh1Yu6PhnLY5XBEBZbiysGD6+MPZ/STjl708=
 github.com/satimoto/go-ocpi-api v0.0.3-0.20220518210005-014a687a70dc/go.mod h1:oCPVkW7hahnHn3uKj1rLjK0XmSHeSxHcXBS/vx9mSq4=
 github.com/satori/go.uuid v1.2.0/go.mod h1:dA0hQrYB0VpLJoorglMZABFdXlWrHn1NEOzdhQKdks0=

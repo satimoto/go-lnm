@@ -1,11 +1,11 @@
 package session
 
 import (
-	"context"
 	"os"
 
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/location"
+	"github.com/satimoto/go-datastore/pkg/session"
 	"github.com/satimoto/go-lsp/internal/countryaccount"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/notification"
@@ -14,20 +14,8 @@ import (
 	"github.com/satimoto/go-ocpi-api/pkg/ocpi"
 )
 
-type SessionRepository interface {
-	CreateSessionInvoice(ctx context.Context, arg db.CreateSessionInvoiceParams) (db.SessionInvoice, error)
-	GetSessionByAuthorizationID(ctx context.Context, authorizationID string) (db.Session, error)
-	GetSessionByUid(ctx context.Context, uid string) (db.Session, error)
-	GetSessionInvoiceByPaymentRequest(ctx context.Context, paymentRequest string) (db.SessionInvoice, error)
-	ListChargingPeriodDimensions(ctx context.Context, chargingPeriodID int64) ([]db.ChargingPeriodDimension, error)
-	ListSessionChargingPeriods(ctx context.Context, sessionID int64) ([]db.ChargingPeriod, error)
-	ListSessionInvoices(ctx context.Context, sessionID int64) ([]db.SessionInvoice, error)
-	ListUnsettledSessionInvoicesByUserID(ctx context.Context, userID int64) ([]db.SessionInvoice, error)
-	UpdateSessionInvoice(ctx context.Context, arg db.UpdateSessionInvoiceParams) (db.SessionInvoice, error)
-}
-
 type SessionResolver struct {
-	Repository             SessionRepository
+	Repository             session.SessionRepository
 	LightningService       lightningnetwork.LightningNetwork
 	NotificationService    notification.Notification
 	OcpiService            ocpi.Ocpi
@@ -46,10 +34,8 @@ func NewResolver(repositoryService *db.RepositoryService) *SessionResolver {
 }
 
 func NewResolverWithServices(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork, notificationService notification.Notification, ocpiService ocpi.Ocpi) *SessionResolver {
-	repo := SessionRepository(repositoryService)
-
 	return &SessionResolver{
-		Repository:             repo,
+		Repository:             session.NewRepository(repositoryService),
 		LightningService:       lightningService,
 		OcpiService:            ocpiService,
 		NotificationService:    notificationService,

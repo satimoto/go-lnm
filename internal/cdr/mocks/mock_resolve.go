@@ -2,6 +2,7 @@ package mocks
 
 import (
 	mocks "github.com/satimoto/go-datastore/pkg/db/mocks"
+	cdrMocks "github.com/satimoto/go-datastore/pkg/cdr/mocks"
 	"github.com/satimoto/go-lsp/internal/cdr"
 	lightningnetwork "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
 	notification "github.com/satimoto/go-lsp/internal/notification/mocks"
@@ -11,10 +12,9 @@ import (
 
 func NewResolver(repositoryService *mocks.MockRepositoryService, lightningService *lightningnetwork.MockLightningNetworkService, ocpiService *ocpi.MockOcpiService) *cdr.CdrResolver {
 	notificationService := notification.NewService()
-	repo := cdr.CdrRepository(repositoryService)
 
 	return &cdr.CdrResolver{
-		Repository:          repo,
+		Repository:          cdrMocks.NewRepository(repositoryService),
 		LightningService:    lightningService,
 		NotificationService: notificationService,
 		OcpiService:         ocpiService,
