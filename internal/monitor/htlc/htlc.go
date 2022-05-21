@@ -13,6 +13,7 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
 	"github.com/lightningnetwork/lnd/lntypes"
 	"github.com/satimoto/go-datastore/pkg/db"
+	"github.com/satimoto/go-datastore/pkg/param"
 	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/channelrequest"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
@@ -107,7 +108,7 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 
 			startPaymentMonitor := channelRequest.Status == db.ChannelRequestStatusREQUESTED
 
-			updateChannelRequestParams := channelrequest.NewUpdateChannelRequestParams(channelRequest)
+			updateChannelRequestParams := param.NewUpdateChannelRequestParams(channelRequest)
 			updateChannelRequestParams.Status = db.ChannelRequestStatusAWAITINGPAYMENTS
 			updateChannelRequestParams.SettledMsat = channelRequest.SettledMsat + int64(htlcInterceptRequest.IncomingAmountMsat)
 
@@ -264,7 +265,7 @@ func (m *HtlcMonitor) waitForPaymentTimeout(ctx context.Context, paymentHash []b
 			log.Printf("Payment timeout expired: %v", paymentHashString)
 
 			// Update the channel request
-			updateChannelRequestParams := channelrequest.NewUpdateChannelRequestParams(channelRequest)
+			updateChannelRequestParams := param.NewUpdateChannelRequestParams(channelRequest)
 			updateChannelRequestParams.Status = db.ChannelRequestStatusFAILED
 
 			m.ChannelRequestResolver.Repository.UpdateChannelRequest(ctx, updateChannelRequestParams)

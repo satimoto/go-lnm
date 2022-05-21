@@ -1,7 +1,6 @@
 package cdr
 
 import (
-	"context"
 	"os"
 
 	"github.com/satimoto/go-datastore/pkg/cdr"

@@ -1,20 +1,16 @@
 package countryaccount
 
 import (
-	"context"
-
+	"github.com/satimoto/go-datastore/pkg/countryaccount"
 	"github.com/satimoto/go-datastore/pkg/db"
 )
 
-type CountryAccountRepository interface {
-	GetCountryAccountByCountry(ctx context.Context, country string) (db.CountryAccount, error)
-}
-
 type CountryAccountResolver struct {
-	Repository CountryAccountRepository
+	Repository countryaccount.CountryAccountRepository
 }
 
 func NewResolver(repositoryService *db.RepositoryService) *CountryAccountResolver {
-	repo := CountryAccountRepository(repositoryService)
-	return &CountryAccountResolver{repo}
+	return &CountryAccountResolver{
+		Repository: countryaccount.NewRepository(repositoryService),
+	}
 }
