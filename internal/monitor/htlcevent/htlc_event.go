@@ -11,6 +11,7 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/satimoto/go-datastore/pkg/db"
+	"github.com/satimoto/go-datastore/pkg/param"
 	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/channelrequest"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
@@ -96,7 +97,7 @@ func (m *HtlcEventMonitor) handleHtlcEvent(htlcEvent routerrpc.HtlcEvent) {
 							util.LogOnError("LSP005", "Error opening channel", err)
 
 							if err == nil {
-								updateChannelRequestParams := channelrequest.NewUpdateChannelRequestParams(channelRequest)
+								updateChannelRequestParams := param.NewUpdateChannelRequestParams(channelRequest)
 								updateChannelRequestParams.FundingTxID = channelPoint.GetFundingTxidBytes()
 								updateChannelRequestParams.OutputIndex = util.SqlNullInt64(channelPoint.OutputIndex)
 

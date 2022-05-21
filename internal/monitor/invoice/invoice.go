@@ -8,6 +8,7 @@ import (
 
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/satimoto/go-datastore/pkg/db"
+	"github.com/satimoto/go-datastore/pkg/param"
 	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/session"
@@ -52,7 +53,7 @@ func (m *InvoiceMonitor) handleInvoice(invoice lnrpc.Invoice) {
 	if sessionInvoice, err := m.SessionResolver.Repository.GetSessionInvoiceByPaymentRequest(ctx, invoice.PaymentRequest); err == nil {
 		if invoice.Settled {
 			// Settle session invoice
-			updateSessionInvoiceParams := session.NewUpdateSessionInvoiceParams(sessionInvoice)
+			updateSessionInvoiceParams := param.NewUpdateSessionInvoiceParams(sessionInvoice)
 			updateSessionInvoiceParams.IsSettled = invoice.Settled
 
 			_, err = m.SessionResolver.Repository.UpdateSessionInvoice(ctx, updateSessionInvoiceParams)
@@ -137,7 +138,7 @@ func (m *InvoiceMonitor) waitForInvoiceExpiry(ctx context.Context, invoice lnrpc
 
 	if sessionInvoice, err := m.SessionResolver.Repository.GetSessionInvoiceByPaymentRequest(ctx, invoice.PaymentRequest); err == nil {
 		if !sessionInvoice.IsSettled && !sessionInvoice.IsExpired {
-			updateSessionInvoiceParams := session.NewUpdateSessionInvoiceParams(sessionInvoice)
+			updateSessionInvoiceParams := param.NewUpdateSessionInvoiceParams(sessionInvoice)
 			updateSessionInvoiceParams.IsExpired = true
 
 			_, err = m.SessionResolver.Repository.UpdateSessionInvoice(ctx, updateSessionInvoiceParams)

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/satimoto/go-datastore/pkg/db"
+	"github.com/satimoto/go-datastore/pkg/param"
 	"github.com/satimoto/go-ocpi-api/ocpirpc"
 )
 
@@ -17,7 +18,7 @@ func (r *UserResolver) UnrestrictUser(ctx context.Context, user db.User) error {
 
 func (r *UserResolver) updateUserRestriction(ctx context.Context, user db.User, restricted bool, tokenAllowed db.TokenAllowedType, tokenWhitelist db.TokenWhitelistType) error {
 	if user.IsRestricted != restricted {
-		updateUserParams := NewUpdateUserParams(user)
+		updateUserParams := param.NewUpdateUserParams(user)
 		updateUserParams.IsRestricted = restricted
 
 		_, err := r.Repository.UpdateUser(ctx, updateUserParams)
