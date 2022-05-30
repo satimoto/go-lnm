@@ -12,10 +12,18 @@ import (
 )
 
 func (r *SessionResolver) IssueLightningInvoice(ctx context.Context, session db.Session, invoiceAmount float64, commissionAmount float64, taxAmount float64) {
-	amountMsat := int64(invoiceAmount * 2500000)
-	commissionMsat := int64(commissionAmount * 2500000)
-	taxMsat := int64(taxAmount * 2500000)
-	// TODO: get exchange rate
+	currencyRate, err := r.ExchangeService.GetRate(session.Currency)
+
+	if err != nil {
+		util.LogOnError("LSP054", "Error retrieving exchange rate", err)
+		log.Printf("LSP054: Currency=%v", session.Currency)
+		return
+	}
+
+	rateMsat := float64(currencyRate.RateMsat)
+	amountMsat := int64(invoiceAmount * rateMsat)
+	commissionMsat := int64(commissionAmount * rateMsat)
+	taxMsat := int64(taxAmount * rateMsat)
 
 	preimage, err := lightningnetwork.RandomPreimage()
 

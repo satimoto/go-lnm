@@ -5,6 +5,7 @@ import (
 
 	"github.com/satimoto/go-datastore/pkg/cdr"
 	"github.com/satimoto/go-datastore/pkg/db"
+	"github.com/satimoto/go-lsp/internal/exchange"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/notification"
 	"github.com/satimoto/go-lsp/internal/session"
@@ -19,20 +20,20 @@ type CdrResolver struct {
 	SessionResolver     *session.SessionResolver
 }
 
-func NewResolver(repositoryService *db.RepositoryService) *CdrResolver {
+func NewResolver(repositoryService *db.RepositoryService, exchangeService exchange.Exchange) *CdrResolver {
 	lightningService := lightningnetwork.NewService()
 	notificationService := notification.NewService()
 	ocpiService := ocpi.NewService(os.Getenv("OCPI_RPC_ADDRESS"))
 
-	return NewResolverWithServices(repositoryService, lightningService, notificationService, ocpiService)
+	return NewResolverWithServices(repositoryService, exchangeService, lightningService, notificationService, ocpiService)
 }
 
-func NewResolverWithServices(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork, notificationService notification.Notification, ocpiService ocpi.Ocpi) *CdrResolver {
+func NewResolverWithServices(repositoryService *db.RepositoryService, exchangeService exchange.Exchange, lightningService lightningnetwork.LightningNetwork, notificationService notification.Notification, ocpiService ocpi.Ocpi) *CdrResolver {
 	return &CdrResolver{
 		Repository:          cdr.NewRepository(repositoryService),
 		LightningService:    lightningService,
 		OcpiService:         ocpiService,
 		NotificationService: notificationService,
-		SessionResolver:     session.NewResolverWithServices(repositoryService, lightningService, notificationService, ocpiService),
+		SessionResolver:     session.NewResolverWithServices(repositoryService, exchangeService, lightningService, notificationService, ocpiService),
 	}
 }
