@@ -13,6 +13,7 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
+	"github.com/satimoto/go-lsp/internal/exchange"
 	"github.com/satimoto/go-lsp/internal/monitor"
 	"github.com/satimoto/go-lsp/internal/rest"
 	"github.com/satimoto/go-lsp/internal/rpc"
@@ -52,16 +53,19 @@ func main() {
 	shutdownCtx, cancelFunc := context.WithCancel(context.Background())
 	waitGroup := &sync.WaitGroup{}
 
+	exchangeService := exchange.NewService()
+	exchangeService.Start(shutdownCtx, waitGroup)
+
 	restService := rest.NewRest(database)
 	restService.StartRest(shutdownCtx, waitGroup)
 
-	rpcService := rpc.NewRpc(shutdownCtx, database)
+	rpcService := rpc.NewRpc(shutdownCtx, database, exchangeService)
 	rpcService.StartRpc(waitGroup)
 
-	monitor := monitor.NewMonitor(shutdownCtx, repositoryService)
+	monitor := monitor.NewMonitor(shutdownCtx, repositoryService, exchangeService)
 	monitor.StartMonitor(waitGroup)
 
-	sigtermChan := make(chan os.Signal)
+	sigtermChan := make(chan os.Signal, 1)
 	signal.Notify(sigtermChan, syscall.SIGINT, syscall.SIGTERM)
 
 	<-sigtermChan

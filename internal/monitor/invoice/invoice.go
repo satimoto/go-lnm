@@ -10,6 +10,7 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
 	"github.com/satimoto/go-datastore/pkg/util"
+	"github.com/satimoto/go-lsp/internal/exchange"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/session"
 	"google.golang.org/grpc/codes"
@@ -22,10 +23,10 @@ type InvoiceMonitor struct {
 	SessionResolver  *session.SessionResolver
 }
 
-func NewInvoiceMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) *InvoiceMonitor {
+func NewInvoiceMonitor(repositoryService *db.RepositoryService, exchangeService exchange.Exchange, lightningService lightningnetwork.LightningNetwork) *InvoiceMonitor {
 	return &InvoiceMonitor{
 		LightningService: lightningService,
-		SessionResolver:  session.NewResolver(repositoryService),
+		SessionResolver:  session.NewResolver(repositoryService, exchangeService),
 	}
 }
 

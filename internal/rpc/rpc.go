@@ -11,6 +11,8 @@ import (
 
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
+	"github.com/satimoto/go-lsp/internal/exchange"
+	"github.com/satimoto/go-lsp/internal/rpc/cdr"
 	"github.com/satimoto/go-lsp/internal/rpc/session"
 	"github.com/satimoto/go-ocpi-api/ocpirpc"
 	"google.golang.org/grpc"
@@ -23,17 +25,19 @@ type Rpc interface {
 type RpcService struct {
 	RepositoryService  *db.RepositoryService
 	Server             *grpc.Server
+	RpcCdrResolver     *cdr.RpcCdrResolver
 	RpcSessionResolver *session.RpcSessionResolver
 	ShutdownCtx        context.Context
 }
 
-func NewRpc(shutdownCtx context.Context, d *sql.DB) Rpc {
+func NewRpc(shutdownCtx context.Context, d *sql.DB, exchangeService exchange.Exchange) Rpc {
 	repositoryService := db.NewRepositoryService(d)
 
 	return &RpcService{
 		RepositoryService:  repositoryService,
 		Server:             grpc.NewServer(),
-		RpcSessionResolver: session.NewResolver(repositoryService),
+		RpcCdrResolver:     cdr.NewResolver(repositoryService, exchangeService),
+		RpcSessionResolver: session.NewResolver(repositoryService, exchangeService),
 		ShutdownCtx:        shutdownCtx,
 	}
 }
