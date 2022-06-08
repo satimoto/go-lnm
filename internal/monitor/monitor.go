@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -76,15 +77,11 @@ func (m *Monitor) register() error {
 			return err
 		}
 
-		ip, err := util.GetIPAddress()
-		dbUtil.PanicOnError("LSP011", "Error getting IP address", err)
-
 		if !waitingForSync {
 			log.Print("Registering node")
 			log.Printf("Version: %v", getInfoResponse.Version)
 			log.Printf("CommitHash: %v", getInfoResponse.CommitHash)
 			log.Printf("IdentityPubkey: %v", getInfoResponse.IdentityPubkey)
-			log.Printf("IP Address: %v", ip.String())
 		}
 
 		if getInfoResponse.SyncedToChain {
@@ -92,13 +89,16 @@ func (m *Monitor) register() error {
 			ctx := context.Background()
 			numChannels := int64(getInfoResponse.NumActiveChannels + getInfoResponse.NumInactiveChannels + getInfoResponse.NumPendingChannels)
 			numPeers := int64(getInfoResponse.NumPeers)
-			addr := os.Getenv("LND_P2P_HOST")
+			lightningAddr := util.NewLightingAddr(getInfoResponse.Uris[0])
+			lspAddr := fmt.Sprintf("%s:%s", lightningAddr.Hostname(), os.Getenv("RPC_PORT"))
+
+			log.Printf("LSP Address: %v", lspAddr)
 
 			if n, err := m.NodeRepository.GetNodeByPubkey(ctx, getInfoResponse.IdentityPubkey); err == nil {
 				// Update node
 				updateNodeParams := param.NewUpdateNodeParams(n)
-				updateNodeParams.NodeAddr = addr
-				updateNodeParams.LspAddr = ip.String()
+				updateNodeParams.NodeAddr = lightningAddr.Host
+				updateNodeParams.LspAddr = lspAddr
 				updateNodeParams.Alias = getInfoResponse.Alias
 				updateNodeParams.Color = getInfoResponse.Color
 				updateNodeParams.CommitHash = getInfoResponse.CommitHash
@@ -111,8 +111,8 @@ func (m *Monitor) register() error {
 				// Create node
 				createNodeParams := db.CreateNodeParams{
 					Pubkey:     getInfoResponse.IdentityPubkey,
-					NodeAddr:   addr,
-					LspAddr:    ip.String(),
+					NodeAddr:   lightningAddr.Host,
+					LspAddr:    lspAddr,
 					Alias:      getInfoResponse.Alias,
 					Color:      getInfoResponse.Color,
 					CommitHash: getInfoResponse.CommitHash,

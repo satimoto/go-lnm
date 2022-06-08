@@ -31,7 +31,7 @@ func main() {
 	configPath, err := os.UserHomeDir()
 
 	if err == nil {
-		configPath = configPath + "/"
+		configPath = configPath + "/.lsp/"
 	}
 
 	configPath = configPath + "lsp.conf"
