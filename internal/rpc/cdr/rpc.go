@@ -12,7 +12,7 @@ func (r *RpcCdrResolver) CdrCreated(ctx context.Context, input *ocpirpc.CdrCreat
 		cdr, err := r.CdrResolver.Repository.GetCdrByUid(ctx, input.CdrUid)
 
 		if err != nil {
-			return nil, errors.New("Cdr not found")
+			return nil, errors.New("cdr not found")
 		}
 
 		go r.CdrResolver.ProcessCdr(ctx, cdr)
@@ -20,5 +20,5 @@ func (r *RpcCdrResolver) CdrCreated(ctx context.Context, input *ocpirpc.CdrCreat
 		return &ocpirpc.CdrCreatedResponse{}, nil
 	}
 
-	return nil, errors.New("Missing cdr created request")
+	return nil, errors.New("missing request")
 }

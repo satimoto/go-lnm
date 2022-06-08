@@ -12,7 +12,7 @@ func (r *RpcSessionResolver) SessionCreated(ctx context.Context, input *ocpirpc.
 		session, err := r.SessionResolver.Repository.GetSessionByUid(ctx, input.SessionUid)
 
 		if err != nil {
-			return nil, errors.New("Session not found")
+			return nil, errors.New("session not found")
 		}
 
 		go r.SessionResolver.MonitorSession(ctx, session)
@@ -20,5 +20,5 @@ func (r *RpcSessionResolver) SessionCreated(ctx context.Context, input *ocpirpc.
 		return &ocpirpc.SessionCreatedResponse{}, nil
 	}
 
-	return nil, errors.New("Missing session created request")
+	return nil, errors.New("missing request")
 }

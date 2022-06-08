@@ -44,6 +44,7 @@ func (rs *RestService) Handler() *chi.Mux {
 	router.Use(middleware.Timeout(120 * time.Second))
 	router.Use(chiprometheus.NewMiddleware("lsp"))
 
+	router.Mount("/health", rs.mountHealth())
 	router.Mount("/metrics", promhttp.Handler())
 
 	return router
