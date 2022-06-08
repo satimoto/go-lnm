@@ -10,41 +10,58 @@ import (
 	"sync"
 	"syscall"
 
-	_ "github.com/joho/godotenv/autoload"
+	"github.com/joho/godotenv"
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/exchange"
 	"github.com/satimoto/go-lsp/internal/monitor"
 	"github.com/satimoto/go-lsp/internal/rest"
 	"github.com/satimoto/go-lsp/internal/rpc"
+	"github.com/spf13/cobra"
 )
 
-var (
-	database *sql.DB
+var runCommand = &cobra.Command{
+	Use:   "lsp",
+	Short: "Run the Lightning Service Provider",
+	Long:  "Run the Lightning Service Provider",
+	Run:   startLsp,
+}
 
-	dbHost  = os.Getenv("DB_HOST")
-	dbName  = os.Getenv("DB_NAME")
-	dbPass  = os.Getenv("DB_PASS")
-	dbUser  = os.Getenv("DB_USER")
-	sslMode = util.GetEnv("SSL_MODE", "disable")
-)
+func main() {
+	configPath, err := os.UserHomeDir()
 
-func init() {
+	if err == nil {
+		configPath = configPath + "/"
+	}
+
+	configPath = configPath + "lsp.conf"
+
+	runCommand.Flags().String("config", configPath, "Config")
+	runCommand.Execute()
+}
+
+func startLsp(cmd *cobra.Command, args []string) {
+	configPath, _ := cmd.Flags().GetString("config")
+
+	godotenv.Load(configPath)
+
+	dbHost := os.Getenv("DB_HOST")
+	dbName := os.Getenv("DB_NAME")
+	dbPass := os.Getenv("DB_PASS")
+	dbUser := os.Getenv("DB_USER")
+	sslMode := util.GetEnv("SSL_MODE", "disable")
+
 	if len(dbHost) == 0 || len(dbName) == 0 || len(dbPass) == 0 || len(dbUser) == 0 {
 		log.Fatalf("Database env variables not defined")
 	}
 
 	dataSourceName := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s", dbUser, dbPass, dbHost, dbName, sslMode)
-	d, err := sql.Open("postgres", dataSourceName)
+	database, err := sql.Open("postgres", dataSourceName)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	database = d
-}
-
-func main() {
 	defer database.Close()
 
 	log.Printf("Starting up LSP server")
@@ -76,5 +93,4 @@ func main() {
 	waitGroup.Wait()
 
 	log.Printf("LSP server shut down")
-
 }
