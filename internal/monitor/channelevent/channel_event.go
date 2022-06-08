@@ -75,27 +75,21 @@ func (m *ChannelEventMonitor) handleChannelEvent(channelEvent lnrpc.ChannelEvent
 			Status:      db.ChannelRequestStatusCOMPLETED,
 		}
 
-		channelRequest, err := m.ChannelRequestResolver.Repository.UpdateChannelRequestByChannelPoint(ctx, updateChannelRequestByChannelPointParams)
+		if channelRequest, err := m.ChannelRequestResolver.Repository.UpdateChannelRequestByChannelPoint(ctx, updateChannelRequestByChannelPointParams); err == nil {
+			user, err := m.UserResolver.Repository.GetUser(ctx, channelRequest.UserID)
 
-		if err != nil {
-			dbUtil.LogOnError("LSP047", "Error updating channel request", err)
-			log.Printf("LSP047: Params=%#v", updateChannelRequestByChannelPointParams)
-			return
-		}
+			if err != nil {
+				dbUtil.LogOnError("LSP048", "Error retieving channel request user", err)
+				log.Printf("LSP048: ChannelRequestID=%v, UserID=%v", channelRequest.ID, channelRequest.UserID)
+				return
+			}
 
-		user, err := m.UserResolver.Repository.GetUser(ctx, channelRequest.UserID)
+			err = m.UserResolver.UnrestrictUser(ctx, user)
 
-		if err != nil {
-			dbUtil.LogOnError("LSP048", "Error retieving channel request user", err)
-			log.Printf("LSP048: ChannelRequestID=%v, UserID=%v", channelRequest.ID, channelRequest.UserID)
-			return
-		}
-
-		err = m.UserResolver.UnrestrictUser(ctx, user)
-
-		if err != nil {
-			dbUtil.LogOnError("LSP049", "Error unrestricting user", err)
-			log.Printf("LSP049: ChannelRequestID=%v, UserID=%v", channelRequest.ID, channelRequest.UserID)
+			if err != nil {
+				dbUtil.LogOnError("LSP049", "Error unrestricting user", err)
+				log.Printf("LSP049: ChannelRequestID=%v, UserID=%v", channelRequest.ID, channelRequest.UserID)
+			}
 		}
 
 		break
