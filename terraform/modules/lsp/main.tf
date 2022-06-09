@@ -19,27 +19,27 @@ resource "aws_security_group" "lsp_security_group" {
 }
 
 # -----------------------------------------------------------------------------
-# Create the security group rules (NLB to LSP)
+# Create the LSP security group rules
 # -----------------------------------------------------------------------------
 
-resource "aws_security_group_rule" "lsp_nlb_btc_p2p_ingress_rule" {
+resource "aws_security_group_rule" "lsp_any_btc_p2p_ingress_rule" {
   type              = "ingress"
   from_port         = var.btc_p2p_port
   to_port           = var.btc_p2p_port
   protocol          = "tcp"
-  cidr_blocks       = var.public_subnet_cidrs
+  cidr_blocks       = ["0.0.0.0/0"]
   security_group_id = aws_security_group.lsp_security_group.id
-  description       = "BTC-P2P from NLB to ${var.instance_name}"
+  description       = "BTC-P2P from Any to ${var.instance_name}"
 }
 
-resource "aws_security_group_rule" "lsp_nlb_lnd_p2p_ingress_rule" {
+resource "aws_security_group_rule" "lsp_any_lnd_p2p_ingress_rule" {
   type              = "ingress"
   from_port         = var.lnd_p2p_port
   to_port           = var.lnd_p2p_port
   protocol          = "tcp"
-  cidr_blocks       = var.public_subnet_cidrs
+  cidr_blocks       = ["0.0.0.0/0"]
   security_group_id = aws_security_group.lsp_security_group.id
-  description       = "LND-P2P from NLB to ${var.instance_name}"
+  description       = "LND-P2P from Any to ${var.instance_name}"
 }
 
 resource "aws_security_group_rule" "lsp_nlb_rest_ingress_rule" {
@@ -50,54 +50,6 @@ resource "aws_security_group_rule" "lsp_nlb_rest_ingress_rule" {
   cidr_blocks       = var.public_subnet_cidrs
   security_group_id = aws_security_group.lsp_security_group.id
   description       = "REST from NLB to ${var.instance_name}"
-}
-
-# -----------------------------------------------------------------------------
-# Create the security group rules (SSH: NAT to LSP)
-# -----------------------------------------------------------------------------
-
-resource "aws_security_group_rule" "lsp_nat_ssh_ingress_rule" {
-  type                     = "ingress"
-  from_port                = 22
-  to_port                  = 22
-  protocol                 = "tcp"
-  source_security_group_id = var.nat_security_group_id
-  security_group_id        = aws_security_group.lsp_security_group.id
-  description              = "SSH from NAT to ${var.instance_name}"
-}
-
-resource "aws_security_group_rule" "nat_lsp_ssh_egress_rule" {
-  type                     = "egress"
-  from_port                = 22
-  to_port                  = 22
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.lsp_security_group.id
-  security_group_id        = var.nat_security_group_id
-  description              = "SSH to ${var.instance_name} from NAT"
-}
-
-# -----------------------------------------------------------------------------
-# Create the security group rules (LSP to NAT)
-# -----------------------------------------------------------------------------
-
-resource "aws_security_group_rule" "nat_lsp_btc_p2p_ingress_rule" {
-  type                     = "ingress"
-  from_port                = var.btc_p2p_port
-  to_port                  = var.btc_p2p_port
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.lsp_security_group.id
-  security_group_id        = var.nat_security_group_id
-  description              = "BTC-P2P from ${var.instance_name} to NAT"
-}
-
-resource "aws_security_group_rule" "nat_lsp_lnd_p2p_ingress_rule" {
-  type                     = "ingress"
-  from_port                = var.lnd_p2p_port
-  to_port                  = var.lnd_p2p_port
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.lsp_security_group.id
-  security_group_id        = var.nat_security_group_id
-  description              = "LND-P2P from ${var.instance_name} to NAT"
 }
 
 resource "aws_security_group_rule" "lsp_any_btc_p2p_egress_rule" {
@@ -141,7 +93,51 @@ resource "aws_security_group_rule" "lsp_any_https_egress_rule" {
 }
 
 # -----------------------------------------------------------------------------
-# Create the security group rules (LSP to ECS)
+# Create the NAT security group rules
+# -----------------------------------------------------------------------------
+
+resource "aws_security_group_rule" "lsp_nat_ssh_ingress_rule" {
+  type                     = "ingress"
+  from_port                = 22
+  to_port                  = 22
+  protocol                 = "tcp"
+  source_security_group_id = var.nat_security_group_id
+  security_group_id        = aws_security_group.lsp_security_group.id
+  description              = "SSH from NAT to ${var.instance_name}"
+}
+
+resource "aws_security_group_rule" "nat_lsp_btc_p2p_ingress_rule" {
+  type                     = "ingress"
+  from_port                = var.btc_p2p_port
+  to_port                  = var.btc_p2p_port
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.lsp_security_group.id
+  security_group_id        = var.nat_security_group_id
+  description              = "BTC-P2P from ${var.instance_name} to NAT"
+}
+
+resource "aws_security_group_rule" "nat_lsp_lnd_p2p_ingress_rule" {
+  type                     = "ingress"
+  from_port                = var.lnd_p2p_port
+  to_port                  = var.lnd_p2p_port
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.lsp_security_group.id
+  security_group_id        = var.nat_security_group_id
+  description              = "LND-P2P from ${var.instance_name} to NAT"
+}
+
+resource "aws_security_group_rule" "nat_lsp_ssh_egress_rule" {
+  type                     = "egress"
+  from_port                = 22
+  to_port                  = 22
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.lsp_security_group.id
+  security_group_id        = var.nat_security_group_id
+  description              = "SSH to ${var.instance_name} from NAT"
+}
+
+# -----------------------------------------------------------------------------
+# Create the ECS security group rules
 # -----------------------------------------------------------------------------
 
 resource "aws_security_group_rule" "ecs_lsp_rpc_ingress_rule" {
@@ -165,7 +161,7 @@ resource "aws_security_group_rule" "lsp_ecs_rpc_egress_rule" {
 }
 
 # -----------------------------------------------------------------------------
-# Create the security group rules (LSP to PG)
+# Create the RDS security group rules
 # -----------------------------------------------------------------------------
 
 resource "aws_security_group_rule" "rds_lsp_pg_ingress_rule" {
@@ -320,7 +316,7 @@ resource "aws_route53_record" "service" {
   type    = "A"
 
   alias {
-    name                   = "dualstack.${aws_lb.nlb.dns_name}"
+    name                   = aws_lb.nlb.dns_name
     zone_id                = aws_lb.nlb.zone_id
     evaluate_target_health = false
   }
