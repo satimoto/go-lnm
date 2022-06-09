@@ -22,7 +22,7 @@ type CdrResolver struct {
 
 func NewResolver(repositoryService *db.RepositoryService, exchangeService exchange.Exchange) *CdrResolver {
 	lightningService := lightningnetwork.NewService()
-	notificationService := notification.NewService()
+	notificationService := notification.NewService(os.Getenv("FCM_API_KEY"))
 	ocpiService := ocpi.NewService(os.Getenv("OCPI_RPC_ADDRESS"))
 
 	return NewResolverWithServices(repositoryService, exchangeService, lightningService, notificationService, ocpiService)

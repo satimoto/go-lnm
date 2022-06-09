@@ -562,6 +562,7 @@ DB_USER=satimoto
 DB_PASS=
 DB_HOST=satimoto.cluster-csvwlfckqqfq.eu-central-1.rds.amazonaws.com
 DB_NAME=satimoto
+FCM_API_KEY=
 LND_GRPC_HOST=127.0.0.1:10009
 LND_TLS_CERT=
 LND_MACAROON=

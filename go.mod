@@ -143,6 +143,9 @@ require (
 	github.com/spf13/cobra v1.4.0
 )
 
-require github.com/inconshreveable/mousetrap v1.0.0 // indirect
+require (
+	github.com/appleboy/go-fcm v0.1.5
+	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+)
 
 replace git.schwanenlied.me/yawning/bsaes.git => github.com/Yawning/bsaes v0.0.0-20180720073208-c0276d75487e
