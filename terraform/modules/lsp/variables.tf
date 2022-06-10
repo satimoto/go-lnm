@@ -20,6 +20,10 @@ variable "vpc_id" {
   description = "The ID of the VPC"
 }
 
+variable "private_subnet_cidrs" {
+  description = "The CIDRs of private subnets"
+}
+
 variable "private_subnet_ids" {
   description = "The IDs of private subnets"
 }
@@ -34,10 +38,6 @@ variable "public_subnet_ids" {
 
 variable "security_group_name" {
   description = "The EC2 security group name"
-}
-
-variable "ecs_security_group_id" {
-  description = "The security group ID of the ECS"
 }
 
 variable "nat_security_group_id" {

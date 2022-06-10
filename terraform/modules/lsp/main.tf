@@ -52,6 +52,16 @@ resource "aws_security_group_rule" "lsp_nlb_rest_ingress_rule" {
   description       = "REST from NLB to ${var.instance_name}"
 }
 
+resource "aws_security_group_rule" "lsp_private_rpc_ingress_rule" {
+  type              = "ingress"
+  from_port         = var.rpc_port
+  to_port           = var.rpc_port
+  protocol          = "tcp"
+  cidr_blocks       = var.private_subnet_cidrs
+  security_group_id = aws_security_group.lsp_security_group.id
+  description       = "RPC from Private to ${var.instance_name}"
+}
+
 resource "aws_security_group_rule" "lsp_any_btc_p2p_egress_rule" {
   type              = "egress"
   from_port         = var.btc_p2p_port
@@ -90,6 +100,16 @@ resource "aws_security_group_rule" "lsp_any_https_egress_rule" {
   cidr_blocks       = ["0.0.0.0/0"]
   security_group_id = aws_security_group.lsp_security_group.id
   description       = "HTTPS to Any from ${var.instance_name}"
+}
+
+resource "aws_security_group_rule" "lsp_private_rpc_egress_rule" {
+  type              = "egress"
+  from_port         = 50000
+  to_port           = 50010
+  protocol          = "tcp"
+  cidr_blocks       = var.private_subnet_cidrs
+  security_group_id = aws_security_group.lsp_security_group.id
+  description       = "RPC to Private from ${var.instance_name}"
 }
 
 # -----------------------------------------------------------------------------
@@ -134,30 +154,6 @@ resource "aws_security_group_rule" "nat_lsp_ssh_egress_rule" {
   source_security_group_id = aws_security_group.lsp_security_group.id
   security_group_id        = var.nat_security_group_id
   description              = "SSH to ${var.instance_name} from NAT"
-}
-
-# -----------------------------------------------------------------------------
-# Create the ECS security group rules
-# -----------------------------------------------------------------------------
-
-resource "aws_security_group_rule" "ecs_lsp_rpc_ingress_rule" {
-  type                     = "ingress"
-  from_port                = var.rpc_port
-  to_port                  = var.rpc_port
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.lsp_security_group.id
-  security_group_id        = var.ecs_security_group_id
-  description              = "RPC from ${var.instance_name} to ECS"
-}
-
-resource "aws_security_group_rule" "lsp_ecs_rpc_egress_rule" {
-  type                     = "egress"
-  from_port                = var.rpc_port
-  to_port                  = var.rpc_port
-  protocol                 = "tcp"
-  source_security_group_id = var.ecs_security_group_id
-  security_group_id        = aws_security_group.lsp_security_group.id
-  description              = "RPC to ECS from ${var.instance_name}"
 }
 
 # -----------------------------------------------------------------------------
