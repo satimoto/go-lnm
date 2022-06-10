@@ -69,8 +69,9 @@ func (m *Monitor) StartMonitor(waitGroup *sync.WaitGroup) {
 }
 
 func (m *Monitor) register() error {
-	waitingForSync := false
+	ctx := context.Background()
 	rpcHost := os.Getenv("RPC_HOST")
+	waitingForSync := false
 
 	if len(rpcHost) == 0 {
 		ipAddr, err := util.GetIPAddress()
@@ -79,6 +80,13 @@ func (m *Monitor) register() error {
 	}
 
 	lspAddr := fmt.Sprintf("%s:%s", rpcHost, os.Getenv("RPC_PORT"))
+	ocpiService := ocpi.NewService(os.Getenv("OCPI_RPC_ADDRESS"))
+
+	_, err := ocpiService.TestConnection(ctx, &ocpirpc.TestConnectionRequest{
+		Addr: lspAddr,
+	})
+
+	dbUtil.PanicOnError("LSP047", "Error testing RPC connectivity", err)
 
 	for {
 		getInfoResponse, err := m.LightningService.GetInfo(&lnrpc.GetInfoRequest{})
@@ -97,16 +105,6 @@ func (m *Monitor) register() error {
 		}
 
 		if getInfoResponse.SyncedToChain {
-			// Test RPC connectivity
-			ctx := context.Background()
-			ocpiService := ocpi.NewService(os.Getenv("OCPI_RPC_ADDRESS"))
-
-			_, err := ocpiService.TestConnection(ctx, &ocpirpc.TestConnectionRequest{
-				Addr: lspAddr,
-			})
-
-			dbUtil.PanicOnError("LSP047", "Error testing RPC connectivity", err)
-			
 			// Register node
 			numChannels := int64(getInfoResponse.NumActiveChannels + getInfoResponse.NumInactiveChannels + getInfoResponse.NumPendingChannels)
 			numPeers := int64(getInfoResponse.NumPeers)
