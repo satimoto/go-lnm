@@ -77,11 +77,16 @@ func (m *Monitor) register() error {
 			return err
 		}
 
+		ip, err := util.GetIPAddress()
+		dbUtil.PanicOnError("LSP011", "Error getting IP address", err)
+		lspAddr := fmt.Sprintf("%s:%s", ip.String(), os.Getenv("RPC_PORT"))
+
 		if !waitingForSync {
 			log.Print("Registering node")
 			log.Printf("Version: %v", getInfoResponse.Version)
 			log.Printf("CommitHash: %v", getInfoResponse.CommitHash)
 			log.Printf("IdentityPubkey: %v", getInfoResponse.IdentityPubkey)
+			log.Printf("LSP Address: %v", lspAddr)
 		}
 
 		if getInfoResponse.SyncedToChain {
@@ -90,9 +95,6 @@ func (m *Monitor) register() error {
 			numChannels := int64(getInfoResponse.NumActiveChannels + getInfoResponse.NumInactiveChannels + getInfoResponse.NumPendingChannels)
 			numPeers := int64(getInfoResponse.NumPeers)
 			lightningAddr := util.NewLightingAddr(getInfoResponse.Uris[0])
-			lspAddr := fmt.Sprintf("%s:%s", lightningAddr.Hostname(), os.Getenv("RPC_PORT"))
-
-			log.Printf("LSP Address: %v", lspAddr)
 
 			if n, err := m.NodeRepository.GetNodeByPubkey(ctx, getInfoResponse.IdentityPubkey); err == nil {
 				// Update node

@@ -14,10 +14,9 @@ type NotificationService struct {
 	client *fcm.Client
 }
 
-// TODO: Implement notification service
 func NewService(apiKey string) Notification {
 	client, err := fcm.NewClient(apiKey)
-	util.PanicOnError("LSP011", "Invalid FCM API key", err)
+	util.PanicOnError("LSP034", "Invalid FCM API key", err)
 
 	return &NotificationService{
 		client: client,
