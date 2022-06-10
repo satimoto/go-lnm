@@ -2,10 +2,11 @@ package util
 
 import (
 	"errors"
+	"fmt"
 	"net"
 )
 
-func GetIPAddress() (net.IP, error) {
+func GetIPAddress() (string, error) {
 	if ifaces, err := net.Interfaces(); err == nil {
 		for _, iface := range ifaces {
 			if addrs, err := iface.Addrs(); err == nil {
@@ -13,11 +14,11 @@ func GetIPAddress() (net.IP, error) {
 					switch v := addr.(type) {
 					case *net.IPNet:
 						if !v.IP.IsLoopback() {
-							return v.IP, nil
+							return formatIPAddress(v.IP), nil
 						}
 					case *net.IPAddr:
 						if !v.IP.IsLoopback() {
-							return v.IP, nil
+							return formatIPAddress(v.IP), nil
 						}
 					}
 				}
@@ -25,5 +26,13 @@ func GetIPAddress() (net.IP, error) {
 		}
 	}
 
-	return net.IP{}, errors.New("No IP address found")
+	return "", errors.New("No IP address found")
+}
+
+func formatIPAddress(ip net.IP) string {
+	if ip.To4() == nil {
+		return fmt.Sprintf("[%s]", ip.String())
+	}
+
+	return ip.String()
 }

@@ -23,6 +23,8 @@ import (
 	"github.com/satimoto/go-lsp/internal/monitor/invoice"
 	"github.com/satimoto/go-lsp/internal/monitor/transaction"
 	"github.com/satimoto/go-lsp/internal/util"
+	"github.com/satimoto/go-ocpi-api/ocpirpc"
+	"github.com/satimoto/go-ocpi-api/pkg/ocpi"
 )
 
 type Monitor struct {
@@ -71,15 +73,19 @@ func (m *Monitor) register() error {
 
 	for {
 		getInfoResponse, err := m.LightningService.GetInfo(&lnrpc.GetInfoRequest{})
+		rpcAddr := os.Getenv("RPC_HOST")
 
 		if err != nil {
 			dbUtil.LogOnError("LSP004", "Error getting info", err)
 			return err
 		}
 
-		ip, err := util.GetIPAddress()
-		dbUtil.PanicOnError("LSP011", "Error getting IP address", err)
-		lspAddr := fmt.Sprintf("%s:%s", ip.String(), os.Getenv("RPC_PORT"))
+		if len(rpcAddr) == 0 {
+			rpcAddr, err = util.GetIPAddress()
+			dbUtil.PanicOnError("LSP011", "Error getting IP address", err)
+		}
+
+		lspAddr := fmt.Sprintf("%s:%s", rpcAddr, os.Getenv("RPC_PORT"))
 
 		if !waitingForSync {
 			log.Print("Registering node")
@@ -90,8 +96,17 @@ func (m *Monitor) register() error {
 		}
 
 		if getInfoResponse.SyncedToChain {
-			// Register node
+			// Test RPC connectivity
 			ctx := context.Background()
+			ocpiService := ocpi.NewService(os.Getenv("OCPI_RPC_ADDRESS"))
+
+			_, err := ocpiService.TestConnection(ctx, &ocpirpc.TestConnectionRequest{
+				Addr: lspAddr,
+			})
+
+			dbUtil.PanicOnError("LSP047", "Error testing RPC connectivity", err)
+			
+			// Register node
 			numChannels := int64(getInfoResponse.NumActiveChannels + getInfoResponse.NumInactiveChannels + getInfoResponse.NumPendingChannels)
 			numPeers := int64(getInfoResponse.NumPeers)
 			lightningAddr := util.NewLightingAddr(getInfoResponse.Uris[0])

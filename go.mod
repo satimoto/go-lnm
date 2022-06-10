@@ -7,7 +7,7 @@ require (
 	github.com/lightningnetwork/lnd v0.14.2-beta.rc2
 	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
 	github.com/satimoto/go-datastore v0.1.2-0.20220522194425-65e0a4c20b73
-	github.com/satimoto/go-ocpi-api v0.0.3-0.20220518210005-014a687a70dc
+	github.com/satimoto/go-ocpi-api v0.0.3-0.20220610202547-65b8cf586cbf
 	google.golang.org/grpc v1.46.0
 )
 
