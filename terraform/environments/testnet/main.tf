@@ -73,11 +73,11 @@ module "lsp" {
   region             = var.region
 
   vpc_id                = data.terraform_remote_state.infrastructure.outputs.vpc_id
+  private_subnet_cidrs  = data.terraform_remote_state.infrastructure.outputs.private_subnet_cidrs
   private_subnet_ids    = data.terraform_remote_state.infrastructure.outputs.private_subnet_ids
   public_subnet_cidrs   = data.terraform_remote_state.infrastructure.outputs.public_subnet_cidrs
   public_subnet_ids     = data.terraform_remote_state.infrastructure.outputs.public_subnet_ids
   security_group_name   = "lsp${count.index + 1}-instance"
-  ecs_security_group_id = data.terraform_remote_state.infrastructure.outputs.ecs_security_group_id
   nat_security_group_id = data.terraform_remote_state.infrastructure.outputs.nat_security_group_id
   rds_security_group_id = data.terraform_remote_state.infrastructure.outputs.rds_security_group_id
   instance_number       = count.index
