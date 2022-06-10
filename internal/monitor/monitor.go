@@ -70,22 +70,23 @@ func (m *Monitor) StartMonitor(waitGroup *sync.WaitGroup) {
 
 func (m *Monitor) register() error {
 	waitingForSync := false
+	rpcHost := os.Getenv("RPC_HOST")
+
+	if len(rpcHost) == 0 {
+		ipAddr, err := util.GetIPAddress()
+		dbUtil.PanicOnError("LSP011", "Error getting IP address", err)
+		rpcHost = ipAddr
+	}
+
+	lspAddr := fmt.Sprintf("%s:%s", rpcHost, os.Getenv("RPC_PORT"))
 
 	for {
 		getInfoResponse, err := m.LightningService.GetInfo(&lnrpc.GetInfoRequest{})
-		rpcAddr := os.Getenv("RPC_HOST")
 
 		if err != nil {
 			dbUtil.LogOnError("LSP004", "Error getting info", err)
 			return err
 		}
-
-		if len(rpcAddr) == 0 {
-			rpcAddr, err = util.GetIPAddress()
-			dbUtil.PanicOnError("LSP011", "Error getting IP address", err)
-		}
-
-		lspAddr := fmt.Sprintf("%s:%s", rpcAddr, os.Getenv("RPC_PORT"))
 
 		if !waitingForSync {
 			log.Print("Registering node")
