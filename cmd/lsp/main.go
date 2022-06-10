@@ -83,7 +83,7 @@ func startLsp(cmd *cobra.Command, args []string) {
 	monitor.StartMonitor(waitGroup)
 
 	sigtermChan := make(chan os.Signal, 1)
-	signal.Notify(sigtermChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sigtermChan, os.Kill, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	<-sigtermChan
 
