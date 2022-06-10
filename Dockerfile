@@ -9,5 +9,5 @@ RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags '-s -w' -o /go/bin/a
 FROM scratch
 
 COPY --from=build-env /go/bin/app /go/bin/app
-EXPOSE 9002 50002
+EXPOSE 9002 50000
 CMD [ "/go/bin/app" ]
