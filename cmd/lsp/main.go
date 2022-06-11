@@ -36,7 +36,7 @@ func main() {
 
 	configPath = configPath + "lsp.conf"
 
-	runCommand.Flags().String("config", configPath, "Config")
+	runCommand.Flags().StringP("configfile", "C", configPath, "Config")
 	runCommand.Execute()
 }
 
