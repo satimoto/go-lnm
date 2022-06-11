@@ -28,22 +28,22 @@ var runCommand = &cobra.Command{
 }
 
 func main() {
-	configPath, err := os.UserHomeDir()
+	configFile, err := os.UserHomeDir()
 
 	if err == nil {
-		configPath = configPath + "/.lsp/"
+		configFile = configFile + "/.lsp/"
 	}
 
-	configPath = configPath + "lsp.conf"
+	configFile = configFile + "lsp.conf"
 
-	runCommand.Flags().StringP("configfile", "C", configPath, "Config")
+	runCommand.Flags().StringP("configfile", "C", configFile, "Config")
 	runCommand.Execute()
 }
 
 func startLsp(cmd *cobra.Command, args []string) {
-	configPath, _ := cmd.Flags().GetString("config")
+	configFile, _ := cmd.Flags().GetString("configfile")
 
-	godotenv.Load(configPath)
+	godotenv.Load(configFile)
 
 	dbHost := os.Getenv("DB_HOST")
 	dbName := os.Getenv("DB_NAME")

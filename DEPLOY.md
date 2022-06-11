@@ -214,9 +214,6 @@ shrinkdebuglog=1
 # Set testnet if needed
 testnet=1
 
-# Turn on transaction lookup index
-# txindex=1
-
 # Turn on transaction pruning
 prune=16384
 
@@ -224,14 +221,35 @@ prune=16384
 zmqpubrawblock=tcp://127.0.0.1:28332
 zmqpubrawtx=tcp://127.0.0.1:28333
 ```
-Start bitcoind
+Add a systemd service to manage bitcoind. Edit `/etc/systemd/system/bitcoind.service`
 ```bash
-bitcoind
+[Unit]
+Description=Bitcoin daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+Group=ubuntu
+Type=forking
+ExecStart=/usr/local/bin/bitcoind -daemonwait \
+                                  -pid=/home/ubuntu/.bitcoin/bitcoind.pid \
+                                  -conf=/home/ubuntu/.bitcoin/bitcoin.conf \
+                                  -datadir=/blockchain/.bitcoin/data
+PIDFile=/home/ubuntu/.bitcoin/bitcoind.pid
+KillMode=process
+Restart=on-failure
+SyslogIdentifier=bitcoind
+TimeoutStartSec=infinity
+TimeoutStopSec=600
+
+[Install]
+WantedBy=multi-user.target
 ```
-Open `crontab -e` and add the line
+Start bitcoind and enable running on startup
 ```bash
-# Start Bitcoin Core on boot
-@reboot /usr/local/bin/bitcoind
+sudo systemctl start bitcoind
+sudo systemctl enable bitcoind
 ```
 Add symbolic link to debug log
 ```bash
@@ -458,15 +476,35 @@ routerrpc.penaltyhalflife=6h0m0s
 # Remove channels from graph that have one side that hasn't made announcements
 routing.strictgraphpruning=1
 ```
-## Wait until Bitcoin Core has finished the IBD
+Add a systemd service to manage LND. Edit `/etc/systemd/system/lnd.service`
+```bash
+[Unit]
+Description=LND daemon
+After=bitcoind.service
+Wants=bitcoind.service
+
+[Service]
+User=ubuntu
+Group=ubuntu
+ExecStart=/home/ubuntu/go/bin/lnd --configfile=/home/ubuntu/.lnd/lnd.conf
+ExecStop=/home/ubuntu/go/bin/lncli stop
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target
+```
+**Wait until Bitcoin Core has finished the IBD**
+
+Start lnd and enable running on startup
+```bash
+sudo systemctl start lnd
+sudo systemctl enable lnd
+```
 Create the wallet password
 ```bash
 openssl rand -hex 21 > ~/.lnd/wallet_password
 cat ~/.lnd/wallet_password
-```
-Start LND
-```bash
-nohup /home/ubuntu/go/bin/lnd > /home/ubuntu/.lnd/lnd.log 2> /home/ubuntu/.lnd/err.log &
 ```
 Create the wallet, using above password and no cipher seed password
 ```bash
@@ -475,44 +513,6 @@ lncli create
 Edit the `~/.lnd/lnd.conf` file, uncommenting the line
 ```bash
 wallet-unlock-password-file=/home/ubuntu/.lnd/wallet_password
-```
-Open `crontab -e` and add the line
-```bash
-# Start LND on boot
-@reboot nohup /home/ubuntu/go/bin/lnd > /home/ubuntu/.lnd/lnd.log 2> /home/ubuntu/.lnd/err.log &
-```
-Add symbolic link to debug log
-```bash
-ln -s /home/ubuntu/.lnd/lnd.log ~/lnd.log
-ln -s /home/ubuntu/.lnd/err.log ~/lnd-err.log
-```
-Add log rotation, edit `/etc/logrotate.d/lnd-debug`
-```bash
-/home/ubuntu/.lnd/lnd.log
-{
-        rotate 5
-        copytruncate
-        daily
-        missingok
-        notifempty
-        compress
-        delaycompress
-        sharedscripts
-}
-```
-Add log rotation, edit `/etc/logrotate.d/lnd-error`
-```bash
-/home/ubuntu/.lnd/err.log
-{
-        rotate 5
-        copytruncate
-        daily
-        missingok
-        notifempty
-        compress
-        delaycompress
-        sharedscripts
-}
 ```
 
 ## Install LSP
@@ -571,45 +571,25 @@ REST_PORT=9002
 RPC_PORT=50000
 SHUTDOWN_TIMEOUT=20
 ```
-Start LSP
+Add a systemd service to manage LSP. Edit `/etc/systemd/system/lsp.service`
 ```bash
-nohup /home/ubuntu/go/bin/lsp > /home/ubuntu/.lsp/lsp.log 2> /home/ubuntu/.lsp/err.log &
+[Unit]
+Description=LSP daemon
+After=lnd.service
+Wants=lnd.service
+
+[Service]
+User=ubuntu
+Group=ubuntu
+ExecStart=/home/ubuntu/go/bin/lsp --configfile=/home/ubuntu/.lsp/lsp.conf
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target
 ```
-Open `crontab -e` and add the line
+Start lsp and enable running on startup
 ```bash
-# Start LSP on boot
-@reboot nohup /home/ubuntu/go/bin/lsp > /home/ubuntu/.lsp/lsp.log 2> /home/ubuntu/.lsp/err.log &
-```
-Add symbolic link to debug log
-```bash
-ln -s /home/ubuntu/.lsp/lsp.log ~/lsp.log
-ln -s /home/ubuntu/.lsp/err.log ~/lsp-err.log
-```
-Add log rotation, edit `/etc/logrotate.d/lsp-debug`
-```bash
-/home/ubuntu/.lsp/lsp.log
-{
-        rotate 5
-        copytruncate
-        daily
-        missingok
-        notifempty
-        compress
-        delaycompress
-        sharedscripts
-}
-```
-Add log rotation, edit `/etc/logrotate.d/lsp-error`
-```bash
-/home/ubuntu/.lsp/err.log
-{
-        rotate 5
-        copytruncate
-        daily
-        missingok
-        notifempty
-        compress
-        delaycompress
-        sharedscripts
-}
+sudo systemctl start lsp
+sudo systemctl enable lsp
 ```
