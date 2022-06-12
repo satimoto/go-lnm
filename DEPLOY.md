@@ -171,7 +171,7 @@ Edit the `~/.bitcoin/bitcoin.conf` file, use `getbestblockhash` to get the curre
 assumevalid=
 
 # Run as a daemon mode without an interactive shell
-daemon=1
+# daemon=1
 
 # Set the data directory to the storage directory
 datadir=/blockchain/.bitcoin/data
@@ -209,7 +209,8 @@ rpcauth=
 server=1
 
 # Reduce the log file size on restarts
-shrinkdebuglog=1
+# shrinkdebuglog=1
+printtoconsole=1
 
 # Set testnet if needed
 testnet=1
@@ -251,30 +252,9 @@ Start bitcoind and enable running on startup
 sudo systemctl start bitcoind
 sudo systemctl enable bitcoind
 ```
-Add symbolic link to debug log
+Edit `~/.profile` and add the line
 ```bash
-# Mainnet:
-ln -s /blockchain/.bitcoin/data/debug.log ~/bitcoind.log
-
-# Or Testnet:
-ln -s /blockchain/.bitcoin/data/testnet3/debug.log ~/bitcoind.log
-```
-Add log rotation, edit `/etc/logrotate.d/bitcoin-debug`
-```bash
-# Mainnet:
-/blockchain/.bitcoin/data/debug.log
-# Testnet:
-/blockchain/.bitcoin/data/testnet3/debug.log
-{
-        rotate 5
-        copytruncate
-        daily
-        missingok
-        notifempty
-        compress
-        delaycompress
-        sharedscripts
-}
+alias logbitcoind="journalctl -fu bitcoind"
 ```
 If IBD is failing or bitcoind stops, check the kernal logs
 ```bash
@@ -514,6 +494,10 @@ Edit the `~/.lnd/lnd.conf` file, uncommenting the line
 ```bash
 wallet-unlock-password-file=/home/ubuntu/.lnd/wallet_password
 ```
+Edit `~/.profile` and add the line
+```bash
+alias loglnd="journalctl -fu lnd"
+```
 
 ## Install LSP
 Edit file `~/.gitconfig`
@@ -592,4 +576,9 @@ Start lsp and enable running on startup
 ```bash
 sudo systemctl start lsp
 sudo systemctl enable lsp
+```
+Edit `~/.profile` and add the line
+```bash
+alias loglsp="journalctl -fu lsp"
+alias logall="journalctl -fu bitcoind -u lnd -u lsp"
 ```
