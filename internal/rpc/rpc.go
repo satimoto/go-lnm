@@ -11,7 +11,7 @@ import (
 
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
-	"github.com/satimoto/go-lsp/internal/exchange"
+	"github.com/satimoto/go-lsp/internal/ferp"
 	"github.com/satimoto/go-lsp/internal/rpc/cdr"
 	"github.com/satimoto/go-lsp/internal/rpc/rpc"
 	"github.com/satimoto/go-lsp/internal/rpc/session"
@@ -32,15 +32,15 @@ type RpcService struct {
 	ShutdownCtx        context.Context
 }
 
-func NewRpc(shutdownCtx context.Context, d *sql.DB, exchangeService exchange.Exchange) Rpc {
+func NewRpc(shutdownCtx context.Context, d *sql.DB, ferpService ferp.Ferp) Rpc {
 	repositoryService := db.NewRepositoryService(d)
 
 	return &RpcService{
 		RepositoryService:  repositoryService,
 		Server:             grpc.NewServer(),
-		RpcCdrResolver:     cdr.NewResolver(repositoryService, exchangeService),
+		RpcCdrResolver:     cdr.NewResolver(repositoryService, ferpService),
 		RpcResolver:        rpc.NewResolver(repositoryService),
-		RpcSessionResolver: session.NewResolver(repositoryService, exchangeService),
+		RpcSessionResolver: session.NewResolver(repositoryService, ferpService),
 		ShutdownCtx:        shutdownCtx,
 	}
 }

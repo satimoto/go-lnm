@@ -13,7 +13,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
-	"github.com/satimoto/go-lsp/internal/exchange"
+	"github.com/satimoto/go-lsp/internal/ferp"
 	"github.com/satimoto/go-lsp/internal/monitor"
 	"github.com/satimoto/go-lsp/internal/rest"
 	"github.com/satimoto/go-lsp/internal/rpc"
@@ -70,16 +70,16 @@ func startLsp(cmd *cobra.Command, args []string) {
 	shutdownCtx, cancelFunc := context.WithCancel(context.Background())
 	waitGroup := &sync.WaitGroup{}
 
-	exchangeService := exchange.NewService()
-	exchangeService.Start(shutdownCtx, waitGroup)
+	ferpService := ferp.NewService(os.Getenv("FERP_RPC_ADDRESS"))
+	ferpService.Start(shutdownCtx, waitGroup)
 
 	restService := rest.NewRest(database)
 	restService.StartRest(shutdownCtx, waitGroup)
 
-	rpcService := rpc.NewRpc(shutdownCtx, database, exchangeService)
+	rpcService := rpc.NewRpc(shutdownCtx, database, ferpService)
 	rpcService.StartRpc(waitGroup)
 
-	monitor := monitor.NewMonitor(shutdownCtx, repositoryService, exchangeService)
+	monitor := monitor.NewMonitor(shutdownCtx, repositoryService, ferpService)
 	monitor.StartMonitor(waitGroup)
 
 	sigtermChan := make(chan os.Signal, 1)

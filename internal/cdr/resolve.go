@@ -5,7 +5,7 @@ import (
 
 	"github.com/satimoto/go-datastore/pkg/cdr"
 	"github.com/satimoto/go-datastore/pkg/db"
-	"github.com/satimoto/go-lsp/internal/exchange"
+	"github.com/satimoto/go-lsp/internal/ferp"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/notification"
 	"github.com/satimoto/go-lsp/internal/session"
@@ -20,20 +20,26 @@ type CdrResolver struct {
 	SessionResolver     *session.SessionResolver
 }
 
-func NewResolver(repositoryService *db.RepositoryService, exchangeService exchange.Exchange) *CdrResolver {
+func NewResolver(repositoryService *db.RepositoryService) *CdrResolver {
+	ferpService := ferp.NewService(os.Getenv("FERP_RPC_ADDRESS"))
+
+	return NewResolverWithFerp(repositoryService, ferpService)
+}
+
+func NewResolverWithFerp(repositoryService *db.RepositoryService, ferpService ferp.Ferp) *CdrResolver {
 	lightningService := lightningnetwork.NewService()
 	notificationService := notification.NewService(os.Getenv("FCM_API_KEY"))
 	ocpiService := ocpi.NewService(os.Getenv("OCPI_RPC_ADDRESS"))
 
-	return NewResolverWithServices(repositoryService, exchangeService, lightningService, notificationService, ocpiService)
+	return NewResolverWithServices(repositoryService, ferpService, lightningService, notificationService, ocpiService)
 }
 
-func NewResolverWithServices(repositoryService *db.RepositoryService, exchangeService exchange.Exchange, lightningService lightningnetwork.LightningNetwork, notificationService notification.Notification, ocpiService ocpi.Ocpi) *CdrResolver {
+func NewResolverWithServices(repositoryService *db.RepositoryService, ferpService ferp.Ferp, lightningService lightningnetwork.LightningNetwork, notificationService notification.Notification, ocpiService ocpi.Ocpi) *CdrResolver {
 	return &CdrResolver{
 		Repository:          cdr.NewRepository(repositoryService),
 		LightningService:    lightningService,
 		OcpiService:         ocpiService,
 		NotificationService: notificationService,
-		SessionResolver:     session.NewResolverWithServices(repositoryService, exchangeService, lightningService, notificationService, ocpiService),
+		SessionResolver:     session.NewResolverWithServices(repositoryService, ferpService, lightningService, notificationService, ocpiService),
 	}
 }

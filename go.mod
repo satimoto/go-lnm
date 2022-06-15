@@ -8,7 +8,7 @@ require (
 	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
 	github.com/satimoto/go-datastore v0.1.2-0.20220610211327-db98d4d9160b
 	github.com/satimoto/go-ocpi-api v0.0.3-0.20220610202547-65b8cf586cbf
-	google.golang.org/grpc v1.46.0
+	google.golang.org/grpc v1.47.0
 )
 
 require (
@@ -40,7 +40,7 @@ require (
 	github.com/fergusstrange/embedded-postgres v1.10.0 // indirect
 	github.com/form3tech-oss/jwt-go v3.2.3+incompatible // indirect
 	github.com/go-chi/chi v1.5.4
-	github.com/go-chi/chi/v5 v5.0.4
+	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-chi/render v1.0.1
 	github.com/go-errors/errors v1.0.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -86,7 +86,7 @@ require (
 	github.com/paulmach/orb v0.5.1-0.20220406232948-69ee7e81c712 // indirect
 	github.com/pierrec/lz4/v4 v4.1.8 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/client_golang v1.12.1
+	github.com/prometheus/client_golang v1.12.2
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
@@ -146,6 +146,7 @@ require (
 require (
 	github.com/appleboy/go-fcm v0.1.5
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/satimoto/go-ferp v0.0.0-20220614121737-7a29212db779
 )
 
 replace git.schwanenlied.me/yawning/bsaes.git => github.com/Yawning/bsaes v0.0.0-20180720073208-c0276d75487e
