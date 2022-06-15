@@ -111,7 +111,7 @@ func (r *SessionResolver) MonitorSession(ctx context.Context, session db.Session
 				if totalAmount > invoicedAmount {
 					invoiceAmount, invoiceCommission, invoiceTax := CalculateCommission(totalAmount-invoicedAmount, user.CommissionPercent, taxPercent)
 
-					r.IssueLightningInvoice(ctx, session, invoiceAmount, invoiceCommission, invoiceTax)
+					r.IssueLightningInvoice(ctx, user, session, invoiceAmount, invoiceCommission, invoiceTax)
 				}
 			}
 		}

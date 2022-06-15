@@ -64,7 +64,7 @@ func (r *CdrResolver) ProcessCdr(ctx context.Context, cdr db.Cdr) error {
 	if totalAmount > invoicedAmount {
 		invoiceAmount, invoiceCommission, invoiceTax := session.CalculateCommission(totalAmount-invoicedAmount, user.CommissionPercent, taxPercent)
 
-		r.SessionResolver.IssueLightningInvoice(ctx, sess, invoiceAmount, invoiceCommission, invoiceTax)
+		r.SessionResolver.IssueLightningInvoice(ctx, user, sess, invoiceAmount, invoiceCommission, invoiceTax)
 	}
 
 	return nil

@@ -11,8 +11,8 @@ import (
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 )
 
-func (r *SessionResolver) IssueLightningInvoice(ctx context.Context, session db.Session, invoiceAmount float64, commissionAmount float64, taxAmount float64) {
-	currencyRate, err := r.ExchangeService.GetRate(session.Currency)
+func (r *SessionResolver) IssueLightningInvoice(ctx context.Context, user db.User, session db.Session, invoiceAmount float64, commissionAmount float64, taxAmount float64) {
+	currencyRate, err := r.FerpService.GetRate(session.Currency)
 
 	if err != nil {
 		util.LogOnError("LSP054", "Error retrieving exchange rate", err)
@@ -62,5 +62,5 @@ func (r *SessionResolver) IssueLightningInvoice(ctx context.Context, session db.
 	}
 
 	// TODO: Send user device notification
-	r.SendNotification(session, sessionInvoice)
+	r.SendNotification(user, session, sessionInvoice)
 }

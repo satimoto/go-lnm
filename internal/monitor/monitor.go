@@ -14,7 +14,7 @@ import (
 	"github.com/satimoto/go-datastore/pkg/node"
 	"github.com/satimoto/go-datastore/pkg/param"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
-	"github.com/satimoto/go-lsp/internal/exchange"
+	"github.com/satimoto/go-lsp/internal/ferp"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/monitor/channelevent"
 	"github.com/satimoto/go-lsp/internal/monitor/custommessage"
@@ -39,7 +39,7 @@ type Monitor struct {
 	TransactionMonitor   *transaction.TransactionMonitor
 }
 
-func NewMonitor(shutdownCtx context.Context, repositoryService *db.RepositoryService, exchangeService exchange.Exchange) *Monitor {
+func NewMonitor(shutdownCtx context.Context, repositoryService *db.RepositoryService, ferpService ferp.Ferp) *Monitor {
 	lightningService := lightningnetwork.NewService()
 	customMessageMonitor := custommessage.NewCustomMessageMonitor(repositoryService, lightningService)
 
@@ -51,7 +51,7 @@ func NewMonitor(shutdownCtx context.Context, repositoryService *db.RepositorySer
 		CustomMessageMonitor: customMessageMonitor,
 		HtlcMonitor:          htlc.NewHtlcMonitor(repositoryService, lightningService, customMessageMonitor),
 		HtlcEventMonitor:     htlcevent.NewHtlcEventMonitor(repositoryService, lightningService),
-		InvoiceMonitor:       invoice.NewInvoiceMonitor(repositoryService, exchangeService, lightningService),
+		InvoiceMonitor:       invoice.NewInvoiceMonitor(repositoryService, ferpService, lightningService),
 		TransactionMonitor:   transaction.NewTransactionMonitor(repositoryService, lightningService),
 	}
 }
