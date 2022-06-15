@@ -510,6 +510,7 @@ Edit file `~/.gitconfig`
 Edit file `~/.git-credentials`
 ```bash
 https://<PERSONAL_ACCESS_TOKEN>:@github.com/satimoto/go-datastore
+https://<PERSONAL_ACCESS_TOKEN>:@github.com/satimoto/go-ferp
 https://<PERSONAL_ACCESS_TOKEN>:@github.com/satimoto/go-lsp
 https://<PERSONAL_ACCESS_TOKEN>:@github.com/satimoto/go-ocpi-api
 ```
