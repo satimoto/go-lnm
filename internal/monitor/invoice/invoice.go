@@ -26,7 +26,7 @@ type InvoiceMonitor struct {
 func NewInvoiceMonitor(repositoryService *db.RepositoryService, ferpService ferp.Ferp, lightningService lightningnetwork.LightningNetwork) *InvoiceMonitor {
 	return &InvoiceMonitor{
 		LightningService: lightningService,
-		SessionResolver:  session.NewResolverWithFerp(repositoryService, ferpService),
+		SessionResolver:  session.NewResolverWithFerpService(repositoryService, ferpService),
 	}
 }
 

@@ -23,10 +23,10 @@ type CdrResolver struct {
 func NewResolver(repositoryService *db.RepositoryService) *CdrResolver {
 	ferpService := ferp.NewService(os.Getenv("FERP_RPC_ADDRESS"))
 
-	return NewResolverWithFerp(repositoryService, ferpService)
+	return NewResolverWithFerpService(repositoryService, ferpService)
 }
 
-func NewResolverWithFerp(repositoryService *db.RepositoryService, ferpService ferp.Ferp) *CdrResolver {
+func NewResolverWithFerpService(repositoryService *db.RepositoryService, ferpService ferp.Ferp) *CdrResolver {
 	lightningService := lightningnetwork.NewService()
 	notificationService := notification.NewService(os.Getenv("FCM_API_KEY"))
 	ocpiService := ocpi.NewService(os.Getenv("OCPI_RPC_ADDRESS"))
