@@ -12,6 +12,6 @@ type RpcSessionResolver struct {
 
 func NewResolver(repositoryService *db.RepositoryService, ferpService ferp.Ferp) *RpcSessionResolver {
 	return &RpcSessionResolver{
-		SessionResolver: session.NewResolverWithFerp(repositoryService, ferpService),
+		SessionResolver: session.NewResolverWithFerpService(repositoryService, ferpService),
 	}
 }

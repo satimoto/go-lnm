@@ -13,7 +13,7 @@ type RpcCdrResolver struct {
 
 func NewResolver(repositoryService *db.RepositoryService, ferpService ferp.Ferp) *RpcCdrResolver {
 	return &RpcCdrResolver{
-		CdrResolver: cdr.NewResolverWithFerp(repositoryService, ferpService),
+		CdrResolver: cdr.NewResolverWithFerpService(repositoryService, ferpService),
 		FerpService: ferpService,
 	}
 }
