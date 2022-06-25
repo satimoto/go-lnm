@@ -68,7 +68,7 @@ func startLsp(cmd *cobra.Command, args []string) {
 	repositoryService := db.NewRepositoryService(database)
 
 	shutdownCtx, cancelFunc := context.WithCancel(context.Background())
-	waitGroup := &sync.WaitGroup{}
+	waitGroup := &sync.WaitGroup{}	
 
 	ferpService := ferp.NewService(os.Getenv("FERP_RPC_ADDRESS"))
 	ferpService.Start(shutdownCtx, waitGroup)

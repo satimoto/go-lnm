@@ -70,6 +70,7 @@ module "lsp" {
   count              = var.lsp_count
   source             = "../../modules/lsp"
   availability_zones = var.availability_zones
+  deployment_stage   = var.deployment_stage
   region             = var.region
 
   vpc_id                = data.terraform_remote_state.infrastructure.outputs.vpc_id

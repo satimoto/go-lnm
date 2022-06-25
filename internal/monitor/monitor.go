@@ -14,8 +14,10 @@ import (
 	"github.com/satimoto/go-datastore/pkg/node"
 	"github.com/satimoto/go-datastore/pkg/param"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
+	"github.com/satimoto/go-lsp/internal/backup"
 	"github.com/satimoto/go-lsp/internal/ferp"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	"github.com/satimoto/go-lsp/internal/monitor/channelbackup"
 	"github.com/satimoto/go-lsp/internal/monitor/channelevent"
 	"github.com/satimoto/go-lsp/internal/monitor/custommessage"
 	"github.com/satimoto/go-lsp/internal/monitor/htlc"
@@ -31,6 +33,7 @@ type Monitor struct {
 	LightningService     lightningnetwork.LightningNetwork
 	ShutdownCtx          context.Context
 	NodeRepository       node.NodeRepository
+	ChannelBackupMonitor *channelbackup.ChannelBackupMonitor
 	ChannelEventMonitor  *channelevent.ChannelEventMonitor
 	CustomMessageMonitor *custommessage.CustomMessageMonitor
 	HtlcMonitor          *htlc.HtlcMonitor
@@ -40,6 +43,7 @@ type Monitor struct {
 }
 
 func NewMonitor(shutdownCtx context.Context, repositoryService *db.RepositoryService, ferpService ferp.Ferp) *Monitor {
+	backupService := backup.NewService()
 	lightningService := lightningnetwork.NewService()
 	customMessageMonitor := custommessage.NewCustomMessageMonitor(repositoryService, lightningService)
 
@@ -47,6 +51,7 @@ func NewMonitor(shutdownCtx context.Context, repositoryService *db.RepositorySer
 		LightningService:     lightningService,
 		ShutdownCtx:          shutdownCtx,
 		NodeRepository:       node.NewRepository(repositoryService),
+		ChannelBackupMonitor: channelbackup.NewChannelBackupMonitor(repositoryService, backupService, lightningService),
 		ChannelEventMonitor:  channelevent.NewChannelEventMonitor(repositoryService, lightningService),
 		CustomMessageMonitor: customMessageMonitor,
 		HtlcMonitor:          htlc.NewHtlcMonitor(repositoryService, lightningService, customMessageMonitor),
@@ -60,6 +65,7 @@ func (m *Monitor) StartMonitor(waitGroup *sync.WaitGroup) {
 	err := m.register()
 	dbUtil.PanicOnError("LSP010", "Error registering LSP", err)
 
+	m.ChannelBackupMonitor.StartMonitor(m.ShutdownCtx, waitGroup)
 	m.ChannelEventMonitor.StartMonitor(m.ShutdownCtx, waitGroup)
 	m.CustomMessageMonitor.StartMonitor(m.ShutdownCtx, waitGroup)
 	m.HtlcMonitor.StartMonitor(m.ShutdownCtx, waitGroup)

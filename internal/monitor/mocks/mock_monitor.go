@@ -5,8 +5,10 @@ import (
 
 	mocks "github.com/satimoto/go-datastore/pkg/db/mocks"
 	node "github.com/satimoto/go-datastore/pkg/node/mocks"
+	backup "github.com/satimoto/go-lsp/internal/backup/mocks"
 	lightningnetwork "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
 	"github.com/satimoto/go-lsp/internal/monitor"
+	channelbackup "github.com/satimoto/go-lsp/internal/monitor/channelbackup/mocks"
 	channelevent "github.com/satimoto/go-lsp/internal/monitor/channelevent/mocks"
 	custommessage "github.com/satimoto/go-lsp/internal/monitor/custommessage/mocks"
 	htlc "github.com/satimoto/go-lsp/internal/monitor/htlc/mocks"
@@ -18,12 +20,14 @@ import (
 )
 
 func NewMonitor(shutdownCtx context.Context, repositoryService *mocks.MockRepositoryService, lightningService *lightningnetwork.MockLightningNetworkService, notificationService *notification.MockNotificationService, ocpiService *ocpi.MockOcpiService) *monitor.Monitor {
+	backupService := backup.NewService()
 	customMessageMonitor := custommessage.NewCustomMessageMonitor(repositoryService, lightningService)
 
 	return &monitor.Monitor{
 		LightningService:     lightningService,
 		ShutdownCtx:          shutdownCtx,
 		NodeRepository:       node.NewRepository(repositoryService),
+		ChannelBackupMonitor: channelbackup.NewChannelBackupMonitor(repositoryService, backupService, lightningService),
 		ChannelEventMonitor:  channelevent.NewChannelEventMonitor(repositoryService, lightningService),
 		CustomMessageMonitor: customMessageMonitor,
 		HtlcMonitor:          htlc.NewHtlcMonitor(repositoryService, lightningService, customMessageMonitor),

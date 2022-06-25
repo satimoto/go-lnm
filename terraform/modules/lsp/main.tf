@@ -317,3 +317,50 @@ resource "aws_route53_record" "service" {
     evaluate_target_health = false
   }
 }
+
+# -----------------------------------------------------------------------------
+# Create the backup bucket
+# -----------------------------------------------------------------------------
+
+resource "aws_s3_bucket" "backup_bucket" {
+  bucket = "satimoto-${local.lower_instance_name}-${var.deployment_stage}-channel-backup"
+}
+
+resource "aws_s3_bucket_acl" "backup_bucket_acl" {
+  bucket = aws_s3_bucket.backup_bucket.id
+  acl    = "private"
+}
+
+resource "aws_s3_bucket_public_access_block" "backup_bucket_public_access_block" {
+  bucket = aws_s3_bucket.backup_bucket.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# -----------------------------------------------------------------------------
+# Create the backup IAM user
+# -----------------------------------------------------------------------------
+
+resource "aws_iam_user" "backup_user" {
+  name = "${local.lower_instance_name}-backup-user"
+}
+
+# -----------------------------------------------------------------------------
+# Attach backup user policy
+# -----------------------------------------------------------------------------
+
+resource "aws_iam_policy" "backup_s3_user_policy" {
+  name = "${local.lower_instance_name}-backup-s3-user-policy"
+
+  policy = templatefile("../../resources/backup-user-policy.json", {
+    bucket_name     = "satimoto-${local.lower_instance_name}-${var.deployment_stage}-channel-backup"
+  })
+}
+
+resource "aws_iam_user_policy_attachment" "backup_s3_user_policy_attachment" {
+  user       = aws_iam_user.backup_user.name
+  policy_arn = aws_iam_policy.backup_s3_user_policy.arn
+}
