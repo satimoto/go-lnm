@@ -8,6 +8,7 @@ Save PEM file to your local .ssh directory
 ## Terraform
 Run terraform apply
 ```bash
+terraform init
 terraform apply
 ```
 
@@ -16,20 +17,21 @@ Change permissions to restrict access
 ```bash
 chmod 0600 lspX.pem
 ```
-
 Add the pem identity to the ssh-agent
 ```bash
 ssh-add -K lspX.pem
 ```
-
 SSH into the NAT
 ```bash
 ssh -A satimoto.nat
 ```
-
+Add LSP into hosts, edit `/etc/hosts` and add a line:
+```bash
+XXX.XXX.XXX.XXX satimoto.lspX
+```
 SSH into the LSP
 ```bash
-ssh satimoto.lsp1
+ssh ubuntu@satimoto.lspX
 ```
 
 ## Update installed packages
@@ -142,7 +144,7 @@ sudo apt install git build-essential libtool autotools-dev automake pkg-config l
 ```
 Clone the bitcoin repository
 ```bash
-git clone -b v22.0 https://github.com/bitcoin/bitcoin.git
+git clone -b v23.0 https://github.com/bitcoin/bitcoin.git
 cd bitcoin/
 ```
 Configure build
@@ -169,9 +171,6 @@ Edit the `~/.bitcoin/bitcoin.conf` file, use `getbestblockhash` to get the curre
 ```bash
 # Set the best block hash here:
 assumevalid=
-
-# Run as a daemon mode without an interactive shell
-# daemon=1
 
 # Set the data directory to the storage directory
 datadir=/blockchain/.bitcoin/data
@@ -208,8 +207,7 @@ rpcauth=
 # Turn on the RPC server
 server=1
 
-# Reduce the log file size on restarts
-# shrinkdebuglog=1
+# Print log to console
 printtoconsole=1
 
 # Set testnet if needed
@@ -264,6 +262,7 @@ tail -n 100 /var/log/kern.log
 ## Install Go
 Download Go
 ```bash
+cd 
 wget https://golang.org/dl/go1.17.5.linux-amd64.tar.gz
 ```
 Extract it
@@ -302,7 +301,7 @@ cd lnd/
 ```
 Checkout branch
 ```bash
-git checkout v0.14.3-beta
+git checkout v0.15.0-beta
 ```
 Make lnd
 ```bash
@@ -381,6 +380,12 @@ tlsextradomain=lsp1.satimoto.com
 
 # The full path to a file (or pipe/device) that contains the password for unlocking the wallet
 # wallet-unlock-password-file=/home/ubuntu/.lnd/wallet_password
+
+# Reject requests with non-zero push amounts
+rejectpush=true
+
+# Hold HTLCs until there is an interceptor
+requireinterceptor=true
 
 [Bitcoin]
 # Turn on Bitcoin mode
@@ -539,10 +544,15 @@ cat ~/.lnd/data/chain/bitcoin/testnet/admin.macaroon | base64 --wrap=0
 ```
 Create lsp data and config directory
 ```bash
-mkdir ~/.lsp
+mkdir -p ~/.lsp/backups
 ```
 Edit the `~/.lsp/lsp.conf` file
 ```bash
+BACKUP_AWS_REGION=eu-central-1
+BACKUP_AWS_ACCESS_KEY_ID=
+BACKUP_AWS_SECRET_ACCESS_KEY=
+BACKUP_S3_BUCKET=satimoto-lspX-testnet-channel-backup
+BACKUP_FILE_PATH=/home/ubuntu/.lsp/backups
 DB_USER=satimoto
 DB_PASS=
 DB_HOST=satimoto.cluster-csvwlfckqqfq.eu-central-1.rds.amazonaws.com
