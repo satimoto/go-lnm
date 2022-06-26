@@ -12,23 +12,31 @@ import (
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
+	"github.com/satimoto/go-datastore/pkg/routingevent"
 	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/channelrequest"
+	"github.com/satimoto/go-lsp/internal/ferp"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type HtlcEventMonitor struct {
+	FerpService            ferp.Ferp
 	LightningService       lightningnetwork.LightningNetwork
 	HtlcEventsClient       routerrpc.Router_SubscribeHtlcEventsClient
 	ChannelRequestResolver *channelrequest.ChannelRequestResolver
+	RoutingEventRepository routingevent.RoutingEventRepository
+	accountingCurrency     string
 }
 
-func NewHtlcEventMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) *HtlcEventMonitor {
+func NewHtlcEventMonitor(repositoryService *db.RepositoryService, ferpService ferp.Ferp, lightningService lightningnetwork.LightningNetwork) *HtlcEventMonitor {
 	return &HtlcEventMonitor{
+		FerpService:            ferpService,
 		LightningService:       lightningService,
 		ChannelRequestResolver: channelrequest.NewResolver(repositoryService),
+		RoutingEventRepository: routingevent.NewRepository(repositoryService),
+		accountingCurrency:     util.GetEnv("ACCOUNTING_CURRENCY", "EUR"),
 	}
 }
 
@@ -44,12 +52,13 @@ func (m *HtlcEventMonitor) handleHtlcEvent(htlcEvent routerrpc.HtlcEvent) {
 	log.Printf("HTLC Event: %v", htlcEvent.EventType)
 
 	/** HTLC Event received.
-	 *  Check that the event type is a Forward event and that is is successful.
+	 *  Check that the event type is a Forward event and that it is successful.
 	 *  Find the Channel Request HTLC by the circuit key params.
 	 *  If the Channel Request HTLC exists, set it as settled.
 	 */
 
 	if htlcEvent.EventType == routerrpc.HtlcEvent_FORWARD {
+		ctx := context.Background()
 		successEvent := htlcEvent.GetSettleEvent()
 		forwardEvent := htlcEvent.GetForwardEvent()
 
@@ -57,10 +66,41 @@ func (m *HtlcEventMonitor) handleHtlcEvent(htlcEvent routerrpc.HtlcEvent) {
 			log.Printf("Forward HTLC")
 			log.Printf("IncomingAmtMsat: %v", forwardEvent.Info.IncomingAmtMsat)
 			log.Printf("OutgoingAmtMsat: %v", forwardEvent.Info.OutgoingAmtMsat)
+
+			currencyRate, err := m.FerpService.GetRate(m.accountingCurrency)
+
+			if err != nil {
+				util.LogOnError("LSP071", "Error getting FERP rate", err)
+				log.Printf("LSP071: Currency=%v", m.accountingCurrency)
+			}
+
+			feeMsat := int64(forwardEvent.Info.IncomingAmtMsat) - int64(forwardEvent.Info.OutgoingAmtMsat)
+			createRoutingEventParams := db.CreateRoutingEventParams{
+				Currency:         m.accountingCurrency,
+				CurrencyRate:     currencyRate.Rate,
+				CurrencyRateMsat: currencyRate.RateMsat,
+				IncomingChanID:   int64(htlcEvent.IncomingChannelId),
+				IncomingHtlcID:   int64(htlcEvent.IncomingHtlcId),
+				IncomingFiat:     float64(forwardEvent.Info.IncomingAmtMsat) / float64(currencyRate.RateMsat),
+				IncomingMsat:     int64(forwardEvent.Info.IncomingAmtMsat),
+				OutgoingChanID:   int64(htlcEvent.OutgoingChannelId),
+				OutgoingHtlcID:   int64(htlcEvent.IncomingHtlcId),
+				OutgoingFiat:     float64(forwardEvent.Info.OutgoingAmtMsat) / float64(currencyRate.RateMsat),
+				OutgoingMsat:     int64(forwardEvent.Info.OutgoingAmtMsat),
+				FeeFiat:          float64(feeMsat) / float64(currencyRate.RateMsat),
+				FeeMsat:          feeMsat,
+				LastUpdated:      time.Unix(0, int64(htlcEvent.TimestampNs)),
+			}
+
+			_, err = m.RoutingEventRepository.CreateRoutingEvent(ctx, createRoutingEventParams)
+
+			if err != nil {
+				util.LogOnError("LSP072", "Error creating routing event", err)
+				log.Printf("LSP072: Params=%#v", createRoutingEventParams)
+			}
 		}
 
 		if successEvent != nil {
-			ctx := context.Background()
 			getChannelRequestHtlcByCircuitKeyParams := db.GetChannelRequestHtlcByCircuitKeyParams{
 				ChanID: int64(htlcEvent.IncomingChannelId),
 				HtlcID: int64(htlcEvent.IncomingHtlcId),

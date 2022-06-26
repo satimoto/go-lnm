@@ -548,6 +548,7 @@ mkdir -p ~/.lsp/backups
 ```
 Edit the `~/.lsp/lsp.conf` file
 ```bash
+ACCOUNTING_CURRENCY=EUR
 BACKUP_AWS_REGION=eu-central-1
 BACKUP_AWS_ACCESS_KEY_ID=
 BACKUP_AWS_SECRET_ACCESS_KEY=

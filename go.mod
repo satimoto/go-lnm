@@ -6,7 +6,7 @@ require (
 	github.com/joho/godotenv v1.4.0
 	github.com/lightningnetwork/lnd v0.15.0-beta
 	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
-	github.com/satimoto/go-datastore v0.1.2-0.20220610211327-db98d4d9160b
+	github.com/satimoto/go-datastore v0.1.2-0.20220626215546-beca4f679e99
 	github.com/satimoto/go-ocpi-api v0.0.3-0.20220610202547-65b8cf586cbf
 	google.golang.org/grpc v1.47.0
 )
@@ -83,7 +83,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/nwaples/rardecode v1.1.2 // indirect
-	github.com/paulmach/orb v0.5.1-0.20220406232948-69ee7e81c712 // indirect
+	github.com/paulmach/orb v0.7.1 // indirect
 	github.com/pierrec/lz4/v4 v4.1.8 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.12.2

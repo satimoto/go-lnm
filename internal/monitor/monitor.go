@@ -55,7 +55,7 @@ func NewMonitor(shutdownCtx context.Context, repositoryService *db.RepositorySer
 		ChannelEventMonitor:  channelevent.NewChannelEventMonitor(repositoryService, lightningService),
 		CustomMessageMonitor: customMessageMonitor,
 		HtlcMonitor:          htlc.NewHtlcMonitor(repositoryService, lightningService, customMessageMonitor),
-		HtlcEventMonitor:     htlcevent.NewHtlcEventMonitor(repositoryService, lightningService),
+		HtlcEventMonitor:     htlcevent.NewHtlcEventMonitor(repositoryService, ferpService, lightningService),
 		InvoiceMonitor:       invoice.NewInvoiceMonitor(repositoryService, ferpService, lightningService),
 		TransactionMonitor:   transaction.NewTransactionMonitor(repositoryService, lightningService),
 	}
