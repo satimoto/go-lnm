@@ -45,6 +45,8 @@ func (r *SessionResolver) IssueLightningInvoice(ctx context.Context, user db.Use
 	}
 
 	sessionInvoiceParams := param.NewCreateSessionInvoiceParams(session)
+	sessionInvoiceParams.CurrencyRate = currencyRate.Rate
+	sessionInvoiceParams.CurrencyRateMsat = currencyRate.RateMsat
 	sessionInvoiceParams.AmountFiat = invoiceAmount
 	sessionInvoiceParams.AmountMsat = amountMsat
 	sessionInvoiceParams.CommissionFiat = commissionAmount
