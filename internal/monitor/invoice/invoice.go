@@ -21,6 +21,7 @@ type InvoiceMonitor struct {
 	LightningService lightningnetwork.LightningNetwork
 	InvoicesClient   lnrpc.Lightning_SubscribeInvoicesClient
 	SessionResolver  *session.SessionResolver
+	nodeID int64
 }
 
 func NewInvoiceMonitor(repositoryService *db.RepositoryService, ferpService ferp.Ferp, lightningService lightningnetwork.LightningNetwork) *InvoiceMonitor {
@@ -30,10 +31,11 @@ func NewInvoiceMonitor(repositoryService *db.RepositoryService, ferpService ferp
 	}
 }
 
-func (m *InvoiceMonitor) StartMonitor(ctx context.Context, waitGroup *sync.WaitGroup) {
+func (m *InvoiceMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting up Invoices")
 	invoiceChan := make(chan lnrpc.Invoice)
 
+	m.nodeID = nodeID
 	go m.waitForInvoices(ctx, waitGroup, invoiceChan)
 	go m.subscribeInvoiceInterceptions(invoiceChan)
 }

@@ -31,7 +31,7 @@ func TestInvoice(t *testing.T) {
 		invoiceMonitor := invoiceMocks.NewInvoiceMonitor(mockRepository, mockLightningService, mockNotificationService, mockOcpiService)
 		recvChan := mockLightningService.NewSubscribeInvoicesMockData()
 
-		invoiceMonitor.StartMonitor(shutdownCtx, waitGroup)
+		invoiceMonitor.StartMonitor(1, shutdownCtx, waitGroup)
 
 		recvChan <- &lnrpc.Invoice{
 			PaymentRequest: "TestPaymentRequest",
@@ -55,7 +55,7 @@ func TestInvoice(t *testing.T) {
 		invoiceMonitor := invoiceMocks.NewInvoiceMonitor(mockRepository, mockLightningService, mockNotificationService, mockOcpiService)
 		recvChan := mockLightningService.NewSubscribeInvoicesMockData()
 
-		invoiceMonitor.StartMonitor(shutdownCtx, waitGroup)
+		invoiceMonitor.StartMonitor(1, shutdownCtx, waitGroup)
 
 		mockRepository.SetGetSessionInvoiceByPaymentRequestMockData(dbMocks.SessionInvoiceMockData{
 			SessionInvoice: db.SessionInvoice{

@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightningnetwork/lnd/lnrpc/chainrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/util"
@@ -19,6 +20,7 @@ type LightningNetwork interface {
 	GetInfo(in *lnrpc.GetInfoRequest, opts ...grpc.CallOption) (*lnrpc.GetInfoResponse, error)
 	HtlcInterceptor(opts ...grpc.CallOption) (routerrpc.Router_HtlcInterceptorClient, error)
 	OpenChannelSync(in *lnrpc.OpenChannelRequest, opts ...grpc.CallOption) (*lnrpc.ChannelPoint, error)
+	RegisterBlockEpochNtfn(in *chainrpc.BlockEpoch, opts ...grpc.CallOption) (chainrpc.ChainNotifier_RegisterBlockEpochNtfnClient, error)
 	SendCustomMessage(in *lnrpc.SendCustomMessageRequest, opts ...grpc.CallOption) (*lnrpc.SendCustomMessageResponse, error)
 	SubscribeChannelBackups(in *lnrpc.ChannelBackupSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeChannelBackupsClient, error)
 	SubscribeChannelEvents(in *lnrpc.ChannelEventSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeChannelEventsClient, error)
@@ -26,13 +28,15 @@ type LightningNetwork interface {
 	SubscribeHtlcEvents(in *routerrpc.SubscribeHtlcEventsRequest, opts ...grpc.CallOption) (routerrpc.Router_SubscribeHtlcEventsClient, error)
 	SubscribeInvoices(in *lnrpc.InvoiceSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeInvoicesClient, error)
 	SubscribeTransactions(in *lnrpc.GetTransactionsRequest, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeTransactionsClient, error)
+	WalletBalance(in *lnrpc.WalletBalanceRequest, opts ...grpc.CallOption) (*lnrpc.WalletBalanceResponse, error)
 }
 
 type LightningNetworkService struct {
-	clientConn      *grpc.ClientConn
-	lightningClient *lnrpc.LightningClient
-	routerClient    *routerrpc.RouterClient
-	macaroonCtx     context.Context
+	clientConn          *grpc.ClientConn
+	chainNotifierClient *chainrpc.ChainNotifierClient
+	lightningClient     *lnrpc.LightningClient
+	routerClient        *routerrpc.RouterClient
+	macaroonCtx         context.Context
 }
 
 func NewService() LightningNetwork {
@@ -72,6 +76,10 @@ func (s *LightningNetworkService) OpenChannelSync(in *lnrpc.OpenChannelRequest, 
 	return s.getLightningClient().OpenChannelSync(s.macaroonCtx, in, opts...)
 }
 
+func (s *LightningNetworkService) RegisterBlockEpochNtfn(in *chainrpc.BlockEpoch, opts ...grpc.CallOption) (chainrpc.ChainNotifier_RegisterBlockEpochNtfnClient, error) {
+	return s.getChainNotifierClient().RegisterBlockEpochNtfn(s.macaroonCtx, in, opts...)
+}
+
 func (s *LightningNetworkService) SendCustomMessage(in *lnrpc.SendCustomMessageRequest, opts ...grpc.CallOption) (*lnrpc.SendCustomMessageResponse, error) {
 	return s.getLightningClient().SendCustomMessage(s.macaroonCtx, in, opts...)
 }
@@ -98,6 +106,19 @@ func (s *LightningNetworkService) SubscribeInvoices(in *lnrpc.InvoiceSubscriptio
 
 func (s *LightningNetworkService) SubscribeTransactions(in *lnrpc.GetTransactionsRequest, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeTransactionsClient, error) {
 	return s.getLightningClient().SubscribeTransactions(s.macaroonCtx, in, opts...)
+}
+
+func (s *LightningNetworkService) WalletBalance(in *lnrpc.WalletBalanceRequest, opts ...grpc.CallOption) (*lnrpc.WalletBalanceResponse, error) {
+	return s.getLightningClient().WalletBalance(s.macaroonCtx, in, opts...)
+}
+
+func (s *LightningNetworkService) getChainNotifierClient() chainrpc.ChainNotifierClient {
+	if s.chainNotifierClient == nil {
+		lc := chainrpc.NewChainNotifierClient(s.clientConn)
+		s.chainNotifierClient = &lc
+	}
+
+	return *s.chainNotifierClient
 }
 
 func (s *LightningNetworkService) getLightningClient() lnrpc.LightningClient {

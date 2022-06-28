@@ -28,6 +28,7 @@ type HtlcMonitor struct {
 	HtlcInterceptorClient  routerrpc.Router_HtlcInterceptorClient
 	ChannelRequestResolver *channelrequest.ChannelRequestResolver
 	CustomMessageMonitor   *custommessage.CustomMessageMonitor
+	nodeID                 int64
 }
 
 func NewHtlcMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork, customMessageMonitor *custommessage.CustomMessageMonitor) *HtlcMonitor {
@@ -38,10 +39,11 @@ func NewHtlcMonitor(repositoryService *db.RepositoryService, lightningService li
 	}
 }
 
-func (m *HtlcMonitor) StartMonitor(ctx context.Context, waitGroup *sync.WaitGroup) {
+func (m *HtlcMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting up Htlcs")
 	htlcInterceptChan := make(chan routerrpc.ForwardHtlcInterceptRequest)
 
+	m.nodeID = nodeID
 	go m.waitForHtlcs(ctx, waitGroup, htlcInterceptChan)
 	go m.subscribeHtlcInterceptions(htlcInterceptChan)
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/satimoto/go-lsp/internal/backup"
 	"github.com/satimoto/go-lsp/internal/ferp"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	"github.com/satimoto/go-lsp/internal/monitor/blockepoch"
 	"github.com/satimoto/go-lsp/internal/monitor/channelbackup"
 	"github.com/satimoto/go-lsp/internal/monitor/channelevent"
 	"github.com/satimoto/go-lsp/internal/monitor/custommessage"
@@ -33,6 +34,7 @@ type Monitor struct {
 	LightningService     lightningnetwork.LightningNetwork
 	ShutdownCtx          context.Context
 	NodeRepository       node.NodeRepository
+	BlockEpochMonitor    *blockepoch.BlockEpochMonitor
 	ChannelBackupMonitor *channelbackup.ChannelBackupMonitor
 	ChannelEventMonitor  *channelevent.ChannelEventMonitor
 	CustomMessageMonitor *custommessage.CustomMessageMonitor
@@ -40,6 +42,7 @@ type Monitor struct {
 	HtlcEventMonitor     *htlcevent.HtlcEventMonitor
 	InvoiceMonitor       *invoice.InvoiceMonitor
 	TransactionMonitor   *transaction.TransactionMonitor
+	nodeID               int64
 }
 
 func NewMonitor(shutdownCtx context.Context, repositoryService *db.RepositoryService, ferpService ferp.Ferp) *Monitor {
@@ -51,6 +54,7 @@ func NewMonitor(shutdownCtx context.Context, repositoryService *db.RepositorySer
 		LightningService:     lightningService,
 		ShutdownCtx:          shutdownCtx,
 		NodeRepository:       node.NewRepository(repositoryService),
+		BlockEpochMonitor:    blockepoch.NewBlockEpochMonitor(repositoryService, lightningService),
 		ChannelBackupMonitor: channelbackup.NewChannelBackupMonitor(repositoryService, backupService, lightningService),
 		ChannelEventMonitor:  channelevent.NewChannelEventMonitor(repositoryService, lightningService),
 		CustomMessageMonitor: customMessageMonitor,
@@ -65,13 +69,14 @@ func (m *Monitor) StartMonitor(waitGroup *sync.WaitGroup) {
 	err := m.register()
 	dbUtil.PanicOnError("LSP010", "Error registering LSP", err)
 
-	m.ChannelBackupMonitor.StartMonitor(m.ShutdownCtx, waitGroup)
-	m.ChannelEventMonitor.StartMonitor(m.ShutdownCtx, waitGroup)
-	m.CustomMessageMonitor.StartMonitor(m.ShutdownCtx, waitGroup)
-	m.HtlcMonitor.StartMonitor(m.ShutdownCtx, waitGroup)
-	m.HtlcEventMonitor.StartMonitor(m.ShutdownCtx, waitGroup)
-	m.InvoiceMonitor.StartMonitor(m.ShutdownCtx, waitGroup)
-	m.TransactionMonitor.StartMonitor(m.ShutdownCtx, waitGroup)
+	m.BlockEpochMonitor.StartMonitor(m.nodeID, m.ShutdownCtx, waitGroup)
+	m.ChannelBackupMonitor.StartMonitor(m.nodeID, m.ShutdownCtx, waitGroup)
+	m.ChannelEventMonitor.StartMonitor(m.nodeID, m.ShutdownCtx, waitGroup)
+	m.CustomMessageMonitor.StartMonitor(m.nodeID, m.ShutdownCtx, waitGroup)
+	m.HtlcMonitor.StartMonitor(m.nodeID, m.ShutdownCtx, waitGroup)
+	m.HtlcEventMonitor.StartMonitor(m.nodeID, m.ShutdownCtx, waitGroup)
+	m.InvoiceMonitor.StartMonitor(m.nodeID, m.ShutdownCtx, waitGroup)
+	m.TransactionMonitor.StartMonitor(m.nodeID, m.ShutdownCtx, waitGroup)
 }
 
 func (m *Monitor) register() error {
@@ -128,7 +133,14 @@ func (m *Monitor) register() error {
 				updateNodeParams.Channels = numChannels
 				updateNodeParams.Peers = numPeers
 
-				m.NodeRepository.UpdateNode(ctx, updateNodeParams)
+				updatedNode, err := m.NodeRepository.UpdateNode(ctx, updateNodeParams)
+
+				if err != nil {
+					dbUtil.LogOnError("LSP075", "Error updating node", err)
+					log.Printf("LSP075: Params=%#v", updateNodeParams)
+				}
+
+				m.nodeID = updatedNode.ID
 			} else {
 				// Create node
 				createNodeParams := db.CreateNodeParams{
@@ -143,7 +155,14 @@ func (m *Monitor) register() error {
 					Peers:      numPeers,
 				}
 
-				m.NodeRepository.CreateNode(ctx, createNodeParams)
+				createdNode, err := m.NodeRepository.CreateNode(ctx, createNodeParams)
+
+				if err != nil {
+					dbUtil.LogOnError("LSP076", "Error creating node", err)
+					log.Printf("LSP076: Params=%#v", createNodeParams)
+				}
+
+				m.nodeID = createdNode.ID
 			}
 
 			log.Print("Registered node")

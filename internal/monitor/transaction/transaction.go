@@ -19,6 +19,7 @@ type TransactionMonitor struct {
 	LightningService       lightningnetwork.LightningNetwork
 	TransactionsClient     lnrpc.Lightning_SubscribeTransactionsClient
 	ChannelRequestResolver *channelrequest.ChannelRequestResolver
+	nodeID                 int64
 }
 
 func NewTransactionMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) *TransactionMonitor {
@@ -28,10 +29,11 @@ func NewTransactionMonitor(repositoryService *db.RepositoryService, lightningSer
 	}
 }
 
-func (m *TransactionMonitor) StartMonitor(ctx context.Context, waitGroup *sync.WaitGroup) {
+func (m *TransactionMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting up Transactions")
 	transactionChan := make(chan lnrpc.Transaction)
 
+	m.nodeID = nodeID
 	go m.waitForTransactions(ctx, waitGroup, transactionChan)
 	go m.subscribeTransactionInterceptions(transactionChan)
 }
@@ -47,6 +49,8 @@ func (m *TransactionMonitor) handleTransaction(transaction lnrpc.Transaction) {
 	log.Printf("Confirmations: %v", transaction.NumConfirmations)
 	log.Printf("Amount: %v", transaction.Amount)
 	log.Printf("TotalFees: %v", transaction.TotalFees)
+
+	go m.updateWalletBalance()
 }
 
 func (m *TransactionMonitor) subscribeTransactionInterceptions(transactionChan chan<- lnrpc.Transaction) {
@@ -64,6 +68,19 @@ func (m *TransactionMonitor) subscribeTransactionInterceptions(transactionChan c
 			util.PanicOnError("LSP023", "Error creating Transactions client", err)
 		}
 	}
+}
+
+func (m *TransactionMonitor) updateWalletBalance() {
+	walletBalance, err := m.LightningService.WalletBalance(&lnrpc.WalletBalanceRequest{})
+
+	if err != nil {
+		util.LogOnError("LSP080", "Error requesting wallet balance", err)
+	}
+
+	log.Printf("TotalBalance: %v", walletBalance.TotalBalance)
+	log.Printf("ConfirmedBalance: %v", walletBalance.ConfirmedBalance)
+	log.Printf("UnconfirmedBalance: %v", walletBalance.UnconfirmedBalance)
+	log.Printf("LockedBalance: %v", walletBalance.LockedBalance)
 }
 
 func (m *TransactionMonitor) waitForTransactions(ctx context.Context, waitGroup *sync.WaitGroup, transactionChan chan lnrpc.Transaction) {

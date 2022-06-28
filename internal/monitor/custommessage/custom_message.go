@@ -21,6 +21,7 @@ type CustomMessageMonitor struct {
 	LightningService      lightningnetwork.LightningNetwork
 	CustomMessagesClient  lnrpc.Lightning_SubscribeCustomMessagesClient
 	CustomMessageHandlers map[string]CustomMessageHandler
+	nodeID                int64
 }
 
 func NewCustomMessageMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) *CustomMessageMonitor {
@@ -30,10 +31,11 @@ func NewCustomMessageMonitor(repositoryService *db.RepositoryService, lightningS
 	}
 }
 
-func (m *CustomMessageMonitor) StartMonitor(ctx context.Context, waitGroup *sync.WaitGroup) {
+func (m *CustomMessageMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting up Custom Messages")
 	customMessageChan := make(chan lnrpc.CustomMessage)
 
+	m.nodeID = nodeID
 	go m.waitForCustomMessages(ctx, waitGroup, customMessageChan)
 	go m.subscribeCustomMessages(customMessageChan)
 }

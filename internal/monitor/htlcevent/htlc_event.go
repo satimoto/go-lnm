@@ -28,6 +28,7 @@ type HtlcEventMonitor struct {
 	ChannelRequestResolver *channelrequest.ChannelRequestResolver
 	RoutingEventRepository routingevent.RoutingEventRepository
 	accountingCurrency     string
+	nodeID                 int64
 }
 
 func NewHtlcEventMonitor(repositoryService *db.RepositoryService, ferpService ferp.Ferp, lightningService lightningnetwork.LightningNetwork) *HtlcEventMonitor {
@@ -40,17 +41,17 @@ func NewHtlcEventMonitor(repositoryService *db.RepositoryService, ferpService fe
 	}
 }
 
-func (m *HtlcEventMonitor) StartMonitor(ctx context.Context, waitGroup *sync.WaitGroup) {
+func (m *HtlcEventMonitor) StartMonitor(nodeID int64, shutdownCtx context.Context, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting up Htlc Events")
 	htlcEventChan := make(chan routerrpc.HtlcEvent)
 
-	go m.waitForHtlcEvents(ctx, waitGroup, htlcEventChan)
+	m.nodeID = nodeID
+	go m.waitForHtlcEvents(shutdownCtx, waitGroup, htlcEventChan)
 	go m.subscribeHtlcEventInterceptions(htlcEventChan)
 }
 
 func (m *HtlcEventMonitor) handleHtlcEvent(htlcEvent routerrpc.HtlcEvent) {
 	log.Printf("HTLC Event: %v", htlcEvent.EventType)
-
 	/** HTLC Event received.
 	 *  Check that the event type is a Forward event and that it is successful.
 	 *  Find the Channel Request HTLC by the circuit key params.
@@ -59,48 +60,10 @@ func (m *HtlcEventMonitor) handleHtlcEvent(htlcEvent routerrpc.HtlcEvent) {
 
 	if htlcEvent.EventType == routerrpc.HtlcEvent_FORWARD {
 		ctx := context.Background()
-		successEvent := htlcEvent.GetSettleEvent()
+		settleEvent := htlcEvent.GetSettleEvent()
 		forwardEvent := htlcEvent.GetForwardEvent()
 
-		if forwardEvent != nil {
-			log.Printf("Forward HTLC")
-			log.Printf("IncomingAmtMsat: %v", forwardEvent.Info.IncomingAmtMsat)
-			log.Printf("OutgoingAmtMsat: %v", forwardEvent.Info.OutgoingAmtMsat)
-
-			currencyRate, err := m.FerpService.GetRate(m.accountingCurrency)
-
-			if err != nil {
-				util.LogOnError("LSP071", "Error getting FERP rate", err)
-				log.Printf("LSP071: Currency=%v", m.accountingCurrency)
-			}
-
-			feeMsat := int64(forwardEvent.Info.IncomingAmtMsat) - int64(forwardEvent.Info.OutgoingAmtMsat)
-			createRoutingEventParams := db.CreateRoutingEventParams{
-				Currency:         m.accountingCurrency,
-				CurrencyRate:     currencyRate.Rate,
-				CurrencyRateMsat: currencyRate.RateMsat,
-				IncomingChanID:   int64(htlcEvent.IncomingChannelId),
-				IncomingHtlcID:   int64(htlcEvent.IncomingHtlcId),
-				IncomingFiat:     float64(forwardEvent.Info.IncomingAmtMsat) / float64(currencyRate.RateMsat),
-				IncomingMsat:     int64(forwardEvent.Info.IncomingAmtMsat),
-				OutgoingChanID:   int64(htlcEvent.OutgoingChannelId),
-				OutgoingHtlcID:   int64(htlcEvent.IncomingHtlcId),
-				OutgoingFiat:     float64(forwardEvent.Info.OutgoingAmtMsat) / float64(currencyRate.RateMsat),
-				OutgoingMsat:     int64(forwardEvent.Info.OutgoingAmtMsat),
-				FeeFiat:          float64(feeMsat) / float64(currencyRate.RateMsat),
-				FeeMsat:          feeMsat,
-				LastUpdated:      time.Unix(0, int64(htlcEvent.TimestampNs)),
-			}
-
-			_, err = m.RoutingEventRepository.CreateRoutingEvent(ctx, createRoutingEventParams)
-
-			if err != nil {
-				util.LogOnError("LSP072", "Error creating routing event", err)
-				log.Printf("LSP072: Params=%#v", createRoutingEventParams)
-			}
-		}
-
-		if successEvent != nil {
+		if settleEvent != nil {
 			getChannelRequestHtlcByCircuitKeyParams := db.GetChannelRequestHtlcByCircuitKeyParams{
 				ChanID: int64(htlcEvent.IncomingChannelId),
 				HtlcID: int64(htlcEvent.IncomingHtlcId),
@@ -146,6 +109,47 @@ func (m *HtlcEventMonitor) handleHtlcEvent(htlcEvent routerrpc.HtlcEvent) {
 						}
 					}
 				}
+			}
+		}
+
+		if forwardEvent != nil {
+			log.Printf("Forward HTLC")
+			log.Printf("IncomingAmtMsat: %v", forwardEvent.Info.IncomingAmtMsat)
+			log.Printf("OutgoingAmtMsat: %v", forwardEvent.Info.OutgoingAmtMsat)
+
+			currencyRate, err := m.FerpService.GetRate(m.accountingCurrency)
+
+			if err != nil {
+				util.LogOnError("LSP071", "Error getting FERP rate", err)
+				log.Printf("LSP071: Currency=%v", m.accountingCurrency)
+				return
+			}
+
+			feeMsat := int64(forwardEvent.Info.IncomingAmtMsat) - int64(forwardEvent.Info.OutgoingAmtMsat)
+			createRoutingEventParams := db.CreateRoutingEventParams{
+				NodeID:           m.nodeID,
+				EventType:        db.RoutingEventTypeFORWARD,
+				Currency:         m.accountingCurrency,
+				CurrencyRate:     currencyRate.Rate,
+				CurrencyRateMsat: currencyRate.RateMsat,
+				IncomingChanID:   int64(htlcEvent.IncomingChannelId),
+				IncomingHtlcID:   int64(htlcEvent.IncomingHtlcId),
+				IncomingFiat:     float64(forwardEvent.Info.IncomingAmtMsat) / float64(currencyRate.RateMsat),
+				IncomingMsat:     int64(forwardEvent.Info.IncomingAmtMsat),
+				OutgoingChanID:   int64(htlcEvent.OutgoingChannelId),
+				OutgoingHtlcID:   int64(htlcEvent.IncomingHtlcId),
+				OutgoingFiat:     float64(forwardEvent.Info.OutgoingAmtMsat) / float64(currencyRate.RateMsat),
+				OutgoingMsat:     int64(forwardEvent.Info.OutgoingAmtMsat),
+				FeeFiat:          float64(feeMsat) / float64(currencyRate.RateMsat),
+				FeeMsat:          feeMsat,
+				LastUpdated:      time.Unix(0, int64(htlcEvent.TimestampNs)),
+			}
+
+			_, err = m.RoutingEventRepository.CreateRoutingEvent(ctx, createRoutingEventParams)
+
+			if err != nil {
+				util.LogOnError("LSP072", "Error creating routing event", err)
+				log.Printf("LSP072: Params=%#v", createRoutingEventParams)
 			}
 		}
 	}

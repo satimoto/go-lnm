@@ -22,4 +22,3 @@ func (c *MockSubscribeTransactionsClient) Recv() (*lnrpc.Transaction, error) {
 	receive := <-c.recvChan
 	return receive, nil
 }
-

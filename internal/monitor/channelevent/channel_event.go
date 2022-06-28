@@ -9,6 +9,8 @@ import (
 
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/satimoto/go-datastore/pkg/db"
+	"github.com/satimoto/go-datastore/pkg/node"
+	"github.com/satimoto/go-datastore/pkg/param"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/channelrequest"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
@@ -22,21 +24,25 @@ type ChannelEventMonitor struct {
 	LightningService       lightningnetwork.LightningNetwork
 	ChannelEventsClient    lnrpc.Lightning_SubscribeChannelEventsClient
 	ChannelRequestResolver *channelrequest.ChannelRequestResolver
+	NodeRepository         node.NodeRepository
 	UserResolver           *user.UserResolver
+	nodeID                 int64
 }
 
 func NewChannelEventMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) *ChannelEventMonitor {
 	return &ChannelEventMonitor{
 		LightningService:       lightningService,
 		ChannelRequestResolver: channelrequest.NewResolver(repositoryService),
+		NodeRepository:         node.NewRepository(repositoryService),
 		UserResolver:           user.NewResolver(repositoryService),
 	}
 }
 
-func (m *ChannelEventMonitor) StartMonitor(ctx context.Context, waitGroup *sync.WaitGroup) {
+func (m *ChannelEventMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting up Channel Events")
 	channelEventChan := make(chan lnrpc.ChannelEventUpdate)
 
+	m.nodeID = nodeID
 	go m.waitForChannelEvents(ctx, waitGroup, channelEventChan)
 	go m.subscribeChannelEvents(channelEventChan)
 }
@@ -92,6 +98,10 @@ func (m *ChannelEventMonitor) handleChannelEvent(channelEvent lnrpc.ChannelEvent
 			}
 		}
 
+		m.updateNode(ctx)
+		break
+	case lnrpc.ChannelEventUpdate_CLOSED_CHANNEL, lnrpc.ChannelEventUpdate_FULLY_RESOLVED_CHANNEL:
+		m.updateNode(ctx)
 		break
 	}
 }
@@ -111,6 +121,33 @@ func (m *ChannelEventMonitor) subscribeChannelEvents(channelEventChan chan<- lnr
 			m.ChannelEventsClient, err = m.waitForSubscribeChannelEventsClient(100, 1000)
 			dbUtil.PanicOnError("LSP013", "Error creating Channel Events client", err)
 		}
+	}
+}
+
+func (m *ChannelEventMonitor) updateNode(ctx context.Context) {
+	getInfoResponse, err := m.LightningService.GetInfo(&lnrpc.GetInfoRequest{})
+
+	if err != nil {
+		dbUtil.LogOnError("LSP077", "Error getting info", err)
+	}
+
+	n, err := m.NodeRepository.GetNode(ctx, m.nodeID)
+
+	if err != nil {
+		dbUtil.LogOnError("LSP078", "Error getting info", err)
+		log.Printf("LSP078: NodeID=%v", m.nodeID)
+
+	}
+
+	updateNodeParams := param.NewUpdateNodeParams(n)
+	updateNodeParams.Channels = int64(getInfoResponse.NumActiveChannels + getInfoResponse.NumInactiveChannels + getInfoResponse.NumPendingChannels)
+	updateNodeParams.Peers = int64(getInfoResponse.NumPeers)
+
+	_, err = m.NodeRepository.UpdateNode(ctx, updateNodeParams)
+
+	if err != nil {
+		dbUtil.LogOnError("LSP079", "Error updating node", err)
+		log.Printf("LSP079: Params=%#v", updateNodeParams)
 	}
 }
 
