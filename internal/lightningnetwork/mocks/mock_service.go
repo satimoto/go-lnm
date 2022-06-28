@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightningnetwork/lnd/lnrpc/chainrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
 	"google.golang.org/grpc"
 )
@@ -14,6 +15,7 @@ type MockLightningNetworkService struct {
 	getInfoMockData                 []*lnrpc.GetInfoResponse
 	htlcInterceptorMockData         []routerrpc.Router_HtlcInterceptorClient
 	openChannelSyncMockData         []*lnrpc.ChannelPoint
+	registerBlockEpochNtfnMockData  []chainrpc.ChainNotifier_RegisterBlockEpochNtfnClient
 	sendCustomMessageMockData       []*lnrpc.SendCustomMessageResponse
 	subscribeChannelBackupsMockData []lnrpc.Lightning_SubscribeChannelBackupsClient
 	subscribeChannelEventsMockData  []lnrpc.Lightning_SubscribeChannelEventsClient
@@ -21,6 +23,7 @@ type MockLightningNetworkService struct {
 	subscribeHtlcEventsMockData     []routerrpc.Router_SubscribeHtlcEventsClient
 	subscribeInvoicesMockData       []lnrpc.Lightning_SubscribeInvoicesClient
 	subscribeTransactionsMockData   []lnrpc.Lightning_SubscribeTransactionsClient
+	walletBalanceMockData           []*lnrpc.WalletBalanceResponse
 }
 
 func NewService() *MockLightningNetworkService {
@@ -90,6 +93,23 @@ func (s *MockLightningNetworkService) OpenChannelSync(in *lnrpc.OpenChannelReque
 
 func (s *MockLightningNetworkService) SetOpenChannelSyncMockData(mockData *lnrpc.ChannelPoint) {
 	s.openChannelSyncMockData = append(s.openChannelSyncMockData, mockData)
+}
+
+func (s *MockLightningNetworkService) RegisterBlockEpochNtfn(in *chainrpc.BlockEpoch, opts ...grpc.CallOption) (chainrpc.ChainNotifier_RegisterBlockEpochNtfnClient, error) {
+	if len(s.registerBlockEpochNtfnMockData) == 0 {
+		return nil, errors.New("NotFound")
+	}
+
+	response := s.registerBlockEpochNtfnMockData[0]
+	s.registerBlockEpochNtfnMockData = s.registerBlockEpochNtfnMockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) NewRegisterBlockEpochNtfnMockData() chan<- *chainrpc.BlockEpoch {
+	recvChan := make(chan *chainrpc.BlockEpoch)
+	s.registerBlockEpochNtfnMockData = append(s.registerBlockEpochNtfnMockData, NewMockRegisterBlockEpochNtfnClient(recvChan))
+
+	return recvChan
 }
 
 func (s *MockLightningNetworkService) SendCustomMessage(in *lnrpc.SendCustomMessageRequest, opts ...grpc.CallOption) (*lnrpc.SendCustomMessageResponse, error) {
@@ -206,4 +226,18 @@ func (s *MockLightningNetworkService) NewSubscribeTransactionsMockData() chan<- 
 	s.subscribeTransactionsMockData = append(s.subscribeTransactionsMockData, NewMockSubscribeTransactionsClient(recvChan))
 
 	return recvChan
+}
+
+func (s *MockLightningNetworkService) WalletBalance(in *lnrpc.WalletBalanceRequest, opts ...grpc.CallOption) (*lnrpc.WalletBalanceResponse, error) {
+	if len(s.walletBalanceMockData) == 0 {
+		return &lnrpc.WalletBalanceResponse{}, errors.New("NotFound")
+	}
+
+	response := s.walletBalanceMockData[0]
+	s.walletBalanceMockData = s.walletBalanceMockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) SetWalletBalanceMockData(mockData *lnrpc.WalletBalanceResponse) {
+	s.walletBalanceMockData = append(s.walletBalanceMockData, mockData)
 }

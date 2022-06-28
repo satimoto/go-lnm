@@ -20,6 +20,7 @@ type ChannelBackupMonitor struct {
 	LightningService     lightningnetwork.LightningNetwork
 	BackupService        backup.Backup
 	ChannelBackupsClient lnrpc.Lightning_SubscribeChannelBackupsClient
+	nodeID               int64
 }
 
 func NewChannelBackupMonitor(repositoryService *db.RepositoryService, backupService backup.Backup, lightningService lightningnetwork.LightningNetwork) *ChannelBackupMonitor {
@@ -29,10 +30,11 @@ func NewChannelBackupMonitor(repositoryService *db.RepositoryService, backupServ
 	}
 }
 
-func (m *ChannelBackupMonitor) StartMonitor(ctx context.Context, waitGroup *sync.WaitGroup) {
+func (m *ChannelBackupMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting up Channel Backups")
 	ChannelBackupChan := make(chan lnrpc.ChanBackupSnapshot)
 
+	m.nodeID = nodeID
 	go m.waitForChannelBackups(ctx, waitGroup, ChannelBackupChan)
 	go m.subscribeChannelBackupInterceptions(ChannelBackupChan)
 }
