@@ -9,7 +9,7 @@ import (
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/notification"
 	"github.com/satimoto/go-lsp/internal/session"
-	"github.com/satimoto/go-ocpi-api/pkg/ocpi"
+	"github.com/satimoto/go-ocpi/pkg/ocpi"
 )
 
 type CdrResolver struct {

@@ -7,7 +7,6 @@ require (
 	github.com/lightningnetwork/lnd v0.15.0-beta
 	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
 	github.com/satimoto/go-datastore v0.1.2-0.20220628125021-bc6e1e44ac33
-	github.com/satimoto/go-ocpi-api v0.0.3-0.20220610202547-65b8cf586cbf
 	google.golang.org/grpc v1.47.0
 )
 
@@ -169,6 +168,7 @@ require (
 	github.com/lightningnetwork/lnd/cert v1.1.1 // indirect
 	github.com/lightningnetwork/lnd/tlv v1.0.3 // indirect
 	github.com/lightningnetwork/lnd/tor v1.0.1 // indirect
+	github.com/satimoto/go-ocpi v0.0.3-0.20220629073124-496523cd8663
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/tv42/zbase32 v0.0.0-20160707012821-501572607d02 // indirect
 	gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec // indirect

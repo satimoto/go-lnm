@@ -12,7 +12,7 @@ import (
 	"github.com/satimoto/go-lsp/internal/notification"
 	"github.com/satimoto/go-lsp/internal/tariff"
 	"github.com/satimoto/go-lsp/internal/user"
-	"github.com/satimoto/go-ocpi-api/pkg/ocpi"
+	"github.com/satimoto/go-ocpi/pkg/ocpi"
 )
 
 type SessionResolver struct {

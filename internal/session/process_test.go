@@ -10,7 +10,7 @@ import (
 	"github.com/satimoto/go-lsp/internal/session"
 	sessionsMocks "github.com/satimoto/go-lsp/internal/session/mocks"
 	"github.com/satimoto/go-lsp/internal/tariff"
-	ocpiMocks "github.com/satimoto/go-ocpi-api/pkg/ocpi/mocks"
+	ocpiMocks "github.com/satimoto/go-ocpi/pkg/ocpi/mocks"
 
 	"testing"
 )

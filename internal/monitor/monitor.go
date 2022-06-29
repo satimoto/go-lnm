@@ -26,8 +26,8 @@ import (
 	"github.com/satimoto/go-lsp/internal/monitor/invoice"
 	"github.com/satimoto/go-lsp/internal/monitor/transaction"
 	"github.com/satimoto/go-lsp/internal/util"
-	"github.com/satimoto/go-ocpi-api/ocpirpc"
-	"github.com/satimoto/go-ocpi-api/pkg/ocpi"
+	"github.com/satimoto/go-ocpi/ocpirpc"
+	"github.com/satimoto/go-ocpi/pkg/ocpi"
 )
 
 type Monitor struct {

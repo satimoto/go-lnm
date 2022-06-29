@@ -10,7 +10,7 @@ import (
 	"github.com/satimoto/go-lsp/internal/session"
 	tariff "github.com/satimoto/go-lsp/internal/tariff/mocks"
 	user "github.com/satimoto/go-lsp/internal/user/mocks"
-	ocpi "github.com/satimoto/go-ocpi-api/pkg/ocpi/mocks"
+	ocpi "github.com/satimoto/go-ocpi/pkg/ocpi/mocks"
 )
 
 func NewResolver(repositoryService *mocks.MockRepositoryService, lightningService *lightningnetwork.MockLightningNetworkService, notificationService *notification.MockNotificationService, ocpiService *ocpi.MockOcpiService) *session.SessionResolver {

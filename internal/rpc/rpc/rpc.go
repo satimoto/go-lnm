@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/satimoto/go-datastore/pkg/util"
-	"github.com/satimoto/go-ocpi-api/ocpirpc"
-	"github.com/satimoto/go-ocpi-api/pkg/ocpi"
+	"github.com/satimoto/go-ocpi/ocpirpc"
+	"github.com/satimoto/go-ocpi/pkg/ocpi"
 )
 
 func (r *RpcResolver) TestConnection(ctx context.Context, input *ocpirpc.TestConnectionRequest) (*ocpirpc.TestConnectionResponse, error) {

@@ -14,7 +14,7 @@ import (
 	lightningnetworkMocks "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
 	invoiceMocks "github.com/satimoto/go-lsp/internal/monitor/invoice/mocks"
 	notificationMocks "github.com/satimoto/go-lsp/internal/notification/mocks"
-	ocpiMocks "github.com/satimoto/go-ocpi-api/pkg/ocpi/mocks"
+	ocpiMocks "github.com/satimoto/go-ocpi/pkg/ocpi/mocks"
 
 	"testing"
 )
