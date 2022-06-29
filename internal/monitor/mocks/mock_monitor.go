@@ -17,7 +17,7 @@ import (
 	invoice "github.com/satimoto/go-lsp/internal/monitor/invoice/mocks"
 	transaction "github.com/satimoto/go-lsp/internal/monitor/transaction/mocks"
 	notification "github.com/satimoto/go-lsp/internal/notification/mocks"
-	ocpi "github.com/satimoto/go-ocpi-api/pkg/ocpi/mocks"
+	ocpi "github.com/satimoto/go-ocpi/pkg/ocpi/mocks"
 )
 
 func NewMonitor(shutdownCtx context.Context, repositoryService *mocks.MockRepositoryService, ferpService *ferp.MockFerpService, lightningService *lightningnetwork.MockLightningNetworkService, notificationService *notification.MockNotificationService, ocpiService *ocpi.MockOcpiService) *monitor.Monitor {

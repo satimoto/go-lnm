@@ -15,7 +15,7 @@ import (
 	"github.com/satimoto/go-lsp/internal/rpc/cdr"
 	"github.com/satimoto/go-lsp/internal/rpc/rpc"
 	"github.com/satimoto/go-lsp/internal/rpc/session"
-	"github.com/satimoto/go-ocpi-api/ocpirpc"
+	"github.com/satimoto/go-ocpi/ocpirpc"
 	"google.golang.org/grpc"
 )
 
