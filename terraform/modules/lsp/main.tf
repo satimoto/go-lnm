@@ -1,6 +1,7 @@
 locals {
   availability_zone   = var.availability_zones[var.instance_number % length(var.availability_zones)]
-  subnet_id           = var.private_subnet_ids[var.instance_number % length(var.private_subnet_ids)]
+  private_subnet_id   = var.private_subnet_ids[var.instance_number % length(var.private_subnet_ids)]
+  public_subnet_id    = var.public_subnet_ids[var.instance_number % length(var.public_subnet_ids)]
   lower_instance_name = lower(var.instance_name)
 }
 
@@ -189,7 +190,7 @@ resource "aws_instance" "lsp_instance" {
   availability_zone      = local.availability_zone
   instance_type          = var.ec2_instance_type
   key_name               = var.ec2_key_name
-  subnet_id              = local.subnet_id
+  subnet_id              = local.private_subnet_id
   vpc_security_group_ids = [aws_security_group.lsp_security_group.id]
 
   tags = {
@@ -228,7 +229,7 @@ resource "aws_lb" "nlb" {
   name               = local.lower_instance_name
   internal           = false
   load_balancer_type = "network"
-  subnets            = var.public_subnet_ids
+  subnets            = [local.public_subnet_id]
 }
 
 # -----------------------------------------------------------------------------
