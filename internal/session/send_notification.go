@@ -12,7 +12,7 @@ func (r *SessionResolver) SendNotification(user db.User, session db.Session, ses
 	message := &fcm.Message{
 		To:               user.DeviceToken,
 		ContentAvailable: true,
-		Data:             CreatePaymentRequestNotificationDto(sessionInvoice),
+		Data:             CreatePaymentRequestNotificationDto(session, sessionInvoice),
 	}
 
 	_, err := r.NotificationService.SendNotificationWithRetry(message, 10)

@@ -34,6 +34,7 @@ func (r *SessionResolver) IssueLightningInvoice(ctx context.Context, user db.Use
 	}
 
 	invoice, err := r.LightningService.AddInvoice(&lnrpc.Invoice{
+		Memo: session.Uid,
 		RPreimage: preimage[:],
 		ValueMsat: amountMsat,
 	})
@@ -45,6 +46,7 @@ func (r *SessionResolver) IssueLightningInvoice(ctx context.Context, user db.Use
 	}
 
 	sessionInvoiceParams := param.NewCreateSessionInvoiceParams(session)
+	sessionInvoiceParams.UserID = user.ID
 	sessionInvoiceParams.CurrencyRate = currencyRate.Rate
 	sessionInvoiceParams.CurrencyRateMsat = currencyRate.RateMsat
 	sessionInvoiceParams.AmountFiat = invoiceAmount

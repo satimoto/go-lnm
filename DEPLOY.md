@@ -394,6 +394,9 @@ bitcoin.active=1
 # Set the channel confs to wait for channels
 bitcoin.defaultchanconfs=2
 
+# Forward base fee
+bitcoin.basefee=0
+
 # Forward fee rate in parts per million
 bitcoin.feerate=1000
 
@@ -407,7 +410,7 @@ bitcoin.minhtlc=1
 bitcoin.node=bitcoind
 
 # Set CLTV forwarding delta time
-bitcoin.timelockdelta=144
+bitcoin.timelockdelta=40
 
 [bitcoind]
 # Configuration for using Bitcoin Core backend
@@ -531,7 +534,7 @@ git checkout release/v0.1.0
 ```
 Build and install LSP
 ```bash
-go install -ldflags '-s -w' github.com/satimoto/go-lsp/cmd/lsp
+./scripts/install.sh
 ``` 
 
 Base64 encode admin macaroon and TLS cert
@@ -590,7 +593,7 @@ Start lsp and enable running on startup
 sudo systemctl start lsp
 sudo systemctl enable lsp
 ```
-Edit `~/.profile` and add the line
+Edit `~/.profile` and add the lines
 ```bash
 alias loglsp="journalctl -fu lsp"
 alias logall="journalctl -fu bitcoind -u lnd -u lsp"

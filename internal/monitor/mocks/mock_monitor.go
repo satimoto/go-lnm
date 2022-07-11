@@ -33,7 +33,7 @@ func NewMonitor(shutdownCtx context.Context, repositoryService *mocks.MockReposi
 		CustomMessageMonitor: customMessageMonitor,
 		HtlcMonitor:          htlc.NewHtlcMonitor(repositoryService, lightningService, customMessageMonitor),
 		HtlcEventMonitor:     htlcevent.NewHtlcEventMonitor(repositoryService, ferpService, lightningService),
-		InvoiceMonitor:       invoice.NewInvoiceMonitor(repositoryService, lightningService, notificationService, ocpiService),
+		InvoiceMonitor:       invoice.NewInvoiceMonitor(repositoryService, ferpService, lightningService, notificationService, ocpiService),
 		TransactionMonitor:   transaction.NewTransactionMonitor(repositoryService, lightningService),
 	}
 }
