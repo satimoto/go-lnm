@@ -10,6 +10,7 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/satimoto/go-datastore/pkg/db"
 	dbMocks "github.com/satimoto/go-datastore/pkg/db/mocks"
+	ferpMocks "github.com/satimoto/go-lsp/internal/ferp/mocks"
 	lightningnetworkMocks "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
 	invoiceMocks "github.com/satimoto/go-lsp/internal/monitor/invoice/mocks"
 	notificationMocks "github.com/satimoto/go-lsp/internal/notification/mocks"
@@ -25,10 +26,11 @@ func TestInvoice(t *testing.T) {
 		waitGroup := &sync.WaitGroup{}
 
 		mockRepository := dbMocks.NewMockRepositoryService()
+		mockFerpService := ferpMocks.NewService()
 		mockLightningService := lightningnetworkMocks.NewService()
 		mockNotificationService := notificationMocks.NewService()
 		mockOcpiService := ocpiMocks.NewService()
-		invoiceMonitor := invoiceMocks.NewInvoiceMonitor(mockRepository, mockLightningService, mockNotificationService, mockOcpiService)
+		invoiceMonitor := invoiceMocks.NewInvoiceMonitor(mockRepository, mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
 		recvChan := mockLightningService.NewSubscribeInvoicesMockData()
 
 		invoiceMonitor.StartMonitor(1, shutdownCtx, waitGroup)
@@ -49,10 +51,11 @@ func TestInvoice(t *testing.T) {
 		waitGroup := &sync.WaitGroup{}
 
 		mockRepository := dbMocks.NewMockRepositoryService()
+		mockFerpService := ferpMocks.NewService()
 		mockLightningService := lightningnetworkMocks.NewService()
 		mockOcpiService := ocpiMocks.NewService()
 		mockNotificationService := notificationMocks.NewService()
-		invoiceMonitor := invoiceMocks.NewInvoiceMonitor(mockRepository, mockLightningService, mockNotificationService, mockOcpiService)
+		invoiceMonitor := invoiceMocks.NewInvoiceMonitor(mockRepository, mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
 		recvChan := mockLightningService.NewSubscribeInvoicesMockData()
 
 		invoiceMonitor.StartMonitor(1, shutdownCtx, waitGroup)

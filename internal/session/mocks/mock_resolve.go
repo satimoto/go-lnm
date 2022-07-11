@@ -5,6 +5,7 @@ import (
 	location "github.com/satimoto/go-datastore/pkg/location/mocks"
 	sessionMocks "github.com/satimoto/go-datastore/pkg/session/mocks"
 	countryaccount "github.com/satimoto/go-lsp/internal/countryaccount/mocks"
+	ferp "github.com/satimoto/go-lsp/internal/ferp/mocks"
 	lightningnetwork "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
 	notification "github.com/satimoto/go-lsp/internal/notification/mocks"
 	"github.com/satimoto/go-lsp/internal/session"
@@ -13,9 +14,10 @@ import (
 	ocpi "github.com/satimoto/go-ocpi/pkg/ocpi/mocks"
 )
 
-func NewResolver(repositoryService *mocks.MockRepositoryService, lightningService *lightningnetwork.MockLightningNetworkService, notificationService *notification.MockNotificationService, ocpiService *ocpi.MockOcpiService) *session.SessionResolver {
+func NewResolver(repositoryService *mocks.MockRepositoryService, ferpService *ferp.MockFerpService, lightningService *lightningnetwork.MockLightningNetworkService, notificationService *notification.MockNotificationService, ocpiService *ocpi.MockOcpiService) *session.SessionResolver {
 	return &session.SessionResolver{
 		Repository:             sessionMocks.NewRepository(repositoryService),
+		FerpService:            ferpService,
 		LightningService:       lightningService,
 		NotificationService:    notificationService,
 		OcpiService:            ocpiService,

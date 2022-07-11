@@ -5,6 +5,7 @@ import (
 
 	dbMocks "github.com/satimoto/go-datastore/pkg/db/mocks"
 	"github.com/satimoto/go-datastore/pkg/util"
+	ferpMocks "github.com/satimoto/go-lsp/internal/ferp/mocks"
 	lightningnetworkMocks "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
 	notificationMocks "github.com/satimoto/go-lsp/internal/notification/mocks"
 	"github.com/satimoto/go-lsp/internal/session"
@@ -183,10 +184,11 @@ func TestProcessChargingPeriods(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.desc, func(t *testing.T) {
 			mockRepository := dbMocks.NewMockRepositoryService()
+			mockFerpService := ferpMocks.NewService()
 			mockLightningService := lightningnetworkMocks.NewService()
 			mockNotificationService := notificationMocks.NewService()
 			mockOcpiService := ocpiMocks.NewService()
-			sessionResolver := sessionsMocks.NewResolver(mockRepository, mockLightningService, mockNotificationService, mockOcpiService)
+			sessionResolver := sessionsMocks.NewResolver(mockRepository, mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
 
 			sessionIto := session.SessionIto{}
 			json.Unmarshal(tc.session, &sessionIto)
@@ -348,10 +350,11 @@ func TestProcessChargingPeriods2(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.desc, func(t *testing.T) {
 			mockRepository := dbMocks.NewMockRepositoryService()
+			mockFerpService := ferpMocks.NewService()
 			mockLightningService := lightningnetworkMocks.NewService()
 			mockNotificationService := notificationMocks.NewService()
 			mockOcpiService := ocpiMocks.NewService()
-			sessionResolver := sessionsMocks.NewResolver(mockRepository, mockLightningService, mockNotificationService, mockOcpiService)
+			sessionResolver := sessionsMocks.NewResolver(mockRepository, mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
 
 			sessionIto := session.SessionIto{}
 			json.Unmarshal(tc.session, &sessionIto)
