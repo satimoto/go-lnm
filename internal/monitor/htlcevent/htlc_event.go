@@ -159,11 +159,36 @@ func (m *HtlcEventMonitor) handleLinkFailHtlcEvent(ctx context.Context, htlcEven
 		LastUpdated:    time.Unix(0, int64(htlcEvent.TimestampNs)),
 	}
 
-	_, err := m.RoutingEventRepository.UpdateRoutingEvent(ctx, updateRoutingEventParams)
+	if _, err := m.RoutingEventRepository.UpdateRoutingEvent(ctx, updateRoutingEventParams); err != nil {
+		createRoutingEventParams := db.CreateRoutingEventParams{
+			NodeID:           m.nodeID,
+			EventType:        db.RoutingEventTypeFORWARD,
+			EventStatus:      db.RoutingEventStatusLINKFAIL,
+			Currency:         m.accountingCurrency,
+			CurrencyRate:     0,
+			CurrencyRateMsat: 0,
+			IncomingChanID:   int64(htlcEvent.IncomingChannelId),
+			IncomingHtlcID:   int64(htlcEvent.IncomingHtlcId),
+			IncomingFiat:     0,
+			IncomingMsat:     0,
+			OutgoingChanID:   int64(htlcEvent.OutgoingChannelId),
+			OutgoingHtlcID:   int64(htlcEvent.IncomingHtlcId),
+			OutgoingFiat:     0,
+			OutgoingMsat:     0,
+			FeeFiat:          0,
+			FeeMsat:          0,
+			WireFailure:      util.SqlNullInt32(linkFailEvent.WireFailure),
+			FailureDetail:    util.SqlNullInt32(linkFailEvent.FailureDetail),
+			FailureString:    util.SqlNullString(linkFailEvent.FailureString),
+			LastUpdated:      time.Unix(0, int64(htlcEvent.TimestampNs)),
+		}
 
-	if err != nil {
-		util.LogOnError("LSP082", "Error updating routing event", err)
-		log.Printf("LSP082: Params=%#v", updateRoutingEventParams)
+		_, err = m.RoutingEventRepository.CreateRoutingEvent(ctx, createRoutingEventParams)
+
+		if err != nil {
+			util.LogOnError("LSP082", "Error creating routing event", err)
+			log.Printf("LSP082: Params=%#v", createRoutingEventParams)
+		}
 	}
 }
 
