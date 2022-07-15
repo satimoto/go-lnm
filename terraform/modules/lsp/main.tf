@@ -63,24 +63,14 @@ resource "aws_security_group_rule" "lsp_private_rpc_ingress_rule" {
   description       = "RPC from Private to ${var.instance_name}"
 }
 
-resource "aws_security_group_rule" "lsp_any_btc_p2p_egress_rule" {
+resource "aws_security_group_rule" "lsp_any_egress_rule" {
   type              = "egress"
-  from_port         = var.btc_p2p_port
-  to_port           = var.btc_p2p_port
+  from_port         = 1024
+  to_port           = 65535
   protocol          = "tcp"
   cidr_blocks       = ["0.0.0.0/0"]
   security_group_id = aws_security_group.lsp_security_group.id
-  description       = "BTC-P2P to Any from ${var.instance_name}"
-}
-
-resource "aws_security_group_rule" "lsp_any_lnd_p2p_egress_rule" {
-  type              = "egress"
-  from_port         = var.lnd_p2p_port
-  to_port           = var.lnd_p2p_port
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  security_group_id = aws_security_group.lsp_security_group.id
-  description       = "LND-P2P to Any from ${var.instance_name}"
+  description       = "Non-reserved to Any from ${var.instance_name}"
 }
 
 resource "aws_security_group_rule" "lsp_any_http_egress_rule" {
@@ -127,24 +117,14 @@ resource "aws_security_group_rule" "lsp_nat_ssh_ingress_rule" {
   description              = "SSH from NAT to ${var.instance_name}"
 }
 
-resource "aws_security_group_rule" "nat_lsp_btc_p2p_ingress_rule" {
+resource "aws_security_group_rule" "nat_lsp_any_ingress_rule" {
   type                     = "ingress"
-  from_port                = var.btc_p2p_port
-  to_port                  = var.btc_p2p_port
+  from_port                = 1024
+  to_port                  = 65535
   protocol                 = "tcp"
   source_security_group_id = aws_security_group.lsp_security_group.id
   security_group_id        = var.nat_security_group_id
-  description              = "BTC-P2P from ${var.instance_name} to NAT"
-}
-
-resource "aws_security_group_rule" "nat_lsp_lnd_p2p_ingress_rule" {
-  type                     = "ingress"
-  from_port                = var.lnd_p2p_port
-  to_port                  = var.lnd_p2p_port
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.lsp_security_group.id
-  security_group_id        = var.nat_security_group_id
-  description              = "LND-P2P from ${var.instance_name} to NAT"
+  description              = "Non-reserved from ${var.instance_name} to NAT"
 }
 
 resource "aws_security_group_rule" "nat_lsp_ssh_egress_rule" {
