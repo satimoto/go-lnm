@@ -9,7 +9,7 @@ type LightningAddr struct {
 	Host   string
 }
 
-func NewLightingAddr(lightningAddr string) *LightningAddr {
+func NewLightningAddr(lightningAddr string) *LightningAddr {
 	splitLightningAddr := strings.Split(lightningAddr, "@")
 
 	if len(splitLightningAddr) == 2 {
@@ -24,7 +24,7 @@ func NewLightingAddr(lightningAddr string) *LightningAddr {
 	}
 }
 
-func (l *LightningAddr) Hostname () string {
+func (l *LightningAddr) Hostname() string {
 	hostSplit := strings.Split(l.Host, ":")
 
 	if len(hostSplit) == 2 {

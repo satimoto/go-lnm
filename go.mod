@@ -168,7 +168,7 @@ require (
 	github.com/lightningnetwork/lnd/cert v1.1.1 // indirect
 	github.com/lightningnetwork/lnd/tlv v1.0.3 // indirect
 	github.com/lightningnetwork/lnd/tor v1.0.1 // indirect
-	github.com/satimoto/go-ocpi v0.0.3-0.20220629073124-496523cd8663
+	github.com/satimoto/go-ocpi v0.0.3-0.20220718065459-d1352ae31bf1
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/tv42/zbase32 v0.0.0-20160707012821-501572607d02 // indirect
 	gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec // indirect

@@ -2,4 +2,5 @@ package notification
 
 const (
 	SESSION_INVOICE = "SESSION_INVOICE"
+	SESSION_UPDATE  = "SESSION_UPDATE"
 )
