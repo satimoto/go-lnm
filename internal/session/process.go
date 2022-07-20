@@ -1,9 +1,12 @@
 package session
 
 import (
+	"context"
+	"log"
 	"time"
 
 	"github.com/satimoto/go-datastore/pkg/db"
+	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/tariff"
 )
 
@@ -68,4 +71,21 @@ func (r *SessionResolver) ProcessChargingPeriods(sessionIto *SessionIto, tariffI
 	}
 
 	return totalAmount
+}
+
+func (r *SessionResolver) UpdateSession(ctx context.Context, session db.Session) {
+	/** Session status has changed.
+	 *  Send a SessionUpdate notification to the user
+	 */
+	 
+	user, err := r.UserResolver.Repository.GetUser(ctx, session.UserID)
+
+	if err != nil {
+		util.LogOnError("LSP051", "Error retrieving user from session", err)
+		log.Printf("LSP051: SessionUid=%v, UserID=%v", session.Uid, session.UserID)
+		return
+	}
+
+	// TODO: handle notification failure
+	r.SendSessionUpdateNotification(user, session)
 }

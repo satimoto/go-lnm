@@ -34,7 +34,7 @@ func (r *SessionResolver) IssueLightningInvoice(ctx context.Context, user db.Use
 	}
 
 	invoice, err := r.LightningService.AddInvoice(&lnrpc.Invoice{
-		Memo: session.Uid,
+		Memo:      session.Uid,
 		RPreimage: preimage[:],
 		ValueMsat: amountMsat,
 	})
@@ -65,6 +65,6 @@ func (r *SessionResolver) IssueLightningInvoice(ctx context.Context, user db.Use
 		return
 	}
 
-	// TODO: Send user device notification
-	r.SendNotification(user, session, sessionInvoice)
+	// TODO: handle notification failure
+	r.SendSessionInvoiceNotification(user, session, sessionInvoice)
 }
