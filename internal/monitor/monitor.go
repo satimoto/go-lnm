@@ -119,12 +119,13 @@ func (m *Monitor) register() error {
 			// Register node
 			numChannels := int64(getInfoResponse.NumActiveChannels + getInfoResponse.NumInactiveChannels + getInfoResponse.NumPendingChannels)
 			numPeers := int64(getInfoResponse.NumPeers)
-			lightningAddr := util.NewLightingAddr(getInfoResponse.Uris[0])
+			lightningAddr := util.NewLightningAddr(getInfoResponse.Uris[0])
+			lndAddr := dbUtil.GetEnv("LND_P2P_HOST", lightningAddr.Host)
 
 			if n, err := m.NodeRepository.GetNodeByPubkey(ctx, getInfoResponse.IdentityPubkey); err == nil {
 				// Update node
 				updateNodeParams := param.NewUpdateNodeParams(n)
-				updateNodeParams.NodeAddr = lightningAddr.Host
+				updateNodeParams.NodeAddr = lndAddr
 				updateNodeParams.LspAddr = lspAddr
 				updateNodeParams.Alias = getInfoResponse.Alias
 				updateNodeParams.Color = getInfoResponse.Color
@@ -145,7 +146,7 @@ func (m *Monitor) register() error {
 				// Create node
 				createNodeParams := db.CreateNodeParams{
 					Pubkey:     getInfoResponse.IdentityPubkey,
-					NodeAddr:   lightningAddr.Host,
+					NodeAddr:   lndAddr,
 					LspAddr:    lspAddr,
 					Alias:      getInfoResponse.Alias,
 					Color:      getInfoResponse.Color,
