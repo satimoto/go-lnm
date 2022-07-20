@@ -240,22 +240,22 @@ func (m *HtlcEventMonitor) handleSettleHtlcEvent(ctx context.Context, htlcEvent 
 				}
 			}
 		}
-	}
+	} else {
+		updateRoutingEventParams := db.UpdateRoutingEventParams{
+			EventStatus:    db.RoutingEventStatusSETTLE,
+			IncomingChanID: int64(htlcEvent.IncomingChannelId),
+			IncomingHtlcID: int64(htlcEvent.IncomingHtlcId),
+			OutgoingChanID: int64(htlcEvent.OutgoingChannelId),
+			OutgoingHtlcID: int64(htlcEvent.IncomingHtlcId),
+			LastUpdated:    time.Unix(0, int64(htlcEvent.TimestampNs)),
+		}
 
-	updateRoutingEventParams := db.UpdateRoutingEventParams{
-		EventStatus:    db.RoutingEventStatusSETTLE,
-		IncomingChanID: int64(htlcEvent.IncomingChannelId),
-		IncomingHtlcID: int64(htlcEvent.IncomingHtlcId),
-		OutgoingChanID: int64(htlcEvent.OutgoingChannelId),
-		OutgoingHtlcID: int64(htlcEvent.IncomingHtlcId),
-		LastUpdated:    time.Unix(0, int64(htlcEvent.TimestampNs)),
-	}
+		_, err := m.RoutingEventRepository.UpdateRoutingEvent(ctx, updateRoutingEventParams)
 
-	_, err := m.RoutingEventRepository.UpdateRoutingEvent(ctx, updateRoutingEventParams)
-
-	if err != nil {
-		util.LogOnError("LSP083", "Error updating routing event", err)
-		log.Printf("LSP083: Params=%#v", updateRoutingEventParams)
+		if err != nil {
+			util.LogOnError("LSP083", "Error updating routing event", err)
+			log.Printf("LSP083: Params=%#v", updateRoutingEventParams)
+		}
 	}
 }
 
