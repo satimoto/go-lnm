@@ -154,6 +154,7 @@ func (m *Monitor) register() error {
 					Version:    getInfoResponse.Version,
 					Channels:   numChannels,
 					Peers:      numPeers,
+					IsActive:   true,
 				}
 
 				createdNode, err := m.NodeRepository.CreateNode(ctx, createNodeParams)
