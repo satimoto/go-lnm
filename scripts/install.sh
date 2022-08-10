@@ -1,0 +1,1 @@
+go install -ldflags '-s -w' github.com/satimoto/go-lsp/cmd/lsp
