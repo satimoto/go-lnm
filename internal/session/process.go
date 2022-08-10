@@ -55,16 +55,19 @@ func (r *SessionResolver) ProcessChargingPeriods(sessionIto *SessionIto, tariffI
 		priceComponents = getPriceComponents(tariffIto.Elements, startDatetime, endDatetime, energyVolume, minPowerVolume, maxPowerVolume)
 
 		if energyPriceComponent := getPriceComponentByType(priceComponents, db.TariffDimensionENERGY); energyPriceComponent != nil {
-			cost := calculateCost(energyPriceComponent, energyVolume, 1)
+			// 	Defined in kWh, step_size multiplier: 1 Wh
+			cost := calculateCost(energyPriceComponent, energyVolume, 1000)
 			totalAmount = calculateRoundedValue(totalAmount+cost, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
 		}
 
 		if timePriceComponent := getPriceComponentByType(priceComponents, db.TariffDimensionTIME); timePriceComponent != nil {
+			// Time charging: defined in hours, step_size multiplier: 1 second
 			cost := calculateCost(timePriceComponent, timeVolume, 3600)
 			totalAmount = calculateRoundedValue(totalAmount+cost, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
 		}
 
 		if parkingTimePriceComponent := getPriceComponentByType(priceComponents, db.TariffDimensionPARKINGTIME); parkingTimePriceComponent != nil {
+			// Time not charging: defined in hours, step_size multiplier: 1 second
 			cost := calculateCost(parkingTimePriceComponent, parkingTimeVolume, 3600)
 			totalAmount = calculateRoundedValue(totalAmount+cost, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
 		}
