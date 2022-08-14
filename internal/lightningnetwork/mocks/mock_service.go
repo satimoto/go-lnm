@@ -12,6 +12,7 @@ import (
 
 type MockLightningNetworkService struct {
 	addInvoiceMockData              []*lnrpc.Invoice
+	channelAcceptorMockData         []lnrpc.Lightning_ChannelAcceptorClient
 	getInfoMockData                 []*lnrpc.GetInfoResponse
 	htlcInterceptorMockData         []routerrpc.Router_HtlcInterceptorClient
 	openChannelSyncMockData         []*lnrpc.ChannelPoint
@@ -37,6 +38,24 @@ func (s *MockLightningNetworkService) AddInvoice(in *lnrpc.Invoice, opts ...grpc
 		RHash:          in.RHash,
 		PaymentRequest: hex.EncodeToString(in.RPreimage),
 	}, nil
+}
+
+func (s *MockLightningNetworkService) ChannelAcceptor(opts ...grpc.CallOption) (lnrpc.Lightning_ChannelAcceptorClient, error) {
+	if len(s.channelAcceptorMockData) == 0 {
+		return nil, errors.New("NotFound")
+	}
+
+	response := s.channelAcceptorMockData[0]
+	s.channelAcceptorMockData = s.channelAcceptorMockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) NewChannelAcceptorMockData() (<-chan *lnrpc.ChannelAcceptResponse, chan<- *lnrpc.ChannelAcceptRequest) {
+	sendChan := make(chan *lnrpc.ChannelAcceptResponse)
+	recvChan := make(chan *lnrpc.ChannelAcceptRequest)
+	s.channelAcceptorMockData = append(s.channelAcceptorMockData, NewMockChannelAcceptorClient(sendChan, recvChan))
+
+	return sendChan, recvChan
 }
 
 func (s *MockLightningNetworkService) GetAddInvoiceMockData() (*lnrpc.Invoice, error) {
