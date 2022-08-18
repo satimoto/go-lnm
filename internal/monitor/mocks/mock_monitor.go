@@ -15,6 +15,7 @@ import (
 	htlc "github.com/satimoto/go-lsp/internal/monitor/htlc/mocks"
 	htlcevent "github.com/satimoto/go-lsp/internal/monitor/htlcevent/mocks"
 	invoice "github.com/satimoto/go-lsp/internal/monitor/invoice/mocks"
+	psbtfund "github.com/satimoto/go-lsp/internal/monitor/psbtfund/mocks"
 	transaction "github.com/satimoto/go-lsp/internal/monitor/transaction/mocks"
 	notification "github.com/satimoto/go-lsp/internal/notification/mocks"
 	ocpi "github.com/satimoto/go-ocpi/pkg/ocpi/mocks"
@@ -22,16 +23,17 @@ import (
 
 func NewMonitor(shutdownCtx context.Context, repositoryService *mocks.MockRepositoryService, ferpService *ferp.MockFerpService, lightningService *lightningnetwork.MockLightningNetworkService, notificationService *notification.MockNotificationService, ocpiService *ocpi.MockOcpiService) *monitor.Monitor {
 	backupService := backup.NewService()
-	customMessageMonitor := custommessage.NewCustomMessageMonitor(repositoryService, lightningService)
+	psbtFundService := psbtfund.NewService(repositoryService, lightningService)
+	htlcMonitor := htlc.NewHtlcMonitor(repositoryService, lightningService, psbtFundService)
 
 	return &monitor.Monitor{
 		LightningService:     lightningService,
-		ShutdownCtx:          shutdownCtx,
+		PsbtFundService:      psbtFundService,
 		NodeRepository:       node.NewRepository(repositoryService),
 		ChannelBackupMonitor: channelbackup.NewChannelBackupMonitor(repositoryService, backupService, lightningService),
-		ChannelEventMonitor:  channelevent.NewChannelEventMonitor(repositoryService, lightningService),
-		CustomMessageMonitor: customMessageMonitor,
-		HtlcMonitor:          htlc.NewHtlcMonitor(repositoryService, lightningService, customMessageMonitor),
+		ChannelEventMonitor:  channelevent.NewChannelEventMonitor(repositoryService, lightningService, htlcMonitor),
+		CustomMessageMonitor: custommessage.NewCustomMessageMonitor(repositoryService, lightningService),
+		HtlcMonitor:          htlcMonitor,
 		HtlcEventMonitor:     htlcevent.NewHtlcEventMonitor(repositoryService, ferpService, lightningService),
 		InvoiceMonitor:       invoice.NewInvoiceMonitor(repositoryService, ferpService, lightningService, notificationService, ocpiService),
 		TransactionMonitor:   transaction.NewTransactionMonitor(repositoryService, lightningService),
