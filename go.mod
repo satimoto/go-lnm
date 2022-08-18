@@ -4,9 +4,9 @@ go 1.17
 
 require (
 	github.com/joho/godotenv v1.4.0
-	github.com/lightningnetwork/lnd v0.15.0-beta
+	github.com/lightningnetwork/lnd v0.15.0-beta.rc6
 	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
-	github.com/satimoto/go-datastore v0.1.2-0.20220721053843-6ef62501bd52
+	github.com/satimoto/go-datastore v0.2.1-0.20220818201223-86c5332670ff
 	google.golang.org/grpc v1.47.0
 )
 

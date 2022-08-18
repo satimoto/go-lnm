@@ -7,15 +7,21 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/chainrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
+	"github.com/lightningnetwork/lnd/lnrpc/walletrpc"
 	"google.golang.org/grpc"
 )
 
 type MockLightningNetworkService struct {
 	addInvoiceMockData              []*lnrpc.Invoice
 	channelAcceptorMockData         []lnrpc.Lightning_ChannelAcceptorClient
+	finalizePsbtMockData            []*walletrpc.FinalizePsbtResponse
+	fundingStateStepMockData        []*lnrpc.FundingStateStepResp
+	fundPsbtMockData                []*walletrpc.FundPsbtResponse
 	getInfoMockData                 []*lnrpc.GetInfoResponse
 	htlcInterceptorMockData         []routerrpc.Router_HtlcInterceptorClient
+	openChannelMockData             []lnrpc.Lightning_OpenChannelClient
 	openChannelSyncMockData         []*lnrpc.ChannelPoint
+	publishTransactionMockData      []*walletrpc.PublishResponse
 	registerBlockEpochNtfnMockData  []chainrpc.ChainNotifier_RegisterBlockEpochNtfnClient
 	sendCustomMessageMockData       []*lnrpc.SendCustomMessageResponse
 	subscribeChannelBackupsMockData []lnrpc.Lightning_SubscribeChannelBackupsClient
@@ -68,6 +74,48 @@ func (s *MockLightningNetworkService) GetAddInvoiceMockData() (*lnrpc.Invoice, e
 	return response, nil
 }
 
+func (s *MockLightningNetworkService) FinalizePsbt(in *walletrpc.FinalizePsbtRequest, opts ...grpc.CallOption) (*walletrpc.FinalizePsbtResponse, error) {
+	if len(s.finalizePsbtMockData) == 0 {
+		return &walletrpc.FinalizePsbtResponse{}, errors.New("NotFound")
+	}
+
+	response := s.finalizePsbtMockData[0]
+	s.finalizePsbtMockData = s.finalizePsbtMockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) SetFinalizePsbtMockData(mockData *walletrpc.FinalizePsbtResponse) {
+	s.finalizePsbtMockData = append(s.finalizePsbtMockData, mockData)
+}
+
+func (s *MockLightningNetworkService) FundingStateStep(in *lnrpc.FundingTransitionMsg, opts ...grpc.CallOption) (*lnrpc.FundingStateStepResp, error) {
+	if len(s.fundingStateStepMockData) == 0 {
+		return &lnrpc.FundingStateStepResp{}, errors.New("NotFound")
+	}
+
+	response := s.fundingStateStepMockData[0]
+	s.fundingStateStepMockData = s.fundingStateStepMockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) SetFundingStateStepMockData(mockData *lnrpc.FundingStateStepResp) {
+	s.fundingStateStepMockData = append(s.fundingStateStepMockData, mockData)
+}
+
+func (s *MockLightningNetworkService) FundPsbt(in *walletrpc.FundPsbtRequest, opts ...grpc.CallOption) (*walletrpc.FundPsbtResponse, error) {
+	if len(s.fundPsbtMockData) == 0 {
+		return &walletrpc.FundPsbtResponse{}, errors.New("NotFound")
+	}
+
+	response := s.fundPsbtMockData[0]
+	s.fundPsbtMockData = s.fundPsbtMockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) SetFundPsbtMockData(mockData *walletrpc.FundPsbtResponse) {
+	s.fundPsbtMockData = append(s.fundPsbtMockData, mockData)
+}
+
 func (s *MockLightningNetworkService) GetInfo(in *lnrpc.GetInfoRequest, opts ...grpc.CallOption) (*lnrpc.GetInfoResponse, error) {
 	if len(s.getInfoMockData) == 0 {
 		return &lnrpc.GetInfoResponse{}, errors.New("NotFound")
@@ -100,6 +148,23 @@ func (s *MockLightningNetworkService) NewHtlcInterceptorMockData() (<-chan *rout
 	return sendChan, recvChan
 }
 
+func (s *MockLightningNetworkService) OpenChannel(in *lnrpc.OpenChannelRequest, opts ...grpc.CallOption) (lnrpc.Lightning_OpenChannelClient, error) {
+	if len(s.openChannelMockData) == 0 {
+		return nil, errors.New("NotFound")
+	}
+
+	response := s.openChannelMockData[0]
+	s.openChannelMockData = s.openChannelMockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) NewOpenChannelMockData() chan<- *lnrpc.OpenStatusUpdate {
+	recvChan := make(chan *lnrpc.OpenStatusUpdate)
+	s.openChannelMockData = append(s.openChannelMockData, NewMockOpenChannelClient(recvChan))
+
+	return recvChan
+}
+
 func (s *MockLightningNetworkService) OpenChannelSync(in *lnrpc.OpenChannelRequest, opts ...grpc.CallOption) (*lnrpc.ChannelPoint, error) {
 	if len(s.openChannelSyncMockData) == 0 {
 		return &lnrpc.ChannelPoint{}, errors.New("NotFound")
@@ -112,6 +177,20 @@ func (s *MockLightningNetworkService) OpenChannelSync(in *lnrpc.OpenChannelReque
 
 func (s *MockLightningNetworkService) SetOpenChannelSyncMockData(mockData *lnrpc.ChannelPoint) {
 	s.openChannelSyncMockData = append(s.openChannelSyncMockData, mockData)
+}
+
+func (s *MockLightningNetworkService) PublishTransaction(in *walletrpc.Transaction, opts ...grpc.CallOption) (*walletrpc.PublishResponse, error) {
+	if len(s.publishTransactionMockData) == 0 {
+		return &walletrpc.PublishResponse{}, errors.New("NotFound")
+	}
+
+	response := s.publishTransactionMockData[0]
+	s.publishTransactionMockData = s.publishTransactionMockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) SetPublishTransactionMockData(mockData *walletrpc.PublishResponse) {
+	s.publishTransactionMockData = append(s.publishTransactionMockData, mockData)
 }
 
 func (s *MockLightningNetworkService) RegisterBlockEpochNtfn(in *chainrpc.BlockEpoch, opts ...grpc.CallOption) (chainrpc.ChainNotifier_RegisterBlockEpochNtfnClient, error) {
