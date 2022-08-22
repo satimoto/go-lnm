@@ -56,7 +56,7 @@ func (r *SessionResolver) StartSessionMonitor(ctx context.Context, session db.Se
 			return
 		}
 
-		taxPercent := r.CountryAccountResolver.GetTaxPercentByCountry(ctx, location.Country, util.GetEnvFloat64("DEFAULT_TAX_PERCENT", 20))
+		taxPercent := r.CountryAccountResolver.GetTaxPercentByCountry(ctx, location.Country, util.GetEnvFloat64("DEFAULT_TAX_PERCENT", 19))
 		invoiceInterval := calculateInvoiceInterval(connector.Wattage)
 		log.Printf("Monitor session for %s, running every %v seconds", session.Uid, invoiceInterval/time.Second)
 

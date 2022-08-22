@@ -108,17 +108,18 @@ func (m *ChannelEventMonitor) handleChannelEvent(channelEvent lnrpc.ChannelEvent
 		 *  Resume pending HTLCs as the channel is now open.
 		 */
 		activeChannel := channelEvent.GetActiveChannel()
-		log.Printf("Txid: %v", activeChannel.GetFundingTxidStr())
+		log.Printf("Txid: %v", hex.EncodeToString(util.ReverseBytes(activeChannel.GetFundingTxidBytes())))
 		log.Printf("OutputIndex: %v", activeChannel.OutputIndex)
 
-		updatePendingChannelRequestByChannelPointParams := db.UpdatePendingChannelRequestByChannelPointParams{
+		getChannelRequestByChannelPointParams := db.GetChannelRequestByChannelPointParams{
 			FundingTxID: activeChannel.GetFundingTxidBytes(),
 			OutputIndex: dbUtil.SqlNullInt64(activeChannel.OutputIndex),
-			Status:      db.ChannelRequestStatusCOMPLETED,
 		}
 
-		if channelRequest, err := m.ChannelRequestResolver.Repository.UpdatePendingChannelRequestByChannelPoint(ctx, updatePendingChannelRequestByChannelPointParams); err == nil {
-			m.HtlcMonitor.ResumeChannelRequestHtlcs(ctx, channelRequest.ID)
+		channelRequest, err := m.ChannelRequestResolver.Repository.GetChannelRequestByChannelPoint(ctx, getChannelRequestByChannelPointParams)
+
+		if err == nil && channelRequest.Status == db.ChannelRequestStatusOPENINGCHANNEL {
+			go m.HtlcMonitor.ResumeChannelRequestHtlcs(channelRequest)
 		}
 		break
 	case lnrpc.ChannelEventUpdate_CLOSED_CHANNEL, lnrpc.ChannelEventUpdate_FULLY_RESOLVED_CHANNEL:
