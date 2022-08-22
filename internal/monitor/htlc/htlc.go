@@ -44,24 +44,40 @@ func (m *HtlcMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup 
 	go m.subscribeHtlcInterceptions(htlcInterceptChan)
 }
 
-func (m *HtlcMonitor) ResumeChannelRequestHtlcs(ctx context.Context, channelRequestID int64) {
-	channelRequestHtlcs, err := m.ChannelRequestResolver.Repository.ListChannelRequestHtlcs(ctx, channelRequestID)
+func (m *HtlcMonitor) ResumeChannelRequestHtlcs(channelRequest db.ChannelRequest) {
+	if channelRequest.Status == db.ChannelRequestStatusOPENINGCHANNEL {
+		log.Printf("Wait 2 seconds before resuming HTLCs: %v", channelRequest.ID)
+		time.Sleep(2 * time.Second)
 
-	if err != nil {
-		util.LogOnError("LSP097", "Error listing channel request HTLCs", err)
-		log.Printf("LSP097: ChannelRequestID=%v", channelRequestID)
-	}
+		ctx := context.Background()
+		channelRequestHtlcs, err := m.ChannelRequestResolver.Repository.ListChannelRequestHtlcs(ctx, channelRequest.ID)
 
-	for _, channelRequestHtlc := range channelRequestHtlcs {
-		htlcInterceptResponse := &routerrpc.ForwardHtlcInterceptResponse{
-			IncomingCircuitKey: &routerrpc.CircuitKey{
-				ChanId: uint64(channelRequestHtlc.ChanID),
-				HtlcId: uint64(channelRequestHtlc.HtlcID),
-			},
-			Action: routerrpc.ResolveHoldForwardAction_RESUME,
+		if err != nil {
+			util.LogOnError("LSP097", "Error listing channel request HTLCs", err)
+			log.Printf("LSP097: ChannelRequestID=%v", channelRequest.ID)
 		}
 
-		m.HtlcInterceptorClient.Send(htlcInterceptResponse)
+		for _, channelRequestHtlc := range channelRequestHtlcs {
+			htlcInterceptResponse := &routerrpc.ForwardHtlcInterceptResponse{
+				IncomingCircuitKey: &routerrpc.CircuitKey{
+					ChanId: uint64(channelRequestHtlc.ChanID),
+					HtlcId: uint64(channelRequestHtlc.HtlcID),
+				},
+				Action: routerrpc.ResolveHoldForwardAction_RESUME,
+			}
+
+			m.HtlcInterceptorClient.Send(htlcInterceptResponse)
+		}
+
+		updateChannelRequestParams := param.NewUpdateChannelRequestParams(channelRequest)
+		updateChannelRequestParams.Status = db.ChannelRequestStatusCOMPLETED
+
+		_, err = m.ChannelRequestResolver.Repository.UpdateChannelRequest(ctx, updateChannelRequestParams)
+
+		if err != nil {
+			util.LogOnError("LSP099", "Error updating channel request", err)
+			log.Printf("LSP099: Params=%#v", updateChannelRequestParams)
+		}
 	}
 }
 
@@ -85,7 +101,7 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 		 *  We store the incoming HTLC so we can manage a failure state.
 		 *  When the channel request is in a REQUESTED state, we start a payment timeout to handle cleanup of the failure state.
 		 *  Add the received payment amount to total channel request amount to calculate if the payment is complete.
-		 *  When the payment is complete, we use PsbtFundService to opena  channel.
+		 *  When the payment is complete, we use PsbtFundService to open   channel.
 		 *  Channel event subscription stream will pick up when the channel is open and resume the payment.
 		 */
 
@@ -138,7 +154,8 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 
 				// Requested channel amount plus 25%
 				localFundingAmount := int64(float64(channelRequest.Amount) * 1.25)
-				
+
+				// TODO: Verify the are enough funds to open the channel
 				openChannelRequest := &lnrpc.OpenChannelRequest{
 					NodePubkey:         pubkeyBytes,
 					LocalFundingAmount: localFundingAmount,
