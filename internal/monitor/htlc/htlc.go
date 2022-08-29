@@ -58,15 +58,17 @@ func (m *HtlcMonitor) ResumeChannelRequestHtlcs(channelRequest db.ChannelRequest
 		}
 
 		for _, channelRequestHtlc := range channelRequestHtlcs {
-			htlcInterceptResponse := &routerrpc.ForwardHtlcInterceptResponse{
-				IncomingCircuitKey: &routerrpc.CircuitKey{
-					ChanId: uint64(channelRequestHtlc.ChanID),
-					HtlcId: uint64(channelRequestHtlc.HtlcID),
-				},
-				Action: routerrpc.ResolveHoldForwardAction_RESUME,
+			if !channelRequestHtlc.IsSettled && !channelRequestHtlc.IsFailed {
+				htlcInterceptResponse := &routerrpc.ForwardHtlcInterceptResponse{
+					IncomingCircuitKey: &routerrpc.CircuitKey{
+						ChanId: uint64(channelRequestHtlc.ChanID),
+						HtlcId: uint64(channelRequestHtlc.HtlcID),
+					},
+					Action: routerrpc.ResolveHoldForwardAction_RESUME,
+				}
+	
+				m.HtlcInterceptorClient.Send(htlcInterceptResponse)
 			}
-
-			m.HtlcInterceptorClient.Send(htlcInterceptResponse)
 		}
 
 		updateChannelRequestParams := param.NewUpdateChannelRequestParams(channelRequest)
