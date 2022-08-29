@@ -42,7 +42,7 @@ func (m *HtlcEventMonitor) StartMonitor(nodeID int64, shutdownCtx context.Contex
 
 	m.accountingCurrency = util.GetEnv("ACCOUNTING_CURRENCY", "EUR")
 	m.nodeID = nodeID
-	
+
 	go m.waitForHtlcEvents(shutdownCtx, waitGroup, htlcEventChan)
 	go m.subscribeHtlcEventInterceptions(htlcEventChan)
 }
@@ -118,10 +118,22 @@ func (m *HtlcEventMonitor) handleForwardHtlcEvent(ctx context.Context, htlcEvent
 func (m *HtlcEventMonitor) handleForwardFailHtlcEvent(ctx context.Context, htlcEvent routerrpc.HtlcEvent) {
 	log.Printf("Forward Fail HTLC Event")
 
+	incomingChannelId := int64(htlcEvent.IncomingChannelId)
+	incomingHtlcId := int64(htlcEvent.IncomingHtlcId)
+
+	// Update channel request HTLC
+	m.ChannelRequestResolver.Repository.UpdateChannelRequestHtlcByCircuitKey(ctx, db.UpdateChannelRequestHtlcByCircuitKeyParams{
+		ChanID:    incomingChannelId,
+		HtlcID:    incomingHtlcId,
+		IsSettled: false,
+		IsFailed:  true,
+	})
+
+	// Update routing event
 	updateRoutingEventParams := db.UpdateRoutingEventParams{
 		EventStatus:    db.RoutingEventStatusFORWARDFAIL,
-		IncomingChanID: int64(htlcEvent.IncomingChannelId),
-		IncomingHtlcID: int64(htlcEvent.IncomingHtlcId),
+		IncomingChanID: incomingChannelId,
+		IncomingHtlcID: incomingHtlcId,
 		OutgoingChanID: int64(htlcEvent.OutgoingChannelId),
 		OutgoingHtlcID: int64(htlcEvent.IncomingHtlcId),
 		LastUpdated:    time.Unix(0, int64(htlcEvent.TimestampNs)),
@@ -139,15 +151,26 @@ func (m *HtlcEventMonitor) handleLinkFailHtlcEvent(ctx context.Context, htlcEven
 	log.Printf("Link Fail HTLC Event")
 
 	linkFailEvent := htlcEvent.GetLinkFailEvent()
+	incomingChannelId := int64(htlcEvent.IncomingChannelId)
+	incomingHtlcId := int64(htlcEvent.IncomingHtlcId)
 
 	log.Printf("WireFailure: %v", linkFailEvent.WireFailure)
 	log.Printf("FailureDetail: %v", linkFailEvent.FailureDetail)
 	log.Printf("FailureString: %v", linkFailEvent.FailureString)
 
+	// Update channel request HTLC
+	m.ChannelRequestResolver.Repository.UpdateChannelRequestHtlcByCircuitKey(ctx, db.UpdateChannelRequestHtlcByCircuitKeyParams{
+		ChanID:    incomingChannelId,
+		HtlcID:    incomingHtlcId,
+		IsSettled: false,
+		IsFailed:  true,
+	})
+
+	// Update routing event
 	updateRoutingEventParams := db.UpdateRoutingEventParams{
 		EventStatus:    db.RoutingEventStatusLINKFAIL,
-		IncomingChanID: int64(htlcEvent.IncomingChannelId),
-		IncomingHtlcID: int64(htlcEvent.IncomingHtlcId),
+		IncomingChanID: incomingChannelId,
+		IncomingHtlcID: incomingHtlcId,
 		OutgoingChanID: int64(htlcEvent.OutgoingChannelId),
 		OutgoingHtlcID: int64(htlcEvent.IncomingHtlcId),
 		WireFailure:    util.SqlNullInt32(linkFailEvent.WireFailure),
@@ -191,11 +214,22 @@ func (m *HtlcEventMonitor) handleLinkFailHtlcEvent(ctx context.Context, htlcEven
 
 func (m *HtlcEventMonitor) handleSettleHtlcEvent(ctx context.Context, htlcEvent routerrpc.HtlcEvent) {
 	log.Printf("Settle HTLC Event")
+	incomingChannelId := int64(htlcEvent.IncomingChannelId)
+	incomingHtlcId := int64(htlcEvent.IncomingHtlcId)
 
+	// Update channel request HTLC
+	m.ChannelRequestResolver.Repository.UpdateChannelRequestHtlcByCircuitKey(ctx, db.UpdateChannelRequestHtlcByCircuitKeyParams{
+		ChanID:    incomingChannelId,
+		HtlcID:    incomingHtlcId,
+		IsSettled: true,
+		IsFailed:  false,
+	})
+
+	// Update routing event
 	updateRoutingEventParams := db.UpdateRoutingEventParams{
 		EventStatus:    db.RoutingEventStatusSETTLE,
-		IncomingChanID: int64(htlcEvent.IncomingChannelId),
-		IncomingHtlcID: int64(htlcEvent.IncomingHtlcId),
+		IncomingChanID: incomingChannelId,
+		IncomingHtlcID: incomingHtlcId,
 		OutgoingChanID: int64(htlcEvent.OutgoingChannelId),
 		OutgoingHtlcID: int64(htlcEvent.IncomingHtlcId),
 		LastUpdated:    time.Unix(0, int64(htlcEvent.TimestampNs)),
