@@ -46,8 +46,8 @@ func (m *HtlcMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup 
 
 func (m *HtlcMonitor) ResumeChannelRequestHtlcs(channelRequest db.ChannelRequest) {
 	if channelRequest.Status == db.ChannelRequestStatusOPENINGCHANNEL {
-		log.Printf("Wait 2 seconds before resuming HTLCs: %v", channelRequest.ID)
-		time.Sleep(2 * time.Second)
+		log.Printf("Wait 10 seconds before resuming HTLCs: %v", channelRequest.ID)
+		time.Sleep(10 * time.Second)
 
 		ctx := context.Background()
 		channelRequestHtlcs, err := m.ChannelRequestResolver.Repository.ListChannelRequestHtlcs(ctx, channelRequest.ID)
@@ -126,7 +126,9 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 				ChannelRequestID: channelRequest.ID,
 				ChanID:           int64(htlcInterceptRequest.IncomingCircuitKey.ChanId),
 				HtlcID:           int64(htlcInterceptRequest.IncomingCircuitKey.HtlcId),
+				AmountMsat:       int64(htlcInterceptRequest.OutgoingAmountMsat),
 				IsSettled:        false,
+				IsFailed:         false,
 			}
 
 			if _, err := m.ChannelRequestResolver.Repository.CreateChannelRequestHtlc(ctx, channelRequestHtlcParams); err != nil {
@@ -159,7 +161,10 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 				openChannelRequest := &lnrpc.OpenChannelRequest{
 					NodePubkey:         pubkeyBytes,
 					LocalFundingAmount: localFundingAmount,
+					CommitmentType:     lnrpc.CommitmentType_ANCHORS,
 					Private:            true,
+					ZeroConf:           true,
+					ScidAlias:          true,
 				}
 
 				err = m.PsbtFundService.OpenChannel(ctx, openChannelRequest, channelRequest)

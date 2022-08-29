@@ -41,9 +41,10 @@ func (m *ChannelAcceptorMonitor) handleChannelAcceptor(channelAccept lnrpc.Chann
 	/** Channel Accept received.
 	 *  Reject a channel request that is zero-conf or private
 	 */
+	// TODO: Should we accept zero conf channels from known mobile peers?
 	wantsPrivate := channelAccept.ChannelFlags&uint32(lnwire.FFAnnounceChannel) == 0
-	wantsZeroConf := false
-	wantsScidAlias := false
+	wantsZeroConf := channelAccept.WantsZeroConf
+	wantsScidAlias := channelAccept.WantsScidAlias
 	
 	log.Print("Channel Accept")
 	log.Printf("NodePubkey: %v", hex.EncodeToString(channelAccept.NodePubkey))
