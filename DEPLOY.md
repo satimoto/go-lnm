@@ -305,7 +305,7 @@ git checkout v0.15.0-beta
 ```
 Make lnd
 ```bash
-make && make install tags="autopilotrpc chainrpc invoicesrpc peersrpc routerrpc signrpc walletrpc watchtowerrpc wtclientrpc monitoring kvdb_postgres"
+make && make install tags="autopilotrpc chainrpc devrpc neutrinorpc invoicesrpc peersrpc routerrpc signrpc verrpc walletrpc watchtowerrpc wtclientrpc monitoring kvdb_postgres"
 ```
 Create lnd data and config directories
 ```bash
