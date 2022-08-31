@@ -437,6 +437,12 @@ db.postgres.dsn=postgresql://lnd1:dbpass@satimoto.cluster-csvwlfckqqfq.eu-centra
 db.postgres.timeout=0
 
 [protocol]
+# Enable SCID alias support
+protocol.option-scid-alias=true
+
+# Enable zero-conf support
+protocol.zero-conf=true
+
 # Enable large channels support
 protocol.wumbo-channels=1
 
@@ -567,6 +573,7 @@ LND_GRPC_HOST=127.0.0.1:10009
 LND_TLS_CERT=
 LND_MACAROON=
 OCPI_RPC_ADDRESS=ocpi.satimoto.service:50000
+PSBT_BATCH_TIMEOUT=30
 REST_PORT=9002
 RPC_PORT=50000
 SHUTDOWN_TIMEOUT=20
