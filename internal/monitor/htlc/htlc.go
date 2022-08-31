@@ -99,7 +99,6 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 	channelRequest, err := m.ChannelRequestResolver.Repository.GetChannelRequestByPaymentHash(ctx, htlcInterceptRequest.PaymentHash)
 
 	if err == nil {
-		log.Printf("Channel request registered and HTLC intercepted")
 		/** Channel request registered and HTLC intercepted.
 		 *  We store the incoming HTLC so we can manage a failure state.
 		 *  When the channel request is in a REQUESTED state, we start a payment timeout to handle cleanup of the failure state.
@@ -203,7 +202,6 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 			m.sendToHtlcInterceptor(htlcInterceptRequest.IncomingCircuitKey, routerrpc.ResolveHoldForwardAction_FAIL)
 		}
 	} else {
-		util.LogOnError("LSP0X1", "Request not found, resuming HTLC", err)
 		m.sendToHtlcInterceptor(htlcInterceptRequest.IncomingCircuitKey, routerrpc.ResolveHoldForwardAction_RESUME)
 	}
 }
