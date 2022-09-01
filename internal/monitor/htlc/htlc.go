@@ -46,8 +46,9 @@ func (m *HtlcMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup 
 
 func (m *HtlcMonitor) ResumeChannelRequestHtlcs(channelRequest db.ChannelRequest) {
 	if channelRequest.Status == db.ChannelRequestStatusOPENINGCHANNEL {
-		log.Printf("Wait 10 seconds before resuming HTLCs: %v", channelRequest.ID)
-		time.Sleep(10 * time.Second)
+		psbtHtlcResumeTimeout := util.GetEnvInt32("PBST_HTLC_RESUME_TIMEOUT", 10)
+		log.Printf("Wait %v seconds before resuming HTLCs: %v", psbtHtlcResumeTimeout, channelRequest.ID)
+		time.Sleep(time.Duration(psbtHtlcResumeTimeout) * time.Second)
 
 		ctx := context.Background()
 		channelRequestHtlcs, err := m.ChannelRequestResolver.Repository.ListChannelRequestHtlcs(ctx, channelRequest.ID)
