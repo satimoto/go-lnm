@@ -55,7 +55,6 @@ func (m *ChannelGraphMonitor) handleChannelGraph(channelGraph lnrpc.GraphTopolog
 	 *  Find the Channel Request by the channel point params.
 	 *  Update the Channel Request status depending on the event type.
 	 */
-	log.Printf("Channel Graph: %v", len(channelGraph.ChannelUpdates))
 	ctx := context.Background()
 
 	for _, channelUpdate := range channelGraph.ChannelUpdates {
