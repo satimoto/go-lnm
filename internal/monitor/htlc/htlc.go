@@ -24,6 +24,9 @@ type HtlcMonitor struct {
 	PsbtFundService        psbtfund.PsbtFund
 	HtlcInterceptorClient  routerrpc.Router_HtlcInterceptorClient
 	ChannelRequestResolver *channelrequest.ChannelRequestResolver
+	baseFeeMsat            int64
+	feeRatePpm             uint32
+	timeLockDelta          uint32
 	nodeID                 int64
 }
 
@@ -39,7 +42,11 @@ func (m *HtlcMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup 
 	log.Printf("Starting up Htlcs")
 	htlcInterceptChan := make(chan routerrpc.ForwardHtlcInterceptRequest)
 
+	m.baseFeeMsat = int64(util.GetEnvInt32("BASE_FEE_MSAT", 0))
+	m.feeRatePpm = uint32(util.GetEnvInt32("FEE_RATE_PPM", 10))
+	m.timeLockDelta = uint32(util.GetEnvInt32("TIME_LOCK_DELTA", 100))
 	m.nodeID = nodeID
+
 	go m.waitForHtlcs(ctx, waitGroup, htlcInterceptChan)
 	go m.subscribeHtlcInterceptions(htlcInterceptChan)
 }
@@ -67,11 +74,12 @@ func (m *HtlcMonitor) ResumeChannelRequestHtlcs(channelRequest db.ChannelRequest
 					},
 					Action: routerrpc.ResolveHoldForwardAction_RESUME,
 				}
-	
+
 				m.HtlcInterceptorClient.Send(htlcInterceptResponse)
 			}
 		}
 
+		// Set channel request as completed
 		updateChannelRequestParams := param.NewUpdateChannelRequestParams(channelRequest)
 		updateChannelRequestParams.Status = db.ChannelRequestStatusCOMPLETED
 
@@ -80,6 +88,28 @@ func (m *HtlcMonitor) ResumeChannelRequestHtlcs(channelRequest db.ChannelRequest
 		if err != nil {
 			util.LogOnError("LSP099", "Error updating channel request", err)
 			log.Printf("LSP099: Params=%#v", updateChannelRequestParams)
+		}
+
+		// Update initial channel policy
+		policyUpdateRequest := &lnrpc.PolicyUpdateRequest{
+			Scope: &lnrpc.PolicyUpdateRequest_ChanPoint{
+				ChanPoint: &lnrpc.ChannelPoint{
+					FundingTxid: &lnrpc.ChannelPoint_FundingTxidBytes{
+						FundingTxidBytes: channelRequest.FundingTxID,
+					},
+					OutputIndex: uint32(channelRequest.OutputIndex.Int64),
+				},
+			},
+			BaseFeeMsat: m.baseFeeMsat,
+			FeeRatePpm:  m.feeRatePpm,
+			TimeLockDelta: m.timeLockDelta,
+		}
+
+		_, err = m.LightningService.UpdateChannelPolicy(policyUpdateRequest)
+
+		if err != nil {
+			util.LogOnError("LSP106", "Error updating channel policy", err)
+			log.Printf("LSP106: Params=%#v", policyUpdateRequest)
 		}
 	}
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/satimoto/go-lsp/internal/monitor/channelacceptor"
 	"github.com/satimoto/go-lsp/internal/monitor/channelbackup"
 	"github.com/satimoto/go-lsp/internal/monitor/channelevent"
+	"github.com/satimoto/go-lsp/internal/monitor/channelgraph"
 	"github.com/satimoto/go-lsp/internal/monitor/custommessage"
 	"github.com/satimoto/go-lsp/internal/monitor/htlc"
 	"github.com/satimoto/go-lsp/internal/monitor/htlcevent"
@@ -40,6 +41,7 @@ type Monitor struct {
 	ChannelAcceptorMonitor *channelacceptor.ChannelAcceptorMonitor
 	ChannelBackupMonitor   *channelbackup.ChannelBackupMonitor
 	ChannelEventMonitor    *channelevent.ChannelEventMonitor
+	ChannelGraphMonitor    *channelgraph.ChannelGraphMonitor
 	CustomMessageMonitor   *custommessage.CustomMessageMonitor
 	HtlcMonitor            *htlc.HtlcMonitor
 	HtlcEventMonitor       *htlcevent.HtlcEventMonitor
@@ -63,6 +65,7 @@ func NewMonitor(shutdownCtx context.Context, repositoryService *db.RepositorySer
 		ChannelAcceptorMonitor: channelacceptor.NewChannelAcceptorMonitor(repositoryService, lightningService),
 		ChannelBackupMonitor:   channelbackup.NewChannelBackupMonitor(repositoryService, backupService, lightningService),
 		ChannelEventMonitor:    channelevent.NewChannelEventMonitor(repositoryService, lightningService, htlcMonitor),
+		ChannelGraphMonitor:    channelgraph.NewChannelGraphMonitor(repositoryService, lightningService, htlcMonitor),
 		CustomMessageMonitor:   custommessage.NewCustomMessageMonitor(repositoryService, lightningService),
 		HtlcMonitor:            htlcMonitor,
 		HtlcEventMonitor:       htlcevent.NewHtlcEventMonitor(repositoryService, ferpService, lightningService),
@@ -81,6 +84,7 @@ func (m *Monitor) StartMonitor(waitGroup *sync.WaitGroup) {
 	m.ChannelAcceptorMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
 	m.ChannelBackupMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
 	m.ChannelEventMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
+	m.ChannelGraphMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
 	m.CustomMessageMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
 	m.HtlcMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
 	m.HtlcEventMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
