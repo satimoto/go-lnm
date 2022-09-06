@@ -31,10 +31,12 @@ type LightningNetwork interface {
 	SendCustomMessage(in *lnrpc.SendCustomMessageRequest, opts ...grpc.CallOption) (*lnrpc.SendCustomMessageResponse, error)
 	SubscribeChannelBackups(in *lnrpc.ChannelBackupSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeChannelBackupsClient, error)
 	SubscribeChannelEvents(in *lnrpc.ChannelEventSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeChannelEventsClient, error)
+	SubscribeChannelGraph(in *lnrpc.GraphTopologySubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeChannelGraphClient, error)
 	SubscribeCustomMessages(in *lnrpc.SubscribeCustomMessagesRequest, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeCustomMessagesClient, error)
 	SubscribeHtlcEvents(in *routerrpc.SubscribeHtlcEventsRequest, opts ...grpc.CallOption) (routerrpc.Router_SubscribeHtlcEventsClient, error)
 	SubscribeInvoices(in *lnrpc.InvoiceSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeInvoicesClient, error)
 	SubscribeTransactions(in *lnrpc.GetTransactionsRequest, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeTransactionsClient, error)
+	UpdateChannelPolicy(in *lnrpc.PolicyUpdateRequest, opts ...grpc.CallOption) (*lnrpc.PolicyUpdateResponse, error)
 	WalletBalance(in *lnrpc.WalletBalanceRequest, opts ...grpc.CallOption) (*lnrpc.WalletBalanceResponse, error)
 }
 
@@ -124,6 +126,10 @@ func (s *LightningNetworkService) SubscribeChannelEvents(in *lnrpc.ChannelEventS
 	return s.getLightningClient().SubscribeChannelEvents(s.macaroonCtx, in, opts...)
 }
 
+func (s *LightningNetworkService) SubscribeChannelGraph(in *lnrpc.GraphTopologySubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeChannelGraphClient, error) {
+	return s.getLightningClient().SubscribeChannelGraph(s.macaroonCtx, in, opts...)
+}
+
 func (s *LightningNetworkService) SubscribeCustomMessages(in *lnrpc.SubscribeCustomMessagesRequest, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeCustomMessagesClient, error) {
 	return s.getLightningClient().SubscribeCustomMessages(s.macaroonCtx, in, opts...)
 }
@@ -138,6 +144,10 @@ func (s *LightningNetworkService) SubscribeInvoices(in *lnrpc.InvoiceSubscriptio
 
 func (s *LightningNetworkService) SubscribeTransactions(in *lnrpc.GetTransactionsRequest, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeTransactionsClient, error) {
 	return s.getLightningClient().SubscribeTransactions(s.macaroonCtx, in, opts...)
+}
+
+func (s *LightningNetworkService) UpdateChannelPolicy(in *lnrpc.PolicyUpdateRequest, opts ...grpc.CallOption) (*lnrpc.PolicyUpdateResponse, error) {
+	return s.getLightningClient().UpdateChannelPolicy(s.macaroonCtx, in, opts...)
 }
 
 func (s *LightningNetworkService) WalletBalance(in *lnrpc.WalletBalanceRequest, opts ...grpc.CallOption) (*lnrpc.WalletBalanceResponse, error) {

@@ -26,10 +26,12 @@ type MockLightningNetworkService struct {
 	sendCustomMessageMockData       []*lnrpc.SendCustomMessageResponse
 	subscribeChannelBackupsMockData []lnrpc.Lightning_SubscribeChannelBackupsClient
 	subscribeChannelEventsMockData  []lnrpc.Lightning_SubscribeChannelEventsClient
+	subscribeChannelGraphMockData   []lnrpc.Lightning_SubscribeChannelGraphClient
 	subscribeCustomMessagesMockData []lnrpc.Lightning_SubscribeCustomMessagesClient
 	subscribeHtlcEventsMockData     []routerrpc.Router_SubscribeHtlcEventsClient
 	subscribeInvoicesMockData       []lnrpc.Lightning_SubscribeInvoicesClient
 	subscribeTransactionsMockData   []lnrpc.Lightning_SubscribeTransactionsClient
+	updateChannelPolicyMockData     []*lnrpc.PolicyUpdateResponse
 	walletBalanceMockData           []*lnrpc.WalletBalanceResponse
 }
 
@@ -258,6 +260,23 @@ func (s *MockLightningNetworkService) NewSubscribeChannelEventsMockData() chan<-
 	return recvChan
 }
 
+func (s *MockLightningNetworkService) SubscribeChannelGraph(in *lnrpc.GraphTopologySubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeChannelGraphClient, error) {
+	if len(s.subscribeChannelGraphMockData) == 0 {
+		return nil, errors.New("NotFound")
+	}
+
+	response := s.subscribeChannelGraphMockData[0]
+	s.subscribeChannelGraphMockData = s.subscribeChannelGraphMockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) NewSubscribeChannelGraphMockData() chan<- *lnrpc.GraphTopologyUpdate {
+	recvChan := make(chan *lnrpc.GraphTopologyUpdate)
+	s.subscribeChannelGraphMockData = append(s.subscribeChannelGraphMockData, NewMockSubscribeChannelGraphClient(recvChan))
+
+	return recvChan
+}
+
 func (s *MockLightningNetworkService) SubscribeCustomMessages(in *lnrpc.SubscribeCustomMessagesRequest, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeCustomMessagesClient, error) {
 	if len(s.subscribeCustomMessagesMockData) == 0 {
 		return nil, errors.New("NotFound")
@@ -324,6 +343,20 @@ func (s *MockLightningNetworkService) NewSubscribeTransactionsMockData() chan<- 
 	s.subscribeTransactionsMockData = append(s.subscribeTransactionsMockData, NewMockSubscribeTransactionsClient(recvChan))
 
 	return recvChan
+}
+
+func (s *MockLightningNetworkService) UpdateChannelPolicy(in *lnrpc.PolicyUpdateRequest, opts ...grpc.CallOption) (*lnrpc.PolicyUpdateResponse, error) {
+	if len(s.updateChannelPolicyMockData) == 0 {
+		return &lnrpc.PolicyUpdateResponse{}, errors.New("NotFound")
+	}
+
+	response := s.updateChannelPolicyMockData[0]
+	s.updateChannelPolicyMockData = s.updateChannelPolicyMockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) SetUpdateChannelPolicyMockData(mockData *lnrpc.PolicyUpdateResponse) {
+	s.updateChannelPolicyMockData = append(s.updateChannelPolicyMockData, mockData)
 }
 
 func (s *MockLightningNetworkService) WalletBalance(in *lnrpc.WalletBalanceRequest, opts ...grpc.CallOption) (*lnrpc.WalletBalanceResponse, error) {
