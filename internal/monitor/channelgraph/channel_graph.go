@@ -55,20 +55,12 @@ func (m *ChannelGraphMonitor) handleChannelGraph(channelGraph lnrpc.GraphTopolog
 	 *  Find the Channel Request by the channel point params.
 	 *  Update the Channel Request status depending on the event type.
 	 */
+	log.Printf("Channel Graph: %v", len(channelGraph.ChannelUpdates))
 	ctx := context.Background()
 
 	for _, channelUpdate := range channelGraph.ChannelUpdates {
-		shortChanID := lnwire.NewShortChanIDFromInt(channelUpdate.ChanId)
 		txidBytes := channelUpdate.ChanPoint.GetFundingTxidBytes()
-		txid := hex.EncodeToString(util.ReverseBytes(txidBytes))
 		outputIndex := channelUpdate.ChanPoint.OutputIndex
-
-		log.Printf("Channel Edge Update: %v", shortChanID.String())
-		log.Printf("Txid: %v", txid)
-		log.Printf("OutputIndex: %v", outputIndex)
-		log.Printf("AdvertisingNode: %v", channelUpdate.AdvertisingNode)
-		log.Printf("ConnectingNode: %v", channelUpdate.ConnectingNode)
-		log.Printf("Disabled: %v", channelUpdate.RoutingPolicy.Disabled)
 
 		getChannelRequestByChannelPointParams := db.GetChannelRequestByChannelPointParams{
 			FundingTxID: txidBytes,
@@ -78,6 +70,16 @@ func (m *ChannelGraphMonitor) handleChannelGraph(channelGraph lnrpc.GraphTopolog
 		channelRequest, err := m.ChannelRequestResolver.Repository.GetChannelRequestByChannelPoint(ctx, getChannelRequestByChannelPointParams)
 
 		if err == nil && channelRequest.Status == db.ChannelRequestStatusOPENINGCHANNEL {
+			shortChanID := lnwire.NewShortChanIDFromInt(channelUpdate.ChanId)
+			txid := hex.EncodeToString(util.ReverseBytes(txidBytes))
+			
+			log.Printf("ChanID: %v", shortChanID.String())
+			log.Printf("Txid: %v", txid)
+			log.Printf("OutputIndex: %v", outputIndex)
+			log.Printf("AdvertisingNode: %v", channelUpdate.AdvertisingNode)
+			log.Printf("ConnectingNode: %v", channelUpdate.ConnectingNode)
+			log.Printf("Disabled: %v", channelUpdate.RoutingPolicy.Disabled)	
+
 			go m.HtlcMonitor.ResumeChannelRequestHtlcs(channelRequest)
 		}
 	}
