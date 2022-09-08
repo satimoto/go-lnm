@@ -12,6 +12,7 @@ import (
 )
 
 type MockLightningNetworkService struct {
+	allocateAliasMockData           []*lnrpc.AllocateAliasResponse
 	addInvoiceMockData              []*lnrpc.Invoice
 	channelAcceptorMockData         []lnrpc.Lightning_ChannelAcceptorClient
 	finalizePsbtMockData            []*walletrpc.FinalizePsbtResponse
@@ -37,6 +38,20 @@ type MockLightningNetworkService struct {
 
 func NewService() *MockLightningNetworkService {
 	return &MockLightningNetworkService{}
+}
+
+func (s *MockLightningNetworkService) AllocateAlias(in *lnrpc.AllocateAliasRequest, opts ...grpc.CallOption) (*lnrpc.AllocateAliasResponse, error) {
+	if len(s.allocateAliasMockData) == 0 {
+		return &lnrpc.AllocateAliasResponse{}, errors.New("NotFound")
+	}
+
+	response := s.allocateAliasMockData[0]
+	s.allocateAliasMockData = s.allocateAliasMockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) SetAllocateAliasMockData(mockData *lnrpc.AllocateAliasResponse) {
+	s.allocateAliasMockData = append(s.allocateAliasMockData, mockData)
 }
 
 func (s *MockLightningNetworkService) AddInvoice(in *lnrpc.Invoice, opts ...grpc.CallOption) (*lnrpc.AddInvoiceResponse, error) {

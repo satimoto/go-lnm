@@ -17,6 +17,7 @@ import (
 )
 
 type LightningNetwork interface {
+	AllocateAlias(in *lnrpc.AllocateAliasRequest, opts ...grpc.CallOption) (*lnrpc.AllocateAliasResponse, error)
 	AddInvoice(in *lnrpc.Invoice, opts ...grpc.CallOption) (*lnrpc.AddInvoiceResponse, error)
 	ChannelAcceptor(opts ...grpc.CallOption) (lnrpc.Lightning_ChannelAcceptorClient, error)
 	FinalizePsbt(in *walletrpc.FinalizePsbtRequest, opts ...grpc.CallOption) (*walletrpc.FinalizePsbtResponse, error)
@@ -68,6 +69,10 @@ func NewService() LightningNetwork {
 		clientConn:  clientConn,
 		macaroonCtx: macaroonCtx,
 	}
+}
+
+func (s *LightningNetworkService) AllocateAlias(in *lnrpc.AllocateAliasRequest, opts ...grpc.CallOption) (*lnrpc.AllocateAliasResponse, error) {
+	return s.getLightningClient().AllocateAlias(s.macaroonCtx, in, opts...)
 }
 
 func (s *LightningNetworkService) AddInvoice(in *lnrpc.Invoice, opts ...grpc.CallOption) (*lnrpc.AddInvoiceResponse, error) {

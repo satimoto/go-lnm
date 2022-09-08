@@ -14,6 +14,7 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/ferp"
+	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/monitor"
 	"github.com/satimoto/go-lsp/internal/rest"
 	"github.com/satimoto/go-lsp/internal/rpc"
@@ -73,13 +74,15 @@ func startLsp(cmd *cobra.Command, args []string) {
 	ferpService := ferp.NewService(os.Getenv("FERP_RPC_ADDRESS"))
 	ferpService.Start(shutdownCtx, waitGroup)
 
+	lightningService := lightningnetwork.NewService()
+
 	restService := rest.NewRest(database)
 	restService.StartRest(shutdownCtx, waitGroup)
 
-	rpcService := rpc.NewRpc(shutdownCtx, database, ferpService)
+	rpcService := rpc.NewRpc(shutdownCtx, database, ferpService, lightningService)
 	rpcService.StartRpc(waitGroup)
 
-	monitor := monitor.NewMonitor(shutdownCtx, repositoryService, ferpService)
+	monitor := monitor.NewMonitorWithServices(shutdownCtx, repositoryService, ferpService, lightningService)
 	monitor.StartMonitor(waitGroup)
 
 	sigtermChan := make(chan os.Signal, 1)
