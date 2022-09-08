@@ -180,4 +180,5 @@ require (
 	github.com/stretchr/objx v0.2.0 // indirect
 )
 
+replace github.com/lightningnetwork/lnd => github.com/satimoto/lnd v0.15.1-beta.rc2.0.20220908054041-539aeb27a42e
 replace git.schwanenlied.me/yawning/bsaes.git => github.com/Yawning/bsaes v0.0.0-20180720073208-c0276d75487e

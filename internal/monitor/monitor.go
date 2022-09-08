@@ -52,8 +52,13 @@ type Monitor struct {
 }
 
 func NewMonitor(shutdownCtx context.Context, repositoryService *db.RepositoryService, ferpService ferp.Ferp) *Monitor {
-	backupService := backup.NewService()
 	lightningService := lightningnetwork.NewService()
+
+	return NewMonitorWithServices(shutdownCtx, repositoryService, ferpService, lightningService)
+}
+
+func NewMonitorWithServices(shutdownCtx context.Context, repositoryService *db.RepositoryService, ferpService ferp.Ferp, lightningService lightningnetwork.LightningNetwork) *Monitor {
+	backupService := backup.NewService()
 	psbtFundService := psbtfund.NewService(repositoryService, lightningService)
 	htlcMonitor := htlc.NewHtlcMonitor(repositoryService, lightningService, psbtFundService)
 
