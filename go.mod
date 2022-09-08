@@ -145,7 +145,7 @@ require (
 require (
 	github.com/appleboy/go-fcm v0.1.5
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/satimoto/go-ferp v0.0.0-20220614121737-7a29212db779
+	github.com/satimoto/go-ferp v0.1.1-0.20220908195810-ff288d2a2a2f
 )
 
 require (
@@ -181,4 +181,5 @@ require (
 )
 
 replace github.com/lightningnetwork/lnd => github.com/satimoto/lnd v0.15.1-beta.rc2.0.20220908054041-539aeb27a42e
+
 replace git.schwanenlied.me/yawning/bsaes.git => github.com/Yawning/bsaes v0.0.0-20180720073208-c0276d75487e
