@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/lsprpc"
 )
@@ -23,6 +24,9 @@ func (r *RpcChannelResolver) OpenChannel(ctx context.Context, input *lsprpc.Open
 			log.Printf("LSP107: OpenChannelRequest=%#v", input)
 			return nil, errors.New("error allocating alias")
 		}
+
+		shortChanID := lnwire.NewShortChanIDFromInt(alias.Scid)		
+		log.Printf("Allocating alias ShortChannelID: %v", shortChanID.String())
 
 		baseFeeMsat := int64(util.GetEnvInt32("BASE_FEE_MSAT", 0))
 		feeRatePpm := uint32(util.GetEnvInt32("FEE_RATE_PPM", 10))
