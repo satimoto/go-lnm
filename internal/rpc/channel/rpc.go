@@ -24,9 +24,16 @@ func (r *RpcChannelResolver) OpenChannel(ctx context.Context, input *lsprpc.Open
 			return nil, errors.New("error allocating alias")
 		}
 
+		baseFeeMsat := int64(util.GetEnvInt32("BASE_FEE_MSAT", 0))
+		feeRatePpm := uint32(util.GetEnvInt32("FEE_RATE_PPM", 10))
+		timeLockDelta := uint32(util.GetEnvInt32("TIME_LOCK_DELTA", 100))
+
 		return &lsprpc.OpenChannelResponse{
-			PendingChanId: pendingChanId,
-			Scid: alias.Scid,
+			PendingChanId:             pendingChanId,
+			Scid:                      alias.Scid,
+			FeeBaseMsat:               baseFeeMsat,
+			FeeProportionalMillionths: feeRatePpm,
+			CltvExpiryDelta:           timeLockDelta,
 		}, nil
 	}
 
