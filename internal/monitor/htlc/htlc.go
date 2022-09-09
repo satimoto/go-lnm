@@ -2,6 +2,7 @@ package htlc
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/hex"
 	"log"
 	"sync"
@@ -100,8 +101,8 @@ func (m *HtlcMonitor) ResumeChannelRequestHtlcs(channelRequest db.ChannelRequest
 					OutputIndex: uint32(channelRequest.OutputIndex.Int64),
 				},
 			},
-			BaseFeeMsat: m.baseFeeMsat,
-			FeeRatePpm:  m.feeRatePpm,
+			BaseFeeMsat:   m.baseFeeMsat,
+			FeeRatePpm:    m.feeRatePpm,
 			TimeLockDelta: m.timeLockDelta,
 		}
 
@@ -190,6 +191,9 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 				// Requested channel amount plus 25%
 				localFundingAmount := int64(float64(channelRequest.Amount) * 1.25)
 
+				// Convert bytes to uint64
+				scid := binary.LittleEndian.Uint64(channelRequest.Scid)
+
 				// TODO: Verify the are enough funds to open the channel
 				openChannelRequest := &lnrpc.OpenChannelRequest{
 					NodePubkey:         pubkeyBytes,
@@ -198,6 +202,7 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 					Private:            true,
 					ZeroConf:           true,
 					ScidAlias:          true,
+					Scid:               scid,
 				}
 
 				err = m.PsbtFundService.OpenChannel(ctx, openChannelRequest, channelRequest)
