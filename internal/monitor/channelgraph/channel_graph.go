@@ -2,13 +2,11 @@ package channelgraph
 
 import (
 	"context"
-	"encoding/hex"
 	"log"
 	"sync"
 	"time"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
-	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/node"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
@@ -16,7 +14,6 @@ import (
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/monitor/htlc"
 	"github.com/satimoto/go-lsp/internal/user"
-	"github.com/satimoto/go-lsp/internal/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -52,36 +49,7 @@ func (m *ChannelGraphMonitor) StartMonitor(nodeID int64, ctx context.Context, wa
 
 func (m *ChannelGraphMonitor) handleChannelGraph(channelGraph lnrpc.GraphTopologyUpdate) {
 	/** Channel Graph received.
-	 *  Find the Channel Request by the channel point params.
-	 *  Update the Channel Request status depending on the event type.
 	 */
-	ctx := context.Background()
-
-	for _, channelUpdate := range channelGraph.ChannelUpdates {
-		txidBytes := channelUpdate.ChanPoint.GetFundingTxidBytes()
-		outputIndex := channelUpdate.ChanPoint.OutputIndex
-
-		getChannelRequestByChannelPointParams := db.GetChannelRequestByChannelPointParams{
-			FundingTxID: txidBytes,
-			OutputIndex: dbUtil.SqlNullInt64(outputIndex),
-		}
-
-		channelRequest, err := m.ChannelRequestResolver.Repository.GetChannelRequestByChannelPoint(ctx, getChannelRequestByChannelPointParams)
-
-		if err == nil && channelRequest.Status == db.ChannelRequestStatusOPENINGCHANNEL {
-			shortChanID := lnwire.NewShortChanIDFromInt(channelUpdate.ChanId)
-			txid := hex.EncodeToString(util.ReverseBytes(txidBytes))
-			
-			log.Printf("ChanID: %v", shortChanID.String())
-			log.Printf("Txid: %v", txid)
-			log.Printf("OutputIndex: %v", outputIndex)
-			log.Printf("AdvertisingNode: %v", channelUpdate.AdvertisingNode)
-			log.Printf("ConnectingNode: %v", channelUpdate.ConnectingNode)
-			log.Printf("Disabled: %v", channelUpdate.RoutingPolicy.Disabled)	
-
-			go m.HtlcMonitor.ResumeChannelRequestHtlcs(channelRequest)
-		}
-	}
 }
 
 func (m *ChannelGraphMonitor) subscribeChannelGraphs(channelGraphChan chan<- lnrpc.GraphTopologyUpdate) {

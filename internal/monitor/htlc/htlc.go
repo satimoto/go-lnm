@@ -2,7 +2,6 @@ package htlc
 
 import (
 	"context"
-	"encoding/binary"
 	"encoding/hex"
 	"log"
 	"sync"
@@ -12,10 +11,11 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
-	"github.com/satimoto/go-datastore/pkg/util"
+	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/channelrequest"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/monitor/psbtfund"
+	"github.com/satimoto/go-lsp/pkg/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -43,9 +43,9 @@ func (m *HtlcMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup 
 	log.Printf("Starting up Htlcs")
 	htlcInterceptChan := make(chan routerrpc.ForwardHtlcInterceptRequest)
 
-	m.baseFeeMsat = int64(util.GetEnvInt32("BASE_FEE_MSAT", 0))
-	m.feeRatePpm = uint32(util.GetEnvInt32("FEE_RATE_PPM", 10))
-	m.timeLockDelta = uint32(util.GetEnvInt32("TIME_LOCK_DELTA", 100))
+	m.baseFeeMsat = int64(dbUtil.GetEnvInt32("BASE_FEE_MSAT", 0))
+	m.feeRatePpm = uint32(dbUtil.GetEnvInt32("FEE_RATE_PPM", 10))
+	m.timeLockDelta = uint32(dbUtil.GetEnvInt32("TIME_LOCK_DELTA", 100))
 	m.nodeID = nodeID
 
 	go m.waitForHtlcs(ctx, waitGroup, htlcInterceptChan)
@@ -54,16 +54,41 @@ func (m *HtlcMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup 
 
 func (m *HtlcMonitor) ResumeChannelRequestHtlcs(channelRequest db.ChannelRequest) {
 	if channelRequest.Status == db.ChannelRequestStatusOPENINGCHANNEL {
-		psbtHtlcResumeTimeout := util.GetEnvInt32("PBST_HTLC_RESUME_TIMEOUT", 10)
+		ctx := context.Background()
+
+		// Update initial channel policy
+		policyUpdateRequest := &lnrpc.PolicyUpdateRequest{
+			Scope: &lnrpc.PolicyUpdateRequest_ChanPoint{
+				ChanPoint: &lnrpc.ChannelPoint{
+					FundingTxid: &lnrpc.ChannelPoint_FundingTxidBytes{
+						FundingTxidBytes: channelRequest.FundingTxID,
+					},
+					OutputIndex: uint32(channelRequest.OutputIndex.Int64),
+				},
+			},
+			BaseFeeMsat:   m.baseFeeMsat,
+			FeeRatePpm:    m.feeRatePpm,
+			TimeLockDelta: m.timeLockDelta,
+		}
+
+		_, err := m.LightningService.UpdateChannelPolicy(policyUpdateRequest)
+
+		if err != nil {
+			dbUtil.LogOnError("LSP106", "Error updating channel policy", err)
+			log.Printf("LSP106: Params=%#v", policyUpdateRequest)
+			return
+		}
+
+		psbtHtlcResumeTimeout := dbUtil.GetEnvInt32("PBST_HTLC_RESUME_TIMEOUT", 10)
 		log.Printf("Wait %v seconds before resuming HTLCs: %v", psbtHtlcResumeTimeout, channelRequest.ID)
 		time.Sleep(time.Duration(psbtHtlcResumeTimeout) * time.Second)
 
-		ctx := context.Background()
 		channelRequestHtlcs, err := m.ChannelRequestResolver.Repository.ListChannelRequestHtlcs(ctx, channelRequest.ID)
 
 		if err != nil {
-			util.LogOnError("LSP097", "Error listing channel request HTLCs", err)
+			dbUtil.LogOnError("LSP097", "Error listing channel request HTLCs", err)
 			log.Printf("LSP097: ChannelRequestID=%v", channelRequest.ID)
+			return
 		}
 
 		for _, channelRequestHtlc := range channelRequestHtlcs {
@@ -87,30 +112,8 @@ func (m *HtlcMonitor) ResumeChannelRequestHtlcs(channelRequest db.ChannelRequest
 		_, err = m.ChannelRequestResolver.Repository.UpdateChannelRequest(ctx, updateChannelRequestParams)
 
 		if err != nil {
-			util.LogOnError("LSP099", "Error updating channel request", err)
+			dbUtil.LogOnError("LSP099", "Error updating channel request", err)
 			log.Printf("LSP099: Params=%#v", updateChannelRequestParams)
-		}
-
-		// Update initial channel policy
-		policyUpdateRequest := &lnrpc.PolicyUpdateRequest{
-			Scope: &lnrpc.PolicyUpdateRequest_ChanPoint{
-				ChanPoint: &lnrpc.ChannelPoint{
-					FundingTxid: &lnrpc.ChannelPoint_FundingTxidBytes{
-						FundingTxidBytes: channelRequest.FundingTxID,
-					},
-					OutputIndex: uint32(channelRequest.OutputIndex.Int64),
-				},
-			},
-			BaseFeeMsat:   m.baseFeeMsat,
-			FeeRatePpm:    m.feeRatePpm,
-			TimeLockDelta: m.timeLockDelta,
-		}
-
-		_, err = m.LightningService.UpdateChannelPolicy(policyUpdateRequest)
-
-		if err != nil {
-			util.LogOnError("LSP106", "Error updating channel policy", err)
-			log.Printf("LSP106: Params=%#v", policyUpdateRequest)
 		}
 	}
 }
@@ -166,7 +169,7 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 			}
 
 			if _, err := m.ChannelRequestResolver.Repository.CreateChannelRequestHtlc(ctx, channelRequestHtlcParams); err != nil {
-				util.LogOnError("LSP024", "Error creating channel request HTLC", err)
+				dbUtil.LogOnError("LSP024", "Error creating channel request HTLC", err)
 				m.sendToHtlcInterceptor(htlcInterceptRequest.IncomingCircuitKey, routerrpc.ResolveHoldForwardAction_FAIL)
 				return
 			}
@@ -182,17 +185,14 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 				pubkeyBytes, err := hex.DecodeString(channelRequest.Pubkey)
 
 				if err != nil {
-					util.LogOnError("LSP052", "Error decoding pubkey", err)
+					dbUtil.LogOnError("LSP052", "Error decoding pubkey", err)
 					log.Printf("LSP052: ChannelRequestID=%#v", channelRequest.ID)
 					m.sendToHtlcInterceptor(htlcInterceptRequest.IncomingCircuitKey, routerrpc.ResolveHoldForwardAction_FAIL)
 					return
 				}
 
-				// Requested channel amount plus 25%
-				localFundingAmount := int64(float64(channelRequest.Amount) * 1.25)
-
-				// Convert bytes to uint64
-				scid := binary.LittleEndian.Uint64(channelRequest.Scid)
+				localFundingAmount := util.CalculateLocalFundingAmount(channelRequest.Amount)
+				scid := util.BytesToUint64(channelRequest.Scid)
 
 				// TODO: Verify the are enough funds to open the channel
 				openChannelRequest := &lnrpc.OpenChannelRequest{
@@ -208,20 +208,20 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 				err = m.PsbtFundService.OpenChannel(ctx, openChannelRequest, channelRequest)
 
 				if err != nil {
-					util.LogOnError("LSP053", "Error opening channel", err)
+					dbUtil.LogOnError("LSP053", "Error opening channel", err)
 					log.Printf("LSP053: OpenChannelRequest=%#v", openChannelRequest)
 					m.sendToHtlcInterceptor(htlcInterceptRequest.IncomingCircuitKey, routerrpc.ResolveHoldForwardAction_FAIL)
 					return
 				}
 
-				updateChannelRequestParams.FundingAmount = util.SqlNullInt64(localFundingAmount)
+				updateChannelRequestParams.FundingAmount = dbUtil.SqlNullInt64(localFundingAmount)
 				updateChannelRequestParams.Status = db.ChannelRequestStatusOPENINGCHANNEL
 			}
 
 			_, err := m.ChannelRequestResolver.Repository.UpdateChannelRequest(ctx, updateChannelRequestParams)
 
 			if err != nil {
-				util.LogOnError("LSP096", "Error updating channel request", err)
+				dbUtil.LogOnError("LSP096", "Error updating channel request", err)
 				log.Printf("LSP096: Params=%#v", updateChannelRequestParams)
 				m.sendToHtlcInterceptor(htlcInterceptRequest.IncomingCircuitKey, routerrpc.ResolveHoldForwardAction_FAIL)
 				return
@@ -251,7 +251,7 @@ func (m *HtlcMonitor) sendToHtlcInterceptor(incomingCircuitKey *routerrpc.Circui
 
 func (m *HtlcMonitor) subscribeHtlcInterceptions(htlcInterceptChan chan<- routerrpc.ForwardHtlcInterceptRequest) {
 	htlcInterceptorClient, err := m.waitForHtlcInterceptorClient(0, 1000)
-	util.PanicOnError("LSP016", "Error creating Htlcs client", err)
+	dbUtil.PanicOnError("LSP016", "Error creating Htlcs client", err)
 	m.HtlcInterceptorClient = htlcInterceptorClient
 
 	for {
@@ -261,7 +261,7 @@ func (m *HtlcMonitor) subscribeHtlcInterceptions(htlcInterceptChan chan<- router
 			htlcInterceptChan <- *htlcInterceptRequest
 		} else {
 			m.HtlcInterceptorClient, err = m.waitForHtlcInterceptorClient(100, 1000)
-			util.PanicOnError("LSP017", "Error creating Htlcs client", err)
+			dbUtil.PanicOnError("LSP017", "Error creating Htlcs client", err)
 		}
 	}
 }
@@ -310,7 +310,7 @@ func (m *HtlcMonitor) waitForPaymentTimeout(ctx context.Context, paymentHash []b
 		channelRequest, err := m.ChannelRequestResolver.Repository.GetChannelRequestByPaymentHash(ctx, paymentHash)
 
 		if err != nil {
-			util.LogOnError("LSP026", "Error getting channel request", err)
+			dbUtil.LogOnError("LSP026", "Error getting channel request", err)
 			break
 		}
 
