@@ -16,7 +16,7 @@ import (
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/monitor/htlc"
 	"github.com/satimoto/go-lsp/internal/user"
-	"github.com/satimoto/go-lsp/internal/util"
+	"github.com/satimoto/go-lsp/pkg/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -96,10 +96,28 @@ func (m *ChannelEventMonitor) handleChannelEvent(channelEvent lnrpc.ChannelEvent
 		}
 
 		m.updateNode(ctx)
-		break
+	case lnrpc.ChannelEventUpdate_ACTIVE_CHANNEL:
+		/** Channel Active.
+		 *  Set the channel request to completed.
+		 *  Resume pending HTLCs as the channel is now open.
+		 */
+		activeChannel := channelEvent.GetActiveChannel()
+		txid := activeChannel.GetFundingTxidBytes()
+		log.Printf("Txid: %v", hex.EncodeToString(util.ReverseBytes(txid)))
+		log.Printf("OutputIndex: %v", activeChannel.OutputIndex)
+
+		getChannelRequestByChannelPointParams := db.GetChannelRequestByChannelPointParams{
+			FundingTxID: txid,
+			OutputIndex: dbUtil.SqlNullInt64(activeChannel.OutputIndex),
+		}
+
+		channelRequest, err := m.ChannelRequestResolver.Repository.GetChannelRequestByChannelPoint(ctx, getChannelRequestByChannelPointParams)
+
+		if err == nil && channelRequest.Status == db.ChannelRequestStatusOPENINGCHANNEL {
+			go m.HtlcMonitor.ResumeChannelRequestHtlcs(channelRequest)
+		}
 	case lnrpc.ChannelEventUpdate_CLOSED_CHANNEL, lnrpc.ChannelEventUpdate_FULLY_RESOLVED_CHANNEL:
 		m.updateNode(ctx)
-		break
 	}
 }
 

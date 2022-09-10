@@ -23,7 +23,7 @@ import (
 	//interceptMocks "github.com/satimoto/go-lsp/intercept/mocks"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/messages"
-	"github.com/satimoto/go-lsp/internal/util"
+	"github.com/satimoto/go-lsp/pkg/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
