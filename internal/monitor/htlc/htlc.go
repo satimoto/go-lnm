@@ -25,6 +25,7 @@ type HtlcMonitor struct {
 	PsbtFundService        psbtfund.PsbtFund
 	HtlcInterceptorClient  routerrpc.Router_HtlcInterceptorClient
 	ChannelRequestResolver *channelrequest.ChannelRequestResolver
+	channelRequestLock     map[int64]db.ChannelRequest
 	baseFeeMsat            int64
 	feeRatePpm             uint32
 	timeLockDelta          uint32
@@ -36,6 +37,7 @@ func NewHtlcMonitor(repositoryService *db.RepositoryService, lightningService li
 		LightningService:       lightningService,
 		PsbtFundService:        psbtFundService,
 		ChannelRequestResolver: channelrequest.NewResolver(repositoryService),
+		channelRequestLock:     make(map[int64]db.ChannelRequest),
 	}
 }
 
@@ -53,7 +55,11 @@ func (m *HtlcMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup 
 }
 
 func (m *HtlcMonitor) ResumeChannelRequestHtlcs(channelRequest db.ChannelRequest) {
-	if channelRequest.Status == db.ChannelRequestStatusOPENINGCHANNEL {
+	_, locked := m.channelRequestLock[channelRequest.ID]
+
+	if !locked && channelRequest.Status == db.ChannelRequestStatusOPENINGCHANNEL {
+		m.channelRequestLock[channelRequest.ID] = channelRequest
+		defer delete(m.channelRequestLock, channelRequest.ID)
 		ctx := context.Background()
 
 		// Update initial channel policy
@@ -61,7 +67,7 @@ func (m *HtlcMonitor) ResumeChannelRequestHtlcs(channelRequest db.ChannelRequest
 			Scope: &lnrpc.PolicyUpdateRequest_ChanPoint{
 				ChanPoint: &lnrpc.ChannelPoint{
 					FundingTxid: &lnrpc.ChannelPoint_FundingTxidBytes{
-						FundingTxidBytes: channelRequest.FundingTxID,
+						FundingTxidBytes: channelRequest.FundingTxIDBytes,
 					},
 					OutputIndex: uint32(channelRequest.OutputIndex.Int64),
 				},
