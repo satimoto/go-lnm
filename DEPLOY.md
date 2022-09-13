@@ -296,16 +296,16 @@ Keep credentials to be added to `lnd.conf`.
 Clone the lnd repository
 ```bash
 cd ~/
-git clone https://github.com/lightningnetwork/lnd.git
+git clone https://github.com/satimoto/lnd.git
 cd lnd/
 ```
 Checkout branch
 ```bash
-git checkout v0.15.0-beta
+git checkout -b allocate-alias origin/allocate-alias
 ```
 Make lnd
 ```bash
-make && make install tags="autopilotrpc chainrpc invoicesrpc peersrpc routerrpc signrpc walletrpc watchtowerrpc wtclientrpc monitoring kvdb_postgres"
+make && make install tags="autopilotrpc chainrpc devrpc neutrinorpc invoicesrpc peersrpc routerrpc signrpc verrpc walletrpc watchtowerrpc wtclientrpc monitoring kvdb_postgres"
 ```
 Create lnd data and config directories
 ```bash
@@ -437,6 +437,12 @@ db.postgres.dsn=postgresql://lnd1:dbpass@satimoto.cluster-csvwlfckqqfq.eu-centra
 db.postgres.timeout=0
 
 [protocol]
+# Enable SCID alias support
+protocol.option-scid-alias=true
+
+# Enable zero-conf support
+protocol.zero-conf=true
+
 # Enable large channels support
 protocol.wumbo-channels=1
 
@@ -567,6 +573,8 @@ LND_GRPC_HOST=127.0.0.1:10009
 LND_TLS_CERT=
 LND_MACAROON=
 OCPI_RPC_ADDRESS=ocpi.satimoto.service:50000
+PSBT_BATCH_TIMEOUT=30
+PBST_HTLC_RESUME_TIMEOUT=20
 REST_PORT=9002
 RPC_PORT=50000
 SHUTDOWN_TIMEOUT=20

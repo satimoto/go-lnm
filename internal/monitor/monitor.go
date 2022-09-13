@@ -18,50 +18,65 @@ import (
 	"github.com/satimoto/go-lsp/internal/ferp"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/monitor/blockepoch"
+	"github.com/satimoto/go-lsp/internal/monitor/channelacceptor"
 	"github.com/satimoto/go-lsp/internal/monitor/channelbackup"
 	"github.com/satimoto/go-lsp/internal/monitor/channelevent"
+	"github.com/satimoto/go-lsp/internal/monitor/channelgraph"
 	"github.com/satimoto/go-lsp/internal/monitor/custommessage"
 	"github.com/satimoto/go-lsp/internal/monitor/htlc"
 	"github.com/satimoto/go-lsp/internal/monitor/htlcevent"
 	"github.com/satimoto/go-lsp/internal/monitor/invoice"
+	"github.com/satimoto/go-lsp/internal/monitor/psbtfund"
 	"github.com/satimoto/go-lsp/internal/monitor/transaction"
-	"github.com/satimoto/go-lsp/internal/util"
+	"github.com/satimoto/go-lsp/pkg/util"
 	"github.com/satimoto/go-ocpi/ocpirpc"
 	"github.com/satimoto/go-ocpi/pkg/ocpi"
 )
 
 type Monitor struct {
-	LightningService     lightningnetwork.LightningNetwork
-	ShutdownCtx          context.Context
-	NodeRepository       node.NodeRepository
-	BlockEpochMonitor    *blockepoch.BlockEpochMonitor
-	ChannelBackupMonitor *channelbackup.ChannelBackupMonitor
-	ChannelEventMonitor  *channelevent.ChannelEventMonitor
-	CustomMessageMonitor *custommessage.CustomMessageMonitor
-	HtlcMonitor          *htlc.HtlcMonitor
-	HtlcEventMonitor     *htlcevent.HtlcEventMonitor
-	InvoiceMonitor       *invoice.InvoiceMonitor
-	TransactionMonitor   *transaction.TransactionMonitor
-	nodeID               int64
+	LightningService       lightningnetwork.LightningNetwork
+	PsbtFundService        psbtfund.PsbtFund
+	NodeRepository         node.NodeRepository
+	BlockEpochMonitor      *blockepoch.BlockEpochMonitor
+	ChannelAcceptorMonitor *channelacceptor.ChannelAcceptorMonitor
+	ChannelBackupMonitor   *channelbackup.ChannelBackupMonitor
+	ChannelEventMonitor    *channelevent.ChannelEventMonitor
+	ChannelGraphMonitor    *channelgraph.ChannelGraphMonitor
+	CustomMessageMonitor   *custommessage.CustomMessageMonitor
+	HtlcMonitor            *htlc.HtlcMonitor
+	HtlcEventMonitor       *htlcevent.HtlcEventMonitor
+	InvoiceMonitor         *invoice.InvoiceMonitor
+	TransactionMonitor     *transaction.TransactionMonitor
+	nodeID                 int64
+	shutdownCtx            context.Context
 }
 
 func NewMonitor(shutdownCtx context.Context, repositoryService *db.RepositoryService, ferpService ferp.Ferp) *Monitor {
-	backupService := backup.NewService()
 	lightningService := lightningnetwork.NewService()
-	customMessageMonitor := custommessage.NewCustomMessageMonitor(repositoryService, lightningService)
+
+	return NewMonitorWithServices(shutdownCtx, repositoryService, ferpService, lightningService)
+}
+
+func NewMonitorWithServices(shutdownCtx context.Context, repositoryService *db.RepositoryService, ferpService ferp.Ferp, lightningService lightningnetwork.LightningNetwork) *Monitor {
+	backupService := backup.NewService()
+	psbtFundService := psbtfund.NewService(repositoryService, lightningService)
+	htlcMonitor := htlc.NewHtlcMonitor(repositoryService, lightningService, psbtFundService)
 
 	return &Monitor{
-		LightningService:     lightningService,
-		ShutdownCtx:          shutdownCtx,
-		NodeRepository:       node.NewRepository(repositoryService),
-		BlockEpochMonitor:    blockepoch.NewBlockEpochMonitor(repositoryService, lightningService),
-		ChannelBackupMonitor: channelbackup.NewChannelBackupMonitor(repositoryService, backupService, lightningService),
-		ChannelEventMonitor:  channelevent.NewChannelEventMonitor(repositoryService, lightningService),
-		CustomMessageMonitor: customMessageMonitor,
-		HtlcMonitor:          htlc.NewHtlcMonitor(repositoryService, lightningService, customMessageMonitor),
-		HtlcEventMonitor:     htlcevent.NewHtlcEventMonitor(repositoryService, ferpService, lightningService),
-		InvoiceMonitor:       invoice.NewInvoiceMonitor(repositoryService, ferpService, lightningService),
-		TransactionMonitor:   transaction.NewTransactionMonitor(repositoryService, lightningService),
+		LightningService:       lightningService,
+		PsbtFundService:        psbtFundService,
+		NodeRepository:         node.NewRepository(repositoryService),
+		BlockEpochMonitor:      blockepoch.NewBlockEpochMonitor(repositoryService, lightningService),
+		ChannelAcceptorMonitor: channelacceptor.NewChannelAcceptorMonitor(repositoryService, lightningService),
+		ChannelBackupMonitor:   channelbackup.NewChannelBackupMonitor(repositoryService, backupService, lightningService),
+		ChannelEventMonitor:    channelevent.NewChannelEventMonitor(repositoryService, lightningService, htlcMonitor),
+		ChannelGraphMonitor:    channelgraph.NewChannelGraphMonitor(repositoryService, lightningService, htlcMonitor),
+		CustomMessageMonitor:   custommessage.NewCustomMessageMonitor(repositoryService, lightningService),
+		HtlcMonitor:            htlcMonitor,
+		HtlcEventMonitor:       htlcevent.NewHtlcEventMonitor(repositoryService, ferpService, lightningService),
+		InvoiceMonitor:         invoice.NewInvoiceMonitor(repositoryService, ferpService, lightningService),
+		TransactionMonitor:     transaction.NewTransactionMonitor(repositoryService, lightningService),
+		shutdownCtx:            shutdownCtx,
 	}
 }
 
@@ -69,14 +84,17 @@ func (m *Monitor) StartMonitor(waitGroup *sync.WaitGroup) {
 	err := m.register()
 	dbUtil.PanicOnError("LSP010", "Error registering LSP", err)
 
-	m.BlockEpochMonitor.StartMonitor(m.nodeID, m.ShutdownCtx, waitGroup)
-	m.ChannelBackupMonitor.StartMonitor(m.nodeID, m.ShutdownCtx, waitGroup)
-	m.ChannelEventMonitor.StartMonitor(m.nodeID, m.ShutdownCtx, waitGroup)
-	m.CustomMessageMonitor.StartMonitor(m.nodeID, m.ShutdownCtx, waitGroup)
-	m.HtlcMonitor.StartMonitor(m.nodeID, m.ShutdownCtx, waitGroup)
-	m.HtlcEventMonitor.StartMonitor(m.nodeID, m.ShutdownCtx, waitGroup)
-	m.InvoiceMonitor.StartMonitor(m.nodeID, m.ShutdownCtx, waitGroup)
-	m.TransactionMonitor.StartMonitor(m.nodeID, m.ShutdownCtx, waitGroup)
+	m.PsbtFundService.Start(m.nodeID, m.shutdownCtx, waitGroup)
+	m.BlockEpochMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
+	m.ChannelAcceptorMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
+	m.ChannelBackupMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
+	m.ChannelEventMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
+	m.ChannelGraphMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
+	m.CustomMessageMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
+	m.HtlcMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
+	m.HtlcEventMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
+	m.InvoiceMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
+	m.TransactionMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
 }
 
 func (m *Monitor) register() error {

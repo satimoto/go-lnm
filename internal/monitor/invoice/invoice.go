@@ -21,7 +21,7 @@ type InvoiceMonitor struct {
 	LightningService lightningnetwork.LightningNetwork
 	InvoicesClient   lnrpc.Lightning_SubscribeInvoicesClient
 	SessionResolver  *session.SessionResolver
-	nodeID int64
+	nodeID           int64
 }
 
 func NewInvoiceMonitor(repositoryService *db.RepositoryService, ferpService ferp.Ferp, lightningService lightningnetwork.LightningNetwork) *InvoiceMonitor {

@@ -54,8 +54,6 @@ func (s *FerpService) handleRate(currencyRate ferprpc.SubscribeRatesResponse) {
 	 *
 	 */
 
-	// log.Printf("%s: %v sats / %v millisats", currencyRate.Currency, currencyRate.Rate, currencyRate.RateMsat)
-
 	s.currencyRates[currencyRate.Currency] = rate.CurrencyRate{
 		Rate:        currencyRate.Rate,
 		RateMsat:    currencyRate.RateMsat,

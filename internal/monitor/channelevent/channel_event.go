@@ -14,14 +14,16 @@ import (
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/channelrequest"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	"github.com/satimoto/go-lsp/internal/monitor/htlc"
 	"github.com/satimoto/go-lsp/internal/user"
-	"github.com/satimoto/go-lsp/internal/util"
+	"github.com/satimoto/go-lsp/pkg/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type ChannelEventMonitor struct {
 	LightningService       lightningnetwork.LightningNetwork
+	HtlcMonitor            *htlc.HtlcMonitor
 	ChannelEventsClient    lnrpc.Lightning_SubscribeChannelEventsClient
 	ChannelRequestResolver *channelrequest.ChannelRequestResolver
 	NodeRepository         node.NodeRepository
@@ -29,9 +31,10 @@ type ChannelEventMonitor struct {
 	nodeID                 int64
 }
 
-func NewChannelEventMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) *ChannelEventMonitor {
+func NewChannelEventMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork, htlcMonitor *htlc.HtlcMonitor) *ChannelEventMonitor {
 	return &ChannelEventMonitor{
 		LightningService:       lightningService,
+		HtlcMonitor:            htlcMonitor,
 		ChannelRequestResolver: channelrequest.NewResolver(repositoryService),
 		NodeRepository:         node.NewRepository(repositoryService),
 		UserResolver:           user.NewResolver(repositoryService),
@@ -58,30 +61,26 @@ func (m *ChannelEventMonitor) handleChannelEvent(channelEvent lnrpc.ChannelEvent
 
 	// TODO: restrict user if all channels are closed
 	switch channelEvent.Type {
-	case lnrpc.ChannelEventUpdate_PENDING_OPEN_CHANNEL:
-		pendingOpenChannel := channelEvent.GetPendingOpenChannel()
-		log.Printf("Txid: %v", hex.EncodeToString(pendingOpenChannel.Txid))
-		log.Printf("OutputIndex: %v", pendingOpenChannel.OutputIndex)
-
-		m.ChannelRequestResolver.Repository.UpdateChannelRequestByChannelPoint(ctx, db.UpdateChannelRequestByChannelPointParams{
-			FundingTxID: pendingOpenChannel.Txid,
-			OutputIndex: dbUtil.SqlNullInt64(pendingOpenChannel.OutputIndex),
-			Status:      db.ChannelRequestStatusOPENINGCHANNEL,
-		})
-		break
 	case lnrpc.ChannelEventUpdate_OPEN_CHANNEL:
+		/** Channel Open.
+		 *  Set the channel request Txid and OutputIndex.
+		 *  Unrestrict the user's token to allow charging.
+		 */
 		openChannel := channelEvent.GetOpenChannel()
-		txid, outputIndex, _ := util.ConvertChannelPoint(openChannel.ChannelPoint)
-		log.Printf("Txid: %v", hex.EncodeToString(txid))
+		txidBytes, outputIndex, _ := util.ConvertChannelPoint(openChannel.ChannelPoint)
+		txid := hex.EncodeToString(util.ReverseBytes(txidBytes))
+		log.Printf("Txid: %v", txid)
 		log.Printf("OutputIndex: %v", outputIndex)
 
-		updateChannelRequestByChannelPointParams := db.UpdateChannelRequestByChannelPointParams{
-			FundingTxID: txid,
-			OutputIndex: dbUtil.SqlNullInt64(outputIndex),
-			Status:      db.ChannelRequestStatusCOMPLETED,
+		updatePendingChannelRequestByPubkeyParams := db.UpdatePendingChannelRequestByPubkeyParams{
+			Pubkey:           openChannel.RemotePubkey,
+			FundingAmount:    dbUtil.SqlNullInt64(openChannel.Capacity),
+			FundingTxID:      dbUtil.SqlNullString(txid),
+			FundingTxIDBytes: txidBytes,
+			OutputIndex:      dbUtil.SqlNullInt64(outputIndex),
 		}
 
-		if channelRequest, err := m.ChannelRequestResolver.Repository.UpdateChannelRequestByChannelPoint(ctx, updateChannelRequestByChannelPointParams); err == nil {
+		if channelRequest, err := m.ChannelRequestResolver.Repository.UpdatePendingChannelRequestByPubkey(ctx, updatePendingChannelRequestByPubkeyParams); err == nil {
 			user, err := m.UserResolver.Repository.GetUser(ctx, channelRequest.UserID)
 
 			if err != nil {
@@ -99,10 +98,8 @@ func (m *ChannelEventMonitor) handleChannelEvent(channelEvent lnrpc.ChannelEvent
 		}
 
 		m.updateNode(ctx)
-		break
 	case lnrpc.ChannelEventUpdate_CLOSED_CHANNEL, lnrpc.ChannelEventUpdate_FULLY_RESOLVED_CHANNEL:
 		m.updateNode(ctx)
-		break
 	}
 }
 

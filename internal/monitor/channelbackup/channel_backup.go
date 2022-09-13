@@ -32,11 +32,11 @@ func NewChannelBackupMonitor(repositoryService *db.RepositoryService, backupServ
 
 func (m *ChannelBackupMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting up Channel Backups")
-	ChannelBackupChan := make(chan lnrpc.ChanBackupSnapshot)
+	channelBackupChan := make(chan lnrpc.ChanBackupSnapshot)
 
 	m.nodeID = nodeID
-	go m.waitForChannelBackups(ctx, waitGroup, ChannelBackupChan)
-	go m.subscribeChannelBackupInterceptions(ChannelBackupChan)
+	go m.waitForChannelBackups(ctx, waitGroup, channelBackupChan)
+	go m.subscribeChannelBackupInterceptions(channelBackupChan)
 }
 
 func (m *ChannelBackupMonitor) handleChannelBackup(channelBackup lnrpc.ChanBackupSnapshot) {

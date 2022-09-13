@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package channel;
+
+option go_package = "github.com/satimoto/go-lsp/lsprpc";
+
+service ChannelService {
+  rpc OpenChannel(OpenChannelRequest) returns (OpenChannelResponse);
+};
+
+message OpenChannelRequest {
+  string pubkey = 1;
+  int64 amount = 2;
+  int64 amount_msat = 3;
+};
+
+message OpenChannelResponse {
+  bytes pending_chan_id = 1;
+  uint64 scid = 2;
+  int64 fee_base_msat = 3;
+  uint32 fee_proportional_millionths = 4;
+  uint32 cltv_expiry_delta = 5;
+};

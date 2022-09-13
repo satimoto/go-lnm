@@ -2,16 +2,12 @@ package htlcevent
 
 import (
 	"context"
-	"encoding/hex"
 	"log"
 	"sync"
 	"time"
 
-	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
-	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/satimoto/go-datastore/pkg/db"
-	"github.com/satimoto/go-datastore/pkg/param"
 	"github.com/satimoto/go-datastore/pkg/routingevent"
 	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/channelrequest"
@@ -37,7 +33,6 @@ func NewHtlcEventMonitor(repositoryService *db.RepositoryService, ferpService fe
 		LightningService:       lightningService,
 		ChannelRequestResolver: channelrequest.NewResolver(repositoryService),
 		RoutingEventRepository: routingevent.NewRepository(repositoryService),
-		accountingCurrency:     util.GetEnv("ACCOUNTING_CURRENCY", "EUR"),
 	}
 }
 
@@ -45,7 +40,9 @@ func (m *HtlcEventMonitor) StartMonitor(nodeID int64, shutdownCtx context.Contex
 	log.Printf("Starting up Htlc Events")
 	htlcEventChan := make(chan routerrpc.HtlcEvent)
 
+	m.accountingCurrency = util.GetEnv("ACCOUNTING_CURRENCY", "EUR")
 	m.nodeID = nodeID
+
 	go m.waitForHtlcEvents(shutdownCtx, waitGroup, htlcEventChan)
 	go m.subscribeHtlcEventInterceptions(htlcEventChan)
 }
@@ -121,10 +118,22 @@ func (m *HtlcEventMonitor) handleForwardHtlcEvent(ctx context.Context, htlcEvent
 func (m *HtlcEventMonitor) handleForwardFailHtlcEvent(ctx context.Context, htlcEvent routerrpc.HtlcEvent) {
 	log.Printf("Forward Fail HTLC Event")
 
+	incomingChannelId := int64(htlcEvent.IncomingChannelId)
+	incomingHtlcId := int64(htlcEvent.IncomingHtlcId)
+
+	// Update channel request HTLC
+	m.ChannelRequestResolver.Repository.UpdateChannelRequestHtlcByCircuitKey(ctx, db.UpdateChannelRequestHtlcByCircuitKeyParams{
+		ChanID:    incomingChannelId,
+		HtlcID:    incomingHtlcId,
+		IsSettled: false,
+		IsFailed:  true,
+	})
+
+	// Update routing event
 	updateRoutingEventParams := db.UpdateRoutingEventParams{
 		EventStatus:    db.RoutingEventStatusFORWARDFAIL,
-		IncomingChanID: int64(htlcEvent.IncomingChannelId),
-		IncomingHtlcID: int64(htlcEvent.IncomingHtlcId),
+		IncomingChanID: incomingChannelId,
+		IncomingHtlcID: incomingHtlcId,
 		OutgoingChanID: int64(htlcEvent.OutgoingChannelId),
 		OutgoingHtlcID: int64(htlcEvent.IncomingHtlcId),
 		LastUpdated:    time.Unix(0, int64(htlcEvent.TimestampNs)),
@@ -142,15 +151,26 @@ func (m *HtlcEventMonitor) handleLinkFailHtlcEvent(ctx context.Context, htlcEven
 	log.Printf("Link Fail HTLC Event")
 
 	linkFailEvent := htlcEvent.GetLinkFailEvent()
+	incomingChannelId := int64(htlcEvent.IncomingChannelId)
+	incomingHtlcId := int64(htlcEvent.IncomingHtlcId)
 
 	log.Printf("WireFailure: %v", linkFailEvent.WireFailure)
 	log.Printf("FailureDetail: %v", linkFailEvent.FailureDetail)
 	log.Printf("FailureString: %v", linkFailEvent.FailureString)
 
+	// Update channel request HTLC
+	m.ChannelRequestResolver.Repository.UpdateChannelRequestHtlcByCircuitKey(ctx, db.UpdateChannelRequestHtlcByCircuitKeyParams{
+		ChanID:    incomingChannelId,
+		HtlcID:    incomingHtlcId,
+		IsSettled: false,
+		IsFailed:  true,
+	})
+
+	// Update routing event
 	updateRoutingEventParams := db.UpdateRoutingEventParams{
 		EventStatus:    db.RoutingEventStatusLINKFAIL,
-		IncomingChanID: int64(htlcEvent.IncomingChannelId),
-		IncomingHtlcID: int64(htlcEvent.IncomingHtlcId),
+		IncomingChanID: incomingChannelId,
+		IncomingHtlcID: incomingHtlcId,
 		OutgoingChanID: int64(htlcEvent.OutgoingChannelId),
 		OutgoingHtlcID: int64(htlcEvent.IncomingHtlcId),
 		WireFailure:    util.SqlNullInt32(linkFailEvent.WireFailure),
@@ -194,68 +214,32 @@ func (m *HtlcEventMonitor) handleLinkFailHtlcEvent(ctx context.Context, htlcEven
 
 func (m *HtlcEventMonitor) handleSettleHtlcEvent(ctx context.Context, htlcEvent routerrpc.HtlcEvent) {
 	log.Printf("Settle HTLC Event")
+	incomingChannelId := int64(htlcEvent.IncomingChannelId)
+	incomingHtlcId := int64(htlcEvent.IncomingHtlcId)
 
-	getChannelRequestHtlcByCircuitKeyParams := db.GetChannelRequestHtlcByCircuitKeyParams{
-		ChanID: int64(htlcEvent.IncomingChannelId),
-		HtlcID: int64(htlcEvent.IncomingHtlcId),
+	// Update channel request HTLC
+	m.ChannelRequestResolver.Repository.UpdateChannelRequestHtlcByCircuitKey(ctx, db.UpdateChannelRequestHtlcByCircuitKeyParams{
+		ChanID:    incomingChannelId,
+		HtlcID:    incomingHtlcId,
+		IsSettled: true,
+		IsFailed:  false,
+	})
+
+	// Update routing event
+	updateRoutingEventParams := db.UpdateRoutingEventParams{
+		EventStatus:    db.RoutingEventStatusSETTLE,
+		IncomingChanID: incomingChannelId,
+		IncomingHtlcID: incomingHtlcId,
+		OutgoingChanID: int64(htlcEvent.OutgoingChannelId),
+		OutgoingHtlcID: int64(htlcEvent.IncomingHtlcId),
+		LastUpdated:    time.Unix(0, int64(htlcEvent.TimestampNs)),
 	}
 
-	if channelRequestHtlc, err := m.ChannelRequestResolver.Repository.GetChannelRequestHtlcByCircuitKey(ctx, getChannelRequestHtlcByCircuitKeyParams); err == nil {
-		m.ChannelRequestResolver.Repository.UpdateChannelRequestHtlc(ctx, db.UpdateChannelRequestHtlcParams{
-			ID:        channelRequestHtlc.ID,
-			IsSettled: true,
-		})
+	_, err := m.RoutingEventRepository.UpdateRoutingEvent(ctx, updateRoutingEventParams)
 
-		unsettledChannelRequestHtlcs, _ := m.ChannelRequestResolver.Repository.ListUnsettledChannelRequestHtlcs(ctx, channelRequestHtlc.ChannelRequestID)
-		log.Printf("Unsettled HTLCs: %v", len(unsettledChannelRequestHtlcs))
-
-		if len(unsettledChannelRequestHtlcs) == 0 {
-			// TODO: Add creating channel task to worker group
-			if channelRequest, err := m.ChannelRequestResolver.Repository.GetChannelRequest(ctx, channelRequestHtlc.ChannelRequestID); err == nil {
-				if pubkeyBytes, err := hex.DecodeString(channelRequest.Pubkey); err == nil {
-					pushSat := int64(lnwire.MilliSatoshi(channelRequest.AmountMsat).ToSatoshis())
-					localFundingAmount := int64(float64(pushSat) * 1.25)
-					openChannelRequest := &lnrpc.OpenChannelRequest{
-						NodePubkey:         pubkeyBytes,
-						LocalFundingAmount: localFundingAmount,
-						PushSat:            pushSat,
-						TargetConf:         1,
-						MinConfs:           0,
-						Private:            true,
-						SpendUnconfirmed:   true,
-					}
-
-					log.Printf("Opening channel to %v for %v sats", channelRequest.Pubkey, pushSat)
-
-					channelPoint, err := m.LightningService.OpenChannelSync(openChannelRequest)
-					util.LogOnError("LSP005", "Error opening channel", err)
-
-					if err == nil {
-						updateChannelRequestParams := param.NewUpdateChannelRequestParams(channelRequest)
-						updateChannelRequestParams.FundingTxID = channelPoint.GetFundingTxidBytes()
-						updateChannelRequestParams.OutputIndex = util.SqlNullInt64(channelPoint.OutputIndex)
-
-						m.ChannelRequestResolver.Repository.UpdateChannelRequest(ctx, updateChannelRequestParams)
-					}
-				}
-			}
-		}
-	} else {
-		updateRoutingEventParams := db.UpdateRoutingEventParams{
-			EventStatus:    db.RoutingEventStatusSETTLE,
-			IncomingChanID: int64(htlcEvent.IncomingChannelId),
-			IncomingHtlcID: int64(htlcEvent.IncomingHtlcId),
-			OutgoingChanID: int64(htlcEvent.OutgoingChannelId),
-			OutgoingHtlcID: int64(htlcEvent.IncomingHtlcId),
-			LastUpdated:    time.Unix(0, int64(htlcEvent.TimestampNs)),
-		}
-
-		_, err := m.RoutingEventRepository.UpdateRoutingEvent(ctx, updateRoutingEventParams)
-
-		if err != nil {
-			util.LogOnError("LSP083", "Error updating routing event", err)
-			log.Printf("LSP083: Params=%#v", updateRoutingEventParams)
-		}
+	if err != nil {
+		util.LogOnError("LSP083", "Error updating routing event", err)
+		log.Printf("LSP083: Params=%#v", updateRoutingEventParams)
 	}
 }
 

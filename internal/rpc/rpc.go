@@ -12,9 +12,12 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/ferp"
+	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/rpc/cdr"
+	"github.com/satimoto/go-lsp/internal/rpc/channel"
 	"github.com/satimoto/go-lsp/internal/rpc/rpc"
 	"github.com/satimoto/go-lsp/internal/rpc/session"
+	"github.com/satimoto/go-lsp/lsprpc"
 	"github.com/satimoto/go-ocpi/ocpirpc"
 	"google.golang.org/grpc"
 )
@@ -27,18 +30,20 @@ type RpcService struct {
 	RepositoryService  *db.RepositoryService
 	Server             *grpc.Server
 	RpcCdrResolver     *cdr.RpcCdrResolver
+	RpcChannelResolver *channel.RpcChannelResolver
 	RpcResolver        *rpc.RpcResolver
 	RpcSessionResolver *session.RpcSessionResolver
 	ShutdownCtx        context.Context
 }
 
-func NewRpc(shutdownCtx context.Context, d *sql.DB, ferpService ferp.Ferp) Rpc {
+func NewRpc(shutdownCtx context.Context, d *sql.DB, ferpService ferp.Ferp, lightningService lightningnetwork.LightningNetwork) Rpc {
 	repositoryService := db.NewRepositoryService(d)
 
 	return &RpcService{
 		RepositoryService:  repositoryService,
 		Server:             grpc.NewServer(),
 		RpcCdrResolver:     cdr.NewResolver(repositoryService, ferpService),
+		RpcChannelResolver: channel.NewResolverWithServices(repositoryService, lightningService),
 		RpcResolver:        rpc.NewResolver(repositoryService),
 		RpcSessionResolver: session.NewResolver(repositoryService, ferpService),
 		ShutdownCtx:        shutdownCtx,
@@ -66,6 +71,7 @@ func (rs *RpcService) listenAndServe() {
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%s", os.Getenv("RPC_PORT")))
 	util.PanicOnError("LSP028", "Error creating network address", err)
 
+	lsprpc.RegisterChannelServiceServer(rs.Server, rs.RpcChannelResolver)
 	ocpirpc.RegisterCdrServiceServer(rs.Server, rs.RpcCdrResolver)
 	ocpirpc.RegisterRpcServiceServer(rs.Server, rs.RpcResolver)
 	ocpirpc.RegisterSessionServiceServer(rs.Server, rs.RpcSessionResolver)
