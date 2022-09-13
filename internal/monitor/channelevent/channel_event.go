@@ -67,15 +67,17 @@ func (m *ChannelEventMonitor) handleChannelEvent(channelEvent lnrpc.ChannelEvent
 		 *  Unrestrict the user's token to allow charging.
 		 */
 		openChannel := channelEvent.GetOpenChannel()
-		txid, outputIndex, _ := util.ConvertChannelPoint(openChannel.ChannelPoint)
-		log.Printf("Txid: %v", hex.EncodeToString(util.ReverseBytes(txid)))
+		txidBytes, outputIndex, _ := util.ConvertChannelPoint(openChannel.ChannelPoint)
+		txid := hex.EncodeToString(util.ReverseBytes(txidBytes))
+		log.Printf("Txid: %v", txid)
 		log.Printf("OutputIndex: %v", outputIndex)
 
 		updatePendingChannelRequestByPubkeyParams := db.UpdatePendingChannelRequestByPubkeyParams{
-			Pubkey:        openChannel.RemotePubkey,
-			FundingAmount: dbUtil.SqlNullInt64(openChannel.Capacity),
-			FundingTxID:   txid,
-			OutputIndex:   dbUtil.SqlNullInt64(outputIndex),
+			Pubkey:           openChannel.RemotePubkey,
+			FundingAmount:    dbUtil.SqlNullInt64(openChannel.Capacity),
+			FundingTxID:      dbUtil.SqlNullString(txid),
+			FundingTxIDBytes: txidBytes,
+			OutputIndex:      dbUtil.SqlNullInt64(outputIndex),
 		}
 
 		if channelRequest, err := m.ChannelRequestResolver.Repository.UpdatePendingChannelRequestByPubkey(ctx, updatePendingChannelRequestByPubkeyParams); err == nil {
@@ -96,26 +98,6 @@ func (m *ChannelEventMonitor) handleChannelEvent(channelEvent lnrpc.ChannelEvent
 		}
 
 		m.updateNode(ctx)
-	case lnrpc.ChannelEventUpdate_ACTIVE_CHANNEL:
-		/** Channel Active.
-		 *  Set the channel request to completed.
-		 *  Resume pending HTLCs as the channel is now open.
-		 */
-		activeChannel := channelEvent.GetActiveChannel()
-		txid := activeChannel.GetFundingTxidBytes()
-		log.Printf("Txid: %v", hex.EncodeToString(util.ReverseBytes(txid)))
-		log.Printf("OutputIndex: %v", activeChannel.OutputIndex)
-
-		getChannelRequestByChannelPointParams := db.GetChannelRequestByChannelPointParams{
-			FundingTxID: txid,
-			OutputIndex: dbUtil.SqlNullInt64(activeChannel.OutputIndex),
-		}
-
-		channelRequest, err := m.ChannelRequestResolver.Repository.GetChannelRequestByChannelPoint(ctx, getChannelRequestByChannelPointParams)
-
-		if err == nil && channelRequest.Status == db.ChannelRequestStatusOPENINGCHANNEL {
-			go m.HtlcMonitor.ResumeChannelRequestHtlcs(channelRequest)
-		}
 	case lnrpc.ChannelEventUpdate_CLOSED_CHANNEL, lnrpc.ChannelEventUpdate_FULLY_RESOLVED_CHANNEL:
 		m.updateNode(ctx)
 	}

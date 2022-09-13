@@ -296,12 +296,12 @@ Keep credentials to be added to `lnd.conf`.
 Clone the lnd repository
 ```bash
 cd ~/
-git clone https://github.com/lightningnetwork/lnd.git
+git clone https://github.com/satimoto/lnd.git
 cd lnd/
 ```
 Checkout branch
 ```bash
-git checkout v0.15.0-beta
+git checkout -b allocate-alias origin/allocate-alias
 ```
 Make lnd
 ```bash
