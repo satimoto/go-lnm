@@ -4,9 +4,9 @@ go 1.17
 
 require (
 	github.com/joho/godotenv v1.4.0
-	github.com/lightningnetwork/lnd v0.15.0-beta
+	github.com/lightningnetwork/lnd v0.15.1-beta.rc2
 	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
-	github.com/satimoto/go-datastore v0.1.2-0.20220721053843-6ef62501bd52
+	github.com/satimoto/go-datastore v0.2.1-0.20220913082411-501ca238709c
 	google.golang.org/grpc v1.47.0
 )
 
@@ -43,7 +43,6 @@ require (
 	github.com/go-chi/render v1.0.1
 	github.com/go-errors/errors v1.0.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
@@ -145,7 +144,7 @@ require (
 require (
 	github.com/appleboy/go-fcm v0.1.5
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/satimoto/go-ferp v0.0.0-20220614121737-7a29212db779
+	github.com/satimoto/go-ferp v0.1.1-0.20220908195810-ff288d2a2a2f
 )
 
 require (
@@ -153,15 +152,16 @@ require (
 	github.com/NebulousLabs/go-upnp v0.0.0-20180202185039-29b680b06c82 // indirect
 	github.com/Yawning/aez v0.0.0-20211027044916-e49e68abd344 // indirect
 	github.com/aws/aws-sdk-go v1.44.42
-	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
-	github.com/btcsuite/btcd/btcutil v1.1.1 // indirect
-	github.com/btcsuite/btcd/btcutil/psbt v1.1.4 // indirect
+	github.com/btcsuite/btcd/btcec/v2 v2.2.1 // indirect
+	github.com/btcsuite/btcd/btcutil v1.1.2 // indirect
+	github.com/btcsuite/btcd/btcutil/psbt v1.1.5 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 // indirect
 	github.com/btcsuite/winsvc v1.0.0 // indirect
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/decred/dcrd/crypto/blake256 v1.0.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/dvyukov/go-fuzz v0.0.0-20210602112143-b1f3d6f4ef4e // indirect
+	github.com/golang/protobuf v1.5.2
 	github.com/jackpal/gateway v1.0.5 // indirect
 	github.com/jackpal/go-nat-pmp v0.0.0-20170405195558-28a68d0c24ad // indirect
 	github.com/jessevdk/go-flags v1.4.0 // indirect
@@ -175,6 +175,11 @@ require (
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 )
 
-require github.com/jmespath/go-jmespath v0.4.0 // indirect
+require (
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
+	github.com/stretchr/objx v0.2.0 // indirect
+)
+
+replace github.com/lightningnetwork/lnd => github.com/satimoto/lnd v0.15.1-beta.rc2.0.20220908054041-539aeb27a42e
 
 replace git.schwanenlied.me/yawning/bsaes.git => github.com/Yawning/bsaes v0.0.0-20180720073208-c0276d75487e
