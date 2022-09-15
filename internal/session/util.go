@@ -6,8 +6,9 @@ import (
 	"time"
 
 	"github.com/satimoto/go-datastore/pkg/db"
-	"github.com/satimoto/go-datastore/pkg/util"
+	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/tariff"
+	"github.com/satimoto/go-lsp/pkg/util"
 )
 
 func CalculateAmountInvoiced(sessionInvoices []db.SessionInvoice) float64 {
@@ -86,7 +87,7 @@ func getPriceComponents(elements []*tariff.ElementIto, startDatetime time.Time, 
 				(restrictions.MaxPower == nil || (maxPower > 0 && maxPower < *restrictions.MaxPower)) &&
 				(restrictions.MinDuration == nil || duration >= *restrictions.MinDuration) &&
 				(restrictions.MaxDuration == nil || duration < *restrictions.MaxDuration) &&
-				(len(restrictions.DayOfWeek) == 0 || util.StringsContainString(restrictions.DayOfWeek, weekday)) {
+				(len(restrictions.DayOfWeek) == 0 || dbUtil.StringsContainString(restrictions.DayOfWeek, weekday)) {
 				list = append(list, element.PriceComponents...)
 			}
 		}
@@ -124,8 +125,8 @@ func parseTimeOfDay(timeStr *string, datetime time.Time) *time.Time {
 			datetime.Year(),
 			datetime.Month(),
 			datetime.Day(),
-			int(util.ParseInt32(splitTime[0], 0)),
-			int(util.ParseInt32(splitTime[1], 0)),
+			int(dbUtil.ParseInt32(splitTime[0], 0)),
+			int(dbUtil.ParseInt32(splitTime[1], 0)),
 			0,
 			0,
 			datetime.Location())
@@ -167,9 +168,8 @@ func getVolumeByType(dimensions []*ChargingPeriodDimensionIto, dimensionType db.
 }
 
 func calculateInvoiceInterval(wattage int32) time.Duration {
-	if wattage < 25000 {
-		return time.Duration(25000/wattage) * time.Minute
-	}
-
-	return time.Minute
+	// Calculate an internal that equates to approximately 1 kWh per payment
+	duration := time.Duration(100000/wattage) * time.Minute
+	
+	return util.MaxDuration(time.Minute, duration)
 }
