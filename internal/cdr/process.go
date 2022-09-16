@@ -39,7 +39,7 @@ func (r *CdrResolver) ProcessCdr(ctx context.Context, cdr db.Cdr) error {
 		return errors.New("error retrieving session invoices")
 	}
 
-	invoicedAmount := session.CalculateAmountInvoiced(sessionInvoices)
+	amountFiat, amountMsat := session.CalculateAmountInvoiced(sessionInvoices)
 	location, err := r.SessionResolver.LocationRepository.GetLocation(ctx, sess.LocationID)
 
 	if err != nil {
@@ -59,12 +59,25 @@ func (r *CdrResolver) ProcessCdr(ctx context.Context, cdr db.Cdr) error {
 	taxPercent := r.SessionResolver.CountryAccountResolver.GetTaxPercentByCountry(ctx, location.Country, util.GetEnvFloat64("DEFAULT_TAX_PERCENT", 20))
 	totalAmount, _, _ := session.CalculateCommission(cdr.TotalCost, user.CommissionPercent, taxPercent)
 
-	// TODO: Issue rebate if over paid
-	// TODO: Issue referer satsback
-	if totalAmount > invoicedAmount {
-		invoiceAmount, invoiceCommission, invoiceTax := session.CalculateCommission(totalAmount-invoicedAmount, user.CommissionPercent, taxPercent)
+	if totalAmount > amountFiat {
+		// Issue final invoice
+		invoiceAmount, invoiceCommission, invoiceTax := session.CalculateCommission(totalAmount-amountFiat, user.CommissionPercent, taxPercent)
+		sessionInvoice := r.SessionResolver.IssueSessionInvoice(ctx, user, sess, invoiceAmount, invoiceCommission, invoiceTax)
 
-		r.SessionResolver.IssueLightningInvoice(ctx, user, sess, invoiceAmount, invoiceCommission, invoiceTax)
+		if sessionInvoice != nil {
+			sessionInvoices = append(sessionInvoices, *sessionInvoice)
+			_, amountMsat = session.CalculateAmountInvoiced(sessionInvoices)
+		}
+	} else if amountFiat < totalAmount {
+		// TODO: Issue rebate if over paid
+	}
+
+	// Issue invoice request to circuit user
+	circuitPercent := util.GetEnvFloat64("CIRCUIT_PERCENT", 0.5)
+	circuitAmountMsat := int64((float64(amountMsat) / 100.0) * circuitPercent)
+
+	if user.CircuitUserID.Valid && circuitAmountMsat > 0 {
+		return r.IssueInvoiceRequest(ctx, user.CircuitUserID.Int64, "CIRCUIT", circuitAmountMsat)
 	}
 
 	return nil

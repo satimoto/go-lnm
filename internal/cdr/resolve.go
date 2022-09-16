@@ -5,6 +5,8 @@ import (
 
 	"github.com/satimoto/go-datastore/pkg/cdr"
 	"github.com/satimoto/go-datastore/pkg/db"
+	"github.com/satimoto/go-datastore/pkg/invoicerequest"
+	"github.com/satimoto/go-datastore/pkg/promotion"
 	"github.com/satimoto/go-lsp/internal/ferp"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/notification"
@@ -13,11 +15,13 @@ import (
 )
 
 type CdrResolver struct {
-	Repository          cdr.CdrRepository
-	LightningService    lightningnetwork.LightningNetwork
-	NotificationService notification.Notification
-	OcpiService         ocpi.Ocpi
-	SessionResolver     *session.SessionResolver
+	Repository               cdr.CdrRepository
+	LightningService         lightningnetwork.LightningNetwork
+	NotificationService      notification.Notification
+	OcpiService              ocpi.Ocpi
+	InvoiceRequestRepository invoicerequest.InvoiceRequestRepository
+	PromotionRepository      promotion.PromotionRepository
+	SessionResolver          *session.SessionResolver
 }
 
 func NewResolver(repositoryService *db.RepositoryService) *CdrResolver {
@@ -36,10 +40,12 @@ func NewResolverWithFerpService(repositoryService *db.RepositoryService, ferpSer
 
 func NewResolverWithServices(repositoryService *db.RepositoryService, ferpService ferp.Ferp, lightningService lightningnetwork.LightningNetwork, notificationService notification.Notification, ocpiService ocpi.Ocpi) *CdrResolver {
 	return &CdrResolver{
-		Repository:          cdr.NewRepository(repositoryService),
-		LightningService:    lightningService,
-		OcpiService:         ocpiService,
-		NotificationService: notificationService,
-		SessionResolver:     session.NewResolverWithServices(repositoryService, ferpService, lightningService, notificationService, ocpiService),
+		Repository:               cdr.NewRepository(repositoryService),
+		LightningService:         lightningService,
+		OcpiService:              ocpiService,
+		NotificationService:      notificationService,
+		InvoiceRequestRepository: invoicerequest.NewRepository(repositoryService),
+		PromotionRepository:      promotion.NewRepository(repositoryService),
+		SessionResolver:          session.NewResolverWithServices(repositoryService, ferpService, lightningService, notificationService, ocpiService),
 	}
 }
