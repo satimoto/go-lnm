@@ -11,13 +11,13 @@ import (
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 )
 
-func (r *SessionResolver) IssueLightningInvoice(ctx context.Context, user db.User, session db.Session, invoiceAmount float64, commissionAmount float64, taxAmount float64) {
+func (r *SessionResolver) IssueSessionInvoice(ctx context.Context, user db.User, session db.Session, invoiceAmount float64, commissionAmount float64, taxAmount float64) *db.SessionInvoice {
 	currencyRate, err := r.FerpService.GetRate(session.Currency)
 
 	if err != nil {
 		util.LogOnError("LSP054", "Error retrieving exchange rate", err)
 		log.Printf("LSP054: Currency=%v", session.Currency)
-		return
+		return nil
 	}
 
 	rateMsat := float64(currencyRate.RateMsat)
@@ -30,7 +30,7 @@ func (r *SessionResolver) IssueLightningInvoice(ctx context.Context, user db.Use
 	if err != nil {
 		util.LogOnError("LSP030", "Error creating invoice preimage", err)
 		log.Printf("LSP030: SessionUid=%v", session.Uid)
-		return
+		return nil
 	}
 
 	invoice, err := r.LightningService.AddInvoice(&lnrpc.Invoice{
@@ -42,7 +42,7 @@ func (r *SessionResolver) IssueLightningInvoice(ctx context.Context, user db.Use
 	if err != nil {
 		util.LogOnError("LSP031", "Error creating lightning invoice", err)
 		log.Printf("LSP031: Preimage=%v, ValueMsat=%v", preimage.String(), amountMsat)
-		return
+		return nil
 	}
 
 	sessionInvoiceParams := param.NewCreateSessionInvoiceParams(session)
@@ -62,9 +62,11 @@ func (r *SessionResolver) IssueLightningInvoice(ctx context.Context, user db.Use
 	if err != nil {
 		util.LogOnError("LSP003", "Could not create session invoice", err)
 		log.Printf("LSP003: Params=%#v", sessionInvoiceParams)
-		return
+		return nil
 	}
 
 	// TODO: handle notification failure
 	r.SendSessionInvoiceNotification(user, session, sessionInvoice)
+
+	return &sessionInvoice
 }

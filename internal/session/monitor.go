@@ -81,7 +81,7 @@ func (r *SessionResolver) StartSessionMonitor(ctx context.Context, session db.Se
 				break invoiceLoop
 			case db.SessionStatusTypeACTIVE:
 				// Session is active, calculate new invoice
-				if ok := r.processInvoicePeriod(ctx, user, session, tariffIto, taxPercent); ok == false {
+				if ok := r.processInvoicePeriod(ctx, user, session, tariffIto, taxPercent); !ok {
 					log.Printf("Ending session monitoring for %s with errors", session.Uid)
 					break invoiceLoop
 				}
@@ -121,15 +121,15 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 		return false
 	}
 
-	invoicedAmount := CalculateAmountInvoiced(sessionInvoices)
+	amountFiat, _ := CalculateAmountInvoiced(sessionInvoices)
 	sessionIto := r.CreateSessionIto(ctx, session)
-	sessionAmount := r.ProcessChargingPeriods(sessionIto, tariffIto, time.Now())
+	sessionAmount := r.ProcessChargingPeriods(sessionIto, tariffIto, time.Now().UTC())
 	totalAmount, _, _ := CalculateCommission(sessionAmount, user.CommissionPercent, taxPercent)
 
-	if totalAmount > invoicedAmount {
-		invoiceAmount, invoiceCommission, invoiceTax := CalculateCommission(totalAmount-invoicedAmount, user.CommissionPercent, taxPercent)
+	if totalAmount > amountFiat {
+		invoiceAmount, invoiceCommission, invoiceTax := CalculateCommission(totalAmount-amountFiat, user.CommissionPercent, taxPercent)
 
-		r.IssueLightningInvoice(ctx, user, session, invoiceAmount, invoiceCommission, invoiceTax)
+		r.IssueSessionInvoice(ctx, user, session, invoiceAmount, invoiceCommission, invoiceTax)
 	}
 
 	return true

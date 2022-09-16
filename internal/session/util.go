@@ -11,14 +11,13 @@ import (
 	"github.com/satimoto/go-lsp/pkg/util"
 )
 
-func CalculateAmountInvoiced(sessionInvoices []db.SessionInvoice) float64 {
-	amountFiat := float64(0)
-
+func CalculateAmountInvoiced(sessionInvoices []db.SessionInvoice) (amountFiat float64, amountMsat int64) {
 	for _, sessionInvoice := range sessionInvoices {
 		amountFiat += sessionInvoice.AmountFiat
+		amountMsat += sessionInvoice.AmountMsat
 	}
 
-	return amountFiat
+	return amountFiat, amountMsat
 }
 
 func CalculateCommission(amount float64, commissionPercent float64, taxPercent float64) (total float64, commission float64, tax float64) {
