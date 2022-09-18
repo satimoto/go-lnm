@@ -16,6 +16,7 @@ import (
 
 type CdrResolver struct {
 	Repository               cdr.CdrRepository
+	FerpService              ferp.Ferp
 	LightningService         lightningnetwork.LightningNetwork
 	NotificationService      notification.Notification
 	OcpiService              ocpi.Ocpi
@@ -41,6 +42,7 @@ func NewResolverWithFerpService(repositoryService *db.RepositoryService, ferpSer
 func NewResolverWithServices(repositoryService *db.RepositoryService, ferpService ferp.Ferp, lightningService lightningnetwork.LightningNetwork, notificationService notification.Notification, ocpiService ocpi.Ocpi) *CdrResolver {
 	return &CdrResolver{
 		Repository:               cdr.NewRepository(repositoryService),
+		FerpService:              ferpService,
 		LightningService:         lightningService,
 		OcpiService:              ocpiService,
 		NotificationService:      notificationService,

@@ -18,6 +18,7 @@ func NewResolver(repositoryService *mocks.MockRepositoryService, ferpService *fe
 
 	return &cdr.CdrResolver{
 		Repository:               cdrMocks.NewRepository(repositoryService),
+		FerpService:              ferpService,
 		LightningService:         lightningService,
 		NotificationService:      notificationService,
 		OcpiService:              ocpiService,

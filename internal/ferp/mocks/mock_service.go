@@ -8,8 +8,9 @@ import (
 	"github.com/satimoto/go-ferp/pkg/rate"
 )
 
-type MockFerpService struct{
-	getRateMockData []*rate.CurrencyRate
+type MockFerpService struct {
+	getRateMockData     []*rate.CurrencyRate
+	convertRateMockData []*int64
 }
 
 func NewService() *MockFerpService {
@@ -30,4 +31,18 @@ func (s *MockFerpService) GetRate(currency string) (*rate.CurrencyRate, error) {
 
 func (s *MockFerpService) SetGetRateMockData(currencyRate *rate.CurrencyRate) {
 	s.getRateMockData = append(s.getRateMockData, currencyRate)
+}
+
+func (s *MockFerpService) ConvertRate(currency string, amount float64) (*int64, error) {
+	if len(s.convertRateMockData) == 0 {
+		return nil, errors.New("NotFound")
+	}
+
+	response := s.convertRateMockData[0]
+	s.convertRateMockData = s.convertRateMockData[1:]
+	return response, nil
+}
+
+func (s *MockFerpService) SetConvertRateMockData(amountMsat *int64) {
+	s.convertRateMockData = append(s.convertRateMockData, amountMsat)
 }
