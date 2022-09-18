@@ -11,6 +11,7 @@ import (
 
 func (r *RpcCdrResolver) CdrCreated(ctx context.Context, input *ocpirpc.CdrCreatedRequest) (*ocpirpc.CdrCreatedResponse, error) {
 	if input != nil {
+		// TODO: This RPC call should be handled asynchronously
 		cdr, err := r.CdrResolver.Repository.GetCdrByUid(ctx, input.CdrUid)
 
 		if err != nil {

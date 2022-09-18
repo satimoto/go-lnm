@@ -11,13 +11,22 @@ import (
 	"github.com/satimoto/go-lsp/pkg/util"
 )
 
-func CalculateAmountInvoiced(sessionInvoices []db.SessionInvoice) (amountFiat float64, amountMsat int64) {
+func CalculatePriceInvoiced(sessionInvoices []db.SessionInvoice) (priceFiat float64, priceMsat int64) {
 	for _, sessionInvoice := range sessionInvoices {
-		amountFiat += sessionInvoice.AmountFiat
-		amountMsat += sessionInvoice.AmountMsat
+		priceFiat += sessionInvoice.PriceFiat
+		priceMsat += sessionInvoice.PriceMsat
 	}
 
-	return amountFiat, amountMsat
+	return priceFiat, priceMsat
+}
+
+func CalculateTotalInvoiced(sessionInvoices []db.SessionInvoice) (totalFiat float64, totalMsat int64) {
+	for _, sessionInvoice := range sessionInvoices {
+		totalFiat += sessionInvoice.TotalFiat
+		totalMsat += sessionInvoice.TotalMsat
+	}
+
+	return totalFiat, totalMsat
 }
 
 func CalculateCommission(amount float64, commissionPercent float64, taxPercent float64) (total float64, commission float64, tax float64) {
@@ -27,6 +36,15 @@ func CalculateCommission(amount float64, commissionPercent float64, taxPercent f
 	total += tax
 
 	return total, commission, tax
+}
+
+func ReverseCommission(total float64, commissionPercent float64, taxPercent float64) (amount float64, commission float64, tax float64) {
+	amount = total / (1 + (taxPercent / 100))
+	tax = total - amount
+	amount = amount / (1 + (commissionPercent / 100))
+	commission = total - amount - tax
+
+	return amount, commission, tax
 }
 
 func calculateCost(priceComponent *tariff.PriceComponentIto, volume float64, factor float64) float64 {
@@ -169,6 +187,6 @@ func getVolumeByType(dimensions []*ChargingPeriodDimensionIto, dimensionType db.
 func calculateInvoiceInterval(wattage int32) time.Duration {
 	// Calculate an internal that equates to approximately 1 kWh per payment
 	duration := time.Duration(100000/wattage) * time.Minute
-	
+
 	return util.MaxDuration(time.Minute, duration)
 }

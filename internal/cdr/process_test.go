@@ -69,15 +69,16 @@ func TestProcessCdrErrors(t *testing.T) {
 			}})
 
 			mockRepository.SetListSessionInvoicesMockData(dbMocks.SessionInvoicesMockData{SessionInvoices: []db.SessionInvoice{{
-				AmountFiat:     0.3852,
-				CommissionFiat: 0.021,
-				TaxFiat:        0.0642,
+				PriceFiat:      0.3852,
+				CommissionFiat: 0.026964,
+				TaxFiat:        0.07831116,
+				TotalFiat:      0.49047516,
 				Currency:       "EUR",
 			}}})
 
 			mockFerpService.SetGetRateMockData(&rate.CurrencyRate{
-				Rate: 4500,
-				RateMsat: 4500000,
+				Rate:        4500,
+				RateMsat:    4500000,
 				LastUpdated: *util.ParseTime("2015-03-16T10:10:02Z", nil),
 			})
 		},
@@ -98,9 +99,10 @@ func TestProcessCdrErrors(t *testing.T) {
 			}})
 
 			mockRepository.SetListSessionInvoicesMockData(dbMocks.SessionInvoicesMockData{SessionInvoices: []db.SessionInvoice{{
-				AmountFiat:     0.3852,
-				CommissionFiat: 0.021,
-				TaxFiat:        0.0642,
+				PriceFiat:      0.3852,
+				CommissionFiat: 0.026964,
+				TaxFiat:        0.07831116,
+				TotalFiat:      0.49047516,
 				Currency:       "EUR",
 			}}})
 
@@ -110,8 +112,8 @@ func TestProcessCdrErrors(t *testing.T) {
 			}})
 
 			mockFerpService.SetGetRateMockData(&rate.CurrencyRate{
-				Rate: 4500,
-				RateMsat: 4500000,
+				Rate:        4500,
+				RateMsat:    4500000,
 				LastUpdated: *util.ParseTime("2015-03-16T10:10:02Z", nil),
 			})
 		},
@@ -133,9 +135,10 @@ func TestProcessCdrErrors(t *testing.T) {
 			}})
 
 			mockRepository.SetListSessionInvoicesMockData(dbMocks.SessionInvoicesMockData{SessionInvoices: []db.SessionInvoice{{
-				AmountFiat:     0.3852,
-				CommissionFiat: 0.021,
-				TaxFiat:        0.0642,
+				PriceFiat:      0.3852,
+				CommissionFiat: 0.026964,
+				TaxFiat:        0.07831116,
+				TotalFiat:      0.49047516,
 				Currency:       "EUR",
 			}}})
 
@@ -149,8 +152,8 @@ func TestProcessCdrErrors(t *testing.T) {
 			}})
 
 			mockFerpService.SetGetRateMockData(&rate.CurrencyRate{
-				Rate: 4500,
-				RateMsat: 4500000,
+				Rate:        4500,
+				RateMsat:    4500000,
 				LastUpdated: *util.ParseTime("2015-03-16T10:10:02Z", nil),
 			})
 		},
@@ -167,16 +170,20 @@ func TestProcessCdrErrors(t *testing.T) {
 				t.Errorf("Unexpected error: %v", err)
 			}
 
-			if sessionInvoice.AmountFiat != 1.1540592 {
-				t.Errorf("Error mismatch: %v expecting %v", sessionInvoice.AmountFiat, 1.1540592)
+			if sessionInvoice.PriceFiat != 0.6148 {
+				t.Errorf("Error price mismatch: %v expecting %v", sessionInvoice.PriceFiat, 0.6148)
 			}
 
-			if sessionInvoice.CommissionFiat != 0.06291600000000001 {
-				t.Errorf("Error mismatch: %v expecting %v", sessionInvoice.CommissionFiat, 0.06291600000000001)
+			if sessionInvoice.CommissionFiat != 0.043036 {
+				t.Errorf("Error commission mismatch: %v expecting %v", sessionInvoice.CommissionFiat, 0.043036)
 			}
 
-			if sessionInvoice.TaxFiat != 0.1923432 {
-				t.Errorf("Error mismatch: %v expecting %v", sessionInvoice.TaxFiat, 0.1923432)
+			if sessionInvoice.TaxFiat != 0.12498884 {
+				t.Errorf("Error tax mismatch: %v expecting %v", sessionInvoice.TaxFiat, 0.12498884)
+			}
+
+			if sessionInvoice.TotalFiat != 0.78282484 {
+				t.Errorf("Error total mismatch: %v expecting %v", sessionInvoice.TotalFiat, 0.78282484)
 			}
 		},
 		err: nil,

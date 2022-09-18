@@ -6,8 +6,9 @@ import (
 	"time"
 
 	"github.com/satimoto/go-datastore/pkg/db"
-	"github.com/satimoto/go-datastore/pkg/util"
+	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/tariff"
+	"github.com/satimoto/go-lsp/pkg/util"
 	"github.com/satimoto/go-ocpi/ocpirpc"
 )
 
@@ -23,7 +24,7 @@ func (r *SessionResolver) StartSessionMonitor(ctx context.Context, session db.Se
 	user, err := r.UserResolver.Repository.GetUser(ctx, session.UserID)
 
 	if err != nil {
-		util.LogOnError("LSP037", "Error retrieving user from session", err)
+		dbUtil.LogOnError("LSP037", "Error retrieving user from session", err)
 		log.Printf("LSP037: SessionUid=%v, UserID=%v", session.Uid, session.UserID)
 		return
 	}
@@ -33,7 +34,7 @@ func (r *SessionResolver) StartSessionMonitor(ctx context.Context, session db.Se
 	connector, err := r.LocationRepository.GetConnector(ctx, session.ConnectorID)
 
 	if err != nil {
-		util.LogOnError("LSP001", "Error retrieving session connector", err)
+		dbUtil.LogOnError("LSP001", "Error retrieving session connector", err)
 		log.Printf("LSP001: SessionUid=%v, ConnectorID=%v", session.Uid, session.ConnectorID)
 		return
 	}
@@ -42,7 +43,7 @@ func (r *SessionResolver) StartSessionMonitor(ctx context.Context, session db.Se
 		tariff, err := r.TariffResolver.Repository.GetTariffByUid(ctx, connector.TariffID.String)
 
 		if err != nil {
-			util.LogOnError("LSP002", "Error retrieving session tariff", err)
+			dbUtil.LogOnError("LSP002", "Error retrieving session tariff", err)
 			log.Printf("LSP002: SessionUid=%v, TariffID=%v", session.Uid, connector.TariffID.String)
 			return
 		}
@@ -51,12 +52,12 @@ func (r *SessionResolver) StartSessionMonitor(ctx context.Context, session db.Se
 		location, err := r.LocationRepository.GetLocation(ctx, session.LocationID)
 
 		if err != nil {
-			util.LogOnError("LSP038", "Error retrieving session location", err)
+			dbUtil.LogOnError("LSP038", "Error retrieving session location", err)
 			log.Printf("LSP038: SessionUid=%v, LocationID=%v", session.Uid, session.LocationID)
 			return
 		}
 
-		taxPercent := r.CountryAccountResolver.GetTaxPercentByCountry(ctx, location.Country, util.GetEnvFloat64("DEFAULT_TAX_PERCENT", 19))
+		taxPercent := r.CountryAccountResolver.GetTaxPercentByCountry(ctx, location.Country, dbUtil.GetEnvFloat64("DEFAULT_TAX_PERCENT", 19))
 		invoiceInterval := calculateInvoiceInterval(connector.Wattage)
 		log.Printf("Monitor session for %s, running every %v seconds", session.Uid, invoiceInterval/time.Second)
 
@@ -69,7 +70,7 @@ func (r *SessionResolver) StartSessionMonitor(ctx context.Context, session db.Se
 			session, err = r.Repository.GetSessionByUid(ctx, session.Uid)
 
 			if err != nil {
-				util.LogOnError("LSP032", "Error retrieving session", err)
+				dbUtil.LogOnError("LSP032", "Error retrieving session", err)
 				log.Printf("LSP032: SessionUid=%v", session.Uid)
 				continue
 			}
@@ -94,7 +95,7 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 	sessionInvoices, err := r.Repository.ListSessionInvoices(ctx, session.ID)
 
 	if err != nil {
-		util.LogOnError("LSP033", "Error retrieving session invoices", err)
+		dbUtil.LogOnError("LSP033", "Error retrieving session invoices", err)
 		log.Printf("LSP033: SessionUid=%v", session.Uid)
 		return true
 	}
@@ -113,7 +114,7 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 		err = r.UserResolver.RestrictUser(ctx, user)
 
 		if err != nil {
-			util.LogOnError("LSP042", "Error restricting user", err)
+			dbUtil.LogOnError("LSP042", "Error restricting user", err)
 			log.Printf("LSP042: SessionUID=%v, UserID=%v", session.Uid, session.UserID)
 		}
 
@@ -121,15 +122,20 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 		return false
 	}
 
-	amountFiat, _ := CalculateAmountInvoiced(sessionInvoices)
+	priceFiat, _ := CalculatePriceInvoiced(sessionInvoices)
 	sessionIto := r.CreateSessionIto(ctx, session)
-	sessionAmount := r.ProcessChargingPeriods(sessionIto, tariffIto, time.Now().UTC())
-	totalAmount, _, _ := CalculateCommission(sessionAmount, user.CommissionPercent, taxPercent)
+	sessionFiat := r.ProcessChargingPeriods(sessionIto, tariffIto, time.Now().UTC())
 
-	if totalAmount > amountFiat {
-		invoiceAmount, invoiceCommission, invoiceTax := CalculateCommission(totalAmount-amountFiat, user.CommissionPercent, taxPercent)
+	if sessionFiat > priceFiat {
+		invoicePriceFiat := sessionFiat - priceFiat
+		invoiceTotalFiat, invoiceCommissionFiat, invoiceTaxFiat := CalculateCommission(sessionFiat-priceFiat, user.CommissionPercent, taxPercent)
 
-		r.IssueSessionInvoice(ctx, user, session, invoiceAmount, invoiceCommission, invoiceTax)
+		r.IssueSessionInvoice(ctx, user, session, util.InvoiceParams{
+			PriceFiat:      dbUtil.SqlNullFloat64(invoicePriceFiat),
+			CommissionFiat: dbUtil.SqlNullFloat64(invoiceCommissionFiat),
+			TaxFiat:        dbUtil.SqlNullFloat64(invoiceTaxFiat),
+			TotalFiat:      dbUtil.SqlNullFloat64(invoiceTotalFiat),
+		})
 	}
 
 	return true

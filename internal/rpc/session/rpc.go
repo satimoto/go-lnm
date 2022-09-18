@@ -11,6 +11,7 @@ import (
 
 func (r *RpcSessionResolver) SessionCreated(ctx context.Context, input *ocpirpc.SessionCreatedRequest) (*ocpirpc.SessionCreatedResponse, error) {
 	if input != nil {
+		// TODO: This RPC call should be handled asynchronously
 		session, err := r.SessionResolver.Repository.GetSessionByUid(ctx, input.SessionUid)
 
 		if err != nil {
@@ -29,6 +30,7 @@ func (r *RpcSessionResolver) SessionCreated(ctx context.Context, input *ocpirpc.
 
 func (r *RpcSessionResolver) SessionUpdated(ctx context.Context, input *ocpirpc.SessionUpdatedRequest) (*ocpirpc.SessionUpdatedResponse, error) {
 	if input != nil {
+		// TODO: This RPC call should be handled asynchronously
 		session, err := r.SessionResolver.Repository.GetSessionByUid(ctx, input.SessionUid)
 
 		if err != nil {
