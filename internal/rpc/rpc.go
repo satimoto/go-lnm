@@ -15,6 +15,7 @@ import (
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/rpc/cdr"
 	"github.com/satimoto/go-lsp/internal/rpc/channel"
+	"github.com/satimoto/go-lsp/internal/rpc/invoice"
 	"github.com/satimoto/go-lsp/internal/rpc/rpc"
 	"github.com/satimoto/go-lsp/internal/rpc/session"
 	"github.com/satimoto/go-lsp/lsprpc"
@@ -31,6 +32,7 @@ type RpcService struct {
 	Server             *grpc.Server
 	RpcCdrResolver     *cdr.RpcCdrResolver
 	RpcChannelResolver *channel.RpcChannelResolver
+	RpcInvoiceResolver *invoice.RpcInvoiceResolver
 	RpcResolver        *rpc.RpcResolver
 	RpcSessionResolver *session.RpcSessionResolver
 	ShutdownCtx        context.Context
@@ -44,6 +46,7 @@ func NewRpc(shutdownCtx context.Context, d *sql.DB, ferpService ferp.Ferp, light
 		Server:             grpc.NewServer(),
 		RpcCdrResolver:     cdr.NewResolver(repositoryService, ferpService),
 		RpcChannelResolver: channel.NewResolverWithServices(repositoryService, lightningService),
+		RpcInvoiceResolver: invoice.NewResolverWithServices(repositoryService, lightningService),
 		RpcResolver:        rpc.NewResolver(repositoryService),
 		RpcSessionResolver: session.NewResolver(repositoryService, ferpService),
 		ShutdownCtx:        shutdownCtx,
@@ -72,6 +75,7 @@ func (rs *RpcService) listenAndServe() {
 	util.PanicOnError("LSP028", "Error creating network address", err)
 
 	lsprpc.RegisterChannelServiceServer(rs.Server, rs.RpcChannelResolver)
+	lsprpc.RegisterInvoiceServiceServer(rs.Server, rs.RpcInvoiceResolver)
 	ocpirpc.RegisterCdrServiceServer(rs.Server, rs.RpcCdrResolver)
 	ocpirpc.RegisterRpcServiceServer(rs.Server, rs.RpcResolver)
 	ocpirpc.RegisterSessionServiceServer(rs.Server, rs.RpcSessionResolver)
