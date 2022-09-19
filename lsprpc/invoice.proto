@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package invoice;
+
+option go_package = "github.com/satimoto/go-lsp/lsprpc";
+
+service InvoiceService {
+  rpc UpdateInvoice(UpdateInvoiceRequest) returns (UpdateInvoiceResponse);
+};
+
+message UpdateInvoiceRequest {
+  int64 id = 1;
+  int64 user_id = 2;
+  string payment_request = 3;
+};
+
+message UpdateInvoiceResponse {
+  int64 id = 1;
+  int64 user_id = 2;
+  string payment_request = 3;
+  bool is_settled = 4;
+};
