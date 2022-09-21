@@ -62,6 +62,7 @@ func (r *RpcInvoiceResolver) UpdateInvoice(ctx context.Context, input *lsprpc.Up
 			return nil, errors.New("error decoding payment request")
 		}
 
+		// TODO go-api#12: Allow invoice request to be split
 		if payReq.NumMsat != invoiceRequest.TotalMsat {
 			dbUtil.LogOnError("LSP123", "Error payment request amount mismatch", err)
 			log.Printf("LSP123: Input=%#v", input)
