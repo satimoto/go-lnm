@@ -70,6 +70,8 @@ func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, pro
 		createInvoiceRequestParams := db.CreateInvoiceRequestParams{
 			UserID:         circuitUser.ID,
 			PromotionID:    promotion.ID,
+			Currency:       currency,
+			Memo:           memo,
 			PriceFiat:      invoiceParams.PriceFiat,
 			PriceMsat:      invoiceParams.PriceMsat,
 			CommissionFiat: invoiceParams.CommissionFiat,
