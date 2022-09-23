@@ -6,6 +6,7 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/location"
 	"github.com/satimoto/go-datastore/pkg/session"
+	"github.com/satimoto/go-datastore/pkg/tokenauthorization"
 	"github.com/satimoto/go-lsp/internal/countryaccount"
 	"github.com/satimoto/go-lsp/internal/ferp"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
@@ -16,15 +17,16 @@ import (
 )
 
 type SessionResolver struct {
-	Repository             session.SessionRepository
-	FerpService            ferp.Ferp
-	LightningService       lightningnetwork.LightningNetwork
-	NotificationService    notification.Notification
-	OcpiService            ocpi.Ocpi
-	CountryAccountResolver *countryaccount.CountryAccountResolver
-	LocationRepository     location.LocationRepository
-	TariffResolver         *tariff.TariffResolver
-	UserResolver           *user.UserResolver
+	Repository                   session.SessionRepository
+	FerpService                  ferp.Ferp
+	LightningService             lightningnetwork.LightningNetwork
+	NotificationService          notification.Notification
+	OcpiService                  ocpi.Ocpi
+	CountryAccountResolver       *countryaccount.CountryAccountResolver
+	LocationRepository           location.LocationRepository
+	TariffResolver               *tariff.TariffResolver
+	TokenAuthorizationRepository tokenauthorization.TokenAuthorizationRepository
+	UserResolver                 *user.UserResolver
 }
 
 func NewResolver(repositoryService *db.RepositoryService) *SessionResolver {
@@ -43,14 +45,15 @@ func NewResolverWithFerpService(repositoryService *db.RepositoryService, ferpSer
 
 func NewResolverWithServices(repositoryService *db.RepositoryService, ferpService ferp.Ferp, lightningService lightningnetwork.LightningNetwork, notificationService notification.Notification, ocpiService ocpi.Ocpi) *SessionResolver {
 	return &SessionResolver{
-		Repository:             session.NewRepository(repositoryService),
-		FerpService:            ferpService,
-		LightningService:       lightningService,
-		OcpiService:            ocpiService,
-		NotificationService:    notificationService,
-		CountryAccountResolver: countryaccount.NewResolver(repositoryService),
-		LocationRepository:     location.NewRepository(repositoryService),
-		TariffResolver:         tariff.NewResolver(repositoryService),
-		UserResolver:           user.NewResolverWithServices(repositoryService, ocpiService),
+		Repository:                   session.NewRepository(repositoryService),
+		FerpService:                  ferpService,
+		LightningService:             lightningService,
+		OcpiService:                  ocpiService,
+		NotificationService:          notificationService,
+		CountryAccountResolver:       countryaccount.NewResolver(repositoryService),
+		LocationRepository:           location.NewRepository(repositoryService),
+		TariffResolver:               tariff.NewResolver(repositoryService),
+		TokenAuthorizationRepository: tokenauthorization.NewRepository(repositoryService),
+		UserResolver:                 user.NewResolverWithServices(repositoryService, ocpiService),
 	}
 }
