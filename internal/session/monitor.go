@@ -26,18 +26,31 @@ func (r *SessionResolver) StartSessionMonitor(ctx context.Context, session db.Se
 	if err != nil {
 		dbUtil.LogOnError("LSP037", "Error retrieving user from session", err)
 		log.Printf("LSP037: SessionUid=%v, UserID=%v", session.Uid, session.UserID)
+		r.stopSession(ctx, session)
 		return
 	}
-
-	r.SendSessionUpdateNotification(user, session)
 
 	connector, err := r.LocationRepository.GetConnector(ctx, session.ConnectorID)
 
 	if err != nil {
 		dbUtil.LogOnError("LSP001", "Error retrieving session connector", err)
 		log.Printf("LSP001: SessionUid=%v, ConnectorID=%v", session.Uid, session.ConnectorID)
+		r.stopSession(ctx, session)
 		return
 	}
+
+	// TODO: Find an alternative way to get TokenAuthorization if Session has no AuthorizationID set.
+	//       Maybe last TokenAuthorization created by TokenID
+	tokenAuthorization, err := r.TokenAuthorizationRepository.GetTokenAuthorizationByAuthorizationID(ctx, session.AuthorizationID.String)
+
+	if err != nil {
+		dbUtil.LogOnError("LSP127", "Error retrieving token authorization", err)
+		log.Printf("LSP127: SessionUid=%v, AuthorizationID=%v", session.Uid, session.AuthorizationID.String)
+		r.stopSession(ctx, session)
+		return
+	}
+
+	r.SendSessionUpdateNotification(user, session)
 
 	if connector.TariffID.Valid {
 		tariff, err := r.TariffResolver.Repository.GetTariffByUid(ctx, connector.TariffID.String)
@@ -82,7 +95,7 @@ func (r *SessionResolver) StartSessionMonitor(ctx context.Context, session db.Se
 				break invoiceLoop
 			case db.SessionStatusTypeACTIVE:
 				// Session is active, calculate new invoice
-				if ok := r.processInvoicePeriod(ctx, user, session, tariffIto, taxPercent); !ok {
+				if ok := r.processInvoicePeriod(ctx, user, session, tokenAuthorization, tariffIto, taxPercent); !ok {
 					log.Printf("Ending session monitoring for %s with errors", session.Uid)
 					break invoiceLoop
 				}
@@ -91,7 +104,7 @@ func (r *SessionResolver) StartSessionMonitor(ctx context.Context, session db.Se
 	}
 }
 
-func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User, session db.Session, tariffIto *tariff.TariffIto, taxPercent float64) bool {
+func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User, session db.Session, tokenAuthorization db.TokenAuthorization, tariffIto *tariff.TariffIto, taxPercent float64) bool {
 	sessionInvoices, err := r.Repository.ListSessionInvoices(ctx, session.ID)
 
 	if err != nil {
@@ -105,10 +118,7 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 		// Suspend tokens until balance is settled
 		// TODO: handle expired invoices, reissue invoices on request
 		log.Printf("Session %s has unsettled invoices, stopping the session", session.Uid)
-
-		r.OcpiService.StopSession(ctx, &ocpirpc.StopSessionRequest{
-			SessionUid: session.Uid,
-		})
+		r.stopSession(ctx, session)
 
 		// Lock user tokens until all session invoices are settled
 		err = r.UserResolver.RestrictUser(ctx, user)
@@ -130,7 +140,7 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 		invoicePriceFiat := sessionFiat - priceFiat
 		invoiceTotalFiat, invoiceCommissionFiat, invoiceTaxFiat := CalculateCommission(sessionFiat-priceFiat, user.CommissionPercent, taxPercent)
 
-		r.IssueSessionInvoice(ctx, user, session, util.InvoiceParams{
+		r.IssueSessionInvoice(ctx, user, session, tokenAuthorization, util.InvoiceParams{
 			PriceFiat:      dbUtil.SqlNullFloat64(invoicePriceFiat),
 			CommissionFiat: dbUtil.SqlNullFloat64(invoiceCommissionFiat),
 			TaxFiat:        dbUtil.SqlNullFloat64(invoiceTaxFiat),
@@ -139,4 +149,10 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 	}
 
 	return true
+}
+
+func (r *SessionResolver) stopSession(ctx context.Context, session db.Session) (*ocpirpc.StopSessionResponse, error) {
+	return r.OcpiService.StopSession(ctx, &ocpirpc.StopSessionRequest{
+		SessionUid: session.Uid,
+	})
 }

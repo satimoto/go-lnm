@@ -2,8 +2,11 @@ package session
 
 import (
 	"context"
+	"crypto/sha256"
 	"log"
 
+	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
@@ -12,7 +15,7 @@ import (
 	"github.com/satimoto/go-lsp/pkg/util"
 )
 
-func (r *SessionResolver) IssueSessionInvoice(ctx context.Context, user db.User, session db.Session, invoiceParams util.InvoiceParams) *db.SessionInvoice {
+func (r *SessionResolver) IssueSessionInvoice(ctx context.Context, user db.User, session db.Session, tokenAuthorization db.TokenAuthorization, invoiceParams util.InvoiceParams) *db.SessionInvoice {
 	currencyRate, err := r.FerpService.GetRate(session.Currency)
 
 	if err != nil {
@@ -50,6 +53,11 @@ func (r *SessionResolver) IssueSessionInvoice(ctx context.Context, user db.User,
 		return nil
 	}
 
+	privateKey := secp.PrivKeyFromBytes(tokenAuthorization.SigningKey)
+	hash := sha256.New()
+	hash.Write([]byte(invoice.PaymentRequest))
+	signature := ecdsa.Sign(privateKey, hash.Sum(nil))
+
 	sessionInvoiceParams := param.NewCreateSessionInvoiceParams(session)
 	sessionInvoiceParams.UserID = user.ID
 	sessionInvoiceParams.CurrencyRate = currencyRate.Rate
@@ -63,6 +71,7 @@ func (r *SessionResolver) IssueSessionInvoice(ctx context.Context, user db.User,
 	sessionInvoiceParams.TotalFiat = invoiceParams.TotalFiat.Float64
 	sessionInvoiceParams.TotalMsat = invoiceParams.TotalMsat.Int64
 	sessionInvoiceParams.PaymentRequest = invoice.PaymentRequest
+	sessionInvoiceParams.Signature = signature.Serialize()
 
 	sessionInvoice, err := r.Repository.CreateSessionInvoice(ctx, sessionInvoiceParams)
 

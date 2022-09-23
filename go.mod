@@ -6,7 +6,7 @@ require (
 	github.com/joho/godotenv v1.4.0
 	github.com/lightningnetwork/lnd v0.15.1-beta.rc2
 	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
-	github.com/satimoto/go-datastore v0.3.1-0.20220921063225-0aa3a4131f00
+	github.com/satimoto/go-datastore v0.3.1-0.20220923113742-008a8f00d4eb
 	google.golang.org/grpc v1.47.0
 )
 
@@ -159,7 +159,7 @@ require (
 	github.com/btcsuite/winsvc v1.0.0 // indirect
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/decred/dcrd/crypto/blake256 v1.0.0 // indirect
-	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1
 	github.com/dvyukov/go-fuzz v0.0.0-20210602112143-b1f3d6f4ef4e // indirect
 	github.com/golang/protobuf v1.5.2
 	github.com/jackpal/gateway v1.0.5 // indirect

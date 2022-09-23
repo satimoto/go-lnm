@@ -1,6 +1,7 @@
 package session
 
 import (
+	"encoding/hex"
 	"time"
 
 	"github.com/satimoto/go-datastore/pkg/db"
@@ -13,6 +14,7 @@ func CreateSessionInvoiceNotificationDto(session db.Session, sessionInvoice db.S
 	response := map[string]interface{}{
 		"type":             notification.SESSION_INVOICE,
 		"paymentRequest":   sessionInvoice.PaymentRequest,
+		"signature":        hex.EncodeToString(sessionInvoice.Signature),
 		"sessionUid":       session.Uid,
 		"sessionInvoiceId": sessionInvoice.ID,
 		"status":           session.Status,
