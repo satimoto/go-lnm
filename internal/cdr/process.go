@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"log"
+	"math/rand"
+	"time"
 
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
@@ -120,8 +122,10 @@ func (r *CdrResolver) ProcessCdr(ctx context.Context, cdr db.Cdr) error {
 
 	if user.CircuitUserID.Valid && circuitAmountMsat > 0 {
 		// TODO: This should be launched as a goroutine to force completion/retries
+		releaseDate := time.Now().Add(time.Duration(rand.Intn(120)) * time.Minute)
 		invoiceParams := util.InvoiceParams{
-			TotalMsat: dbUtil.SqlNullInt64(circuitAmountMsat),
+			TotalMsat:   dbUtil.SqlNullInt64(circuitAmountMsat),
+			ReleaseDate: dbUtil.SqlNullTime(releaseDate),
 		}
 
 		_, err := r.IssueInvoiceRequest(ctx, user.CircuitUserID.Int64, "CIRCUIT", "Satsback", sess.Currency, invoiceParams)

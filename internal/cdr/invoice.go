@@ -80,6 +80,7 @@ func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, pro
 			TaxMsat:        invoiceParams.TaxMsat,
 			TotalFiat:      invoiceParams.TotalFiat.Float64,
 			TotalMsat:      invoiceParams.TotalMsat.Int64,
+			ReleaseDate:    invoiceParams.ReleaseDate,
 			IsSettled:      false,
 		}
 

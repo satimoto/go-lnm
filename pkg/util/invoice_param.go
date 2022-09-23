@@ -15,6 +15,7 @@ type InvoiceParams struct {
 	TaxMsat        sql.NullInt64
 	TotalFiat      sql.NullFloat64
 	TotalMsat      sql.NullInt64
+	ReleaseDate    sql.NullTime
 }
 
 func FillInvoiceRequestParams(invoiceParams InvoiceParams, rateMsat float64) InvoiceParams {
