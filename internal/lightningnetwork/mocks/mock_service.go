@@ -33,6 +33,7 @@ type MockLightningNetworkService struct {
 	subscribeCustomMessagesMockData []lnrpc.Lightning_SubscribeCustomMessagesClient
 	subscribeHtlcEventsMockData     []routerrpc.Router_SubscribeHtlcEventsClient
 	subscribeInvoicesMockData       []lnrpc.Lightning_SubscribeInvoicesClient
+	subscribePeerEventsMockData   []lnrpc.Lightning_SubscribePeerEventsClient
 	subscribeTransactionsMockData   []lnrpc.Lightning_SubscribeTransactionsClient
 	updateChannelPolicyMockData     []*lnrpc.PolicyUpdateResponse
 	walletBalanceMockData           []*lnrpc.WalletBalanceResponse
@@ -372,6 +373,23 @@ func (s *MockLightningNetworkService) SubscribeInvoices(in *lnrpc.InvoiceSubscri
 func (s *MockLightningNetworkService) NewSubscribeInvoicesMockData() chan<- *lnrpc.Invoice {
 	recvChan := make(chan *lnrpc.Invoice)
 	s.subscribeInvoicesMockData = append(s.subscribeInvoicesMockData, NewMockSubscribeInvoicesClient(recvChan))
+
+	return recvChan
+}
+
+func (s *MockLightningNetworkService) SubscribePeerEvents(in *lnrpc.PeerEventSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribePeerEventsClient, error) {
+	if len(s.subscribePeerEventsMockData) == 0 {
+		return nil, errors.New("NotFound")
+	}
+
+	response := s.subscribePeerEventsMockData[0]
+	s.subscribePeerEventsMockData = s.subscribePeerEventsMockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) NewSubscribePeerEventsMockData() chan<- *lnrpc.PeerEvent {
+	recvChan := make(chan *lnrpc.PeerEvent)
+	s.subscribePeerEventsMockData = append(s.subscribePeerEventsMockData, NewMockSubscribePeerEventsClient(recvChan))
 
 	return recvChan
 }
