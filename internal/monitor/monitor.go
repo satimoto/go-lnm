@@ -26,6 +26,7 @@ import (
 	"github.com/satimoto/go-lsp/internal/monitor/htlc"
 	"github.com/satimoto/go-lsp/internal/monitor/htlcevent"
 	"github.com/satimoto/go-lsp/internal/monitor/invoice"
+	"github.com/satimoto/go-lsp/internal/monitor/peerevent"
 	"github.com/satimoto/go-lsp/internal/monitor/psbtfund"
 	"github.com/satimoto/go-lsp/internal/monitor/transaction"
 	"github.com/satimoto/go-lsp/pkg/util"
@@ -46,6 +47,7 @@ type Monitor struct {
 	HtlcMonitor            *htlc.HtlcMonitor
 	HtlcEventMonitor       *htlcevent.HtlcEventMonitor
 	InvoiceMonitor         *invoice.InvoiceMonitor
+	PeerEventMonitor       *peerevent.PeerEventMonitor
 	TransactionMonitor     *transaction.TransactionMonitor
 	nodeID                 int64
 	shutdownCtx            context.Context
@@ -75,6 +77,7 @@ func NewMonitorWithServices(shutdownCtx context.Context, repositoryService *db.R
 		HtlcMonitor:            htlcMonitor,
 		HtlcEventMonitor:       htlcevent.NewHtlcEventMonitor(repositoryService, ferpService, lightningService),
 		InvoiceMonitor:         invoice.NewInvoiceMonitor(repositoryService, ferpService, lightningService),
+		PeerEventMonitor:       peerevent.NewPeerEventMonitor(repositoryService, lightningService),
 		TransactionMonitor:     transaction.NewTransactionMonitor(repositoryService, lightningService),
 		shutdownCtx:            shutdownCtx,
 	}
@@ -94,6 +97,7 @@ func (m *Monitor) StartMonitor(waitGroup *sync.WaitGroup) {
 	m.HtlcMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
 	m.HtlcEventMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
 	m.InvoiceMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
+	m.PeerEventMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
 	m.TransactionMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
 }
 

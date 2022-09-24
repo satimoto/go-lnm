@@ -15,6 +15,7 @@ import (
 	htlc "github.com/satimoto/go-lsp/internal/monitor/htlc/mocks"
 	htlcevent "github.com/satimoto/go-lsp/internal/monitor/htlcevent/mocks"
 	invoice "github.com/satimoto/go-lsp/internal/monitor/invoice/mocks"
+	peerevent "github.com/satimoto/go-lsp/internal/monitor/peerevent/mocks"
 	psbtfund "github.com/satimoto/go-lsp/internal/monitor/psbtfund/mocks"
 	transaction "github.com/satimoto/go-lsp/internal/monitor/transaction/mocks"
 	notification "github.com/satimoto/go-lsp/internal/notification/mocks"
@@ -36,6 +37,7 @@ func NewMonitor(shutdownCtx context.Context, repositoryService *mocks.MockReposi
 		HtlcMonitor:          htlcMonitor,
 		HtlcEventMonitor:     htlcevent.NewHtlcEventMonitor(repositoryService, ferpService, lightningService),
 		InvoiceMonitor:       invoice.NewInvoiceMonitor(repositoryService, ferpService, lightningService, notificationService, ocpiService),
+		PeerEventMonitor:     peerevent.NewPeerEventMonitor(repositoryService, lightningService),
 		TransactionMonitor:   transaction.NewTransactionMonitor(repositoryService, lightningService),
 	}
 }

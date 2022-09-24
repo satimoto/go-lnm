@@ -54,15 +54,15 @@ func (m *TransactionMonitor) handleTransaction(transaction lnrpc.Transaction) {
 }
 
 func (m *TransactionMonitor) subscribeTransactionInterceptions(transactionChan chan<- lnrpc.Transaction) {
-	htlcEventsClient, err := m.waitForSubscribeTransactionsClient(0, 1000)
+	transactionsClient, err := m.waitForSubscribeTransactionsClient(0, 1000)
 	util.PanicOnError("LSP022", "Error creating Transactions client", err)
-	m.TransactionsClient = htlcEventsClient
+	m.TransactionsClient = transactionsClient
 
 	for {
-		htlcInterceptRequest, err := m.TransactionsClient.Recv()
+		transaction, err := m.TransactionsClient.Recv()
 
 		if err == nil {
-			transactionChan <- *htlcInterceptRequest
+			transactionChan <- *transaction
 		} else {
 			m.TransactionsClient, err = m.waitForSubscribeTransactionsClient(100, 1000)
 			util.PanicOnError("LSP023", "Error creating Transactions client", err)
@@ -93,8 +93,8 @@ func (m *TransactionMonitor) waitForTransactions(ctx context.Context, waitGroup 
 		case <-ctx.Done():
 			log.Printf("Shutting down Transactions")
 			return
-		case htlcInterceptRequest := <-transactionChan:
-			m.handleTransaction(htlcInterceptRequest)
+		case transaction := <-transactionChan:
+			m.handleTransaction(transaction)
 		}
 	}
 }
