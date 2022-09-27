@@ -53,17 +53,12 @@ func (m *PeerEventMonitor) handlePeerEvent(peerEvent lnrpc.PeerEvent) {
 		LastActiveDate: util.SqlNullTime(time.Now()),
 	}
 
-	_, err := m.UserResolver.Repository.UpdateUserByPubkey(ctx, updateUserByPubkeyParams)
-
-	if err != nil {
-		util.LogOnError("LSP129", "Error updating user", err)
-		log.Printf("LSP129: Params=%#v", updateUserByPubkeyParams)
-	}
+	m.UserResolver.Repository.UpdateUserByPubkey(ctx, updateUserByPubkeyParams)
 }
 
 func (m *PeerEventMonitor) subscribePeerEventInterceptions(peerEventChan chan<- lnrpc.PeerEvent) {
 	peerEventsClient, err := m.waitForSubscribePeerEventsClient(0, 1000)
-	util.PanicOnError("LSP130", "Error creating Peer Events client", err)
+	util.PanicOnError("LSP129", "Error creating Peer Events client", err)
 	m.PeerEventsClient = peerEventsClient
 
 	for {
@@ -73,7 +68,7 @@ func (m *PeerEventMonitor) subscribePeerEventInterceptions(peerEventChan chan<- 
 			peerEventChan <- *peerEvent
 		} else {
 			m.PeerEventsClient, err = m.waitForSubscribePeerEventsClient(100, 1000)
-			util.PanicOnError("LSP130", "Error creating PeerEvents client", err)
+			util.PanicOnError("LSP129", "Error creating PeerEvents client", err)
 		}
 	}
 }
