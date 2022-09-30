@@ -4,6 +4,7 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-lsp/internal/invoicerequest"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	"github.com/satimoto/go-lsp/internal/service"
 )
 
 type RpcInvoiceResolver struct {
@@ -11,15 +12,10 @@ type RpcInvoiceResolver struct {
 	InvoiceRequestResolver *invoicerequest.InvoiceRequestResolver
 }
 
-func NewResolver(repositoryService *db.RepositoryService) *RpcInvoiceResolver {
-	lightningService := lightningnetwork.NewService()
+func NewResolver(repositoryService *db.RepositoryService, services *service.ServiceResolver) *RpcInvoiceResolver {
 
-	return NewResolverWithServices(repositoryService, lightningService)
-}
-
-func NewResolverWithServices(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) *RpcInvoiceResolver {
 	return &RpcInvoiceResolver{
-		LightningService:       lightningService,
+		LightningService:       services.LightningService,
 		InvoiceRequestResolver: invoicerequest.NewResolver(repositoryService),
 	}
 }

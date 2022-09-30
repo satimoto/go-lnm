@@ -11,6 +11,7 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	"github.com/satimoto/go-lsp/internal/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -24,9 +25,9 @@ type CustomMessageMonitor struct {
 	nodeID                int64
 }
 
-func NewCustomMessageMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) *CustomMessageMonitor {
+func NewCustomMessageMonitor(repositoryService *db.RepositoryService, services *service.ServiceResolver) *CustomMessageMonitor {
 	return &CustomMessageMonitor{
-		LightningService:      lightningService,
+		LightningService:      services.LightningService,
 		CustomMessageHandlers: make(map[string]CustomMessageHandler),
 	}
 }

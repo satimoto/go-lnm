@@ -15,6 +15,7 @@ import (
 	"github.com/satimoto/go-datastore/pkg/psbtfundingstate"
 	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	"github.com/satimoto/go-lsp/internal/service"
 )
 
 type PsbtFund interface {
@@ -32,9 +33,9 @@ type PsbtFundService struct {
 	nodeID                     int64
 }
 
-func NewService(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) PsbtFund {
+func NewService(repositoryService *db.RepositoryService, services *service.ServiceResolver) PsbtFund {
 	return &PsbtFundService{
-		LightningService:           lightningService,
+		LightningService:           services.LightningService,
 		ChannelRequestRepository:   channelrequest.NewRepository(repositoryService),
 		PsbtFundingStateRepository: psbtfundingstate.NewRepository(repositoryService),
 		mutex:                      &sync.Mutex{},

@@ -12,6 +12,7 @@ import (
 	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/backup"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	"github.com/satimoto/go-lsp/internal/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -23,10 +24,10 @@ type ChannelBackupMonitor struct {
 	nodeID               int64
 }
 
-func NewChannelBackupMonitor(repositoryService *db.RepositoryService, backupService backup.Backup, lightningService lightningnetwork.LightningNetwork) *ChannelBackupMonitor {
+func NewChannelBackupMonitor(repositoryService *db.RepositoryService, backupService backup.Backup, services *service.ServiceResolver) *ChannelBackupMonitor {
 	return &ChannelBackupMonitor{
 		BackupService:    backupService,
-		LightningService: lightningService,
+		LightningService: services.LightningService,
 	}
 }
 

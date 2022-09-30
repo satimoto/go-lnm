@@ -10,6 +10,7 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	"github.com/satimoto/go-lsp/internal/service"
 	"github.com/satimoto/go-lsp/internal/user"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -22,10 +23,10 @@ type PeerEventMonitor struct {
 	nodeID           int64
 }
 
-func NewPeerEventMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) *PeerEventMonitor {
+func NewPeerEventMonitor(repositoryService *db.RepositoryService, services *service.ServiceResolver) *PeerEventMonitor {
 	return &PeerEventMonitor{
-		LightningService: lightningService,
-		UserResolver:     user.NewResolver(repositoryService),
+		LightningService: services.LightningService,
+		UserResolver:     user.NewResolver(repositoryService, services),
 	}
 }
 

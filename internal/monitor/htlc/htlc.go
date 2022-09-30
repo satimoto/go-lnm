@@ -15,6 +15,7 @@ import (
 	"github.com/satimoto/go-lsp/internal/channelrequest"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/monitor/psbtfund"
+	"github.com/satimoto/go-lsp/internal/service"
 	"github.com/satimoto/go-lsp/pkg/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -32,9 +33,9 @@ type HtlcMonitor struct {
 	nodeID                 int64
 }
 
-func NewHtlcMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork, psbtFundService psbtfund.PsbtFund) *HtlcMonitor {
+func NewHtlcMonitor(repositoryService *db.RepositoryService, services *service.ServiceResolver, psbtFundService psbtfund.PsbtFund) *HtlcMonitor {
 	return &HtlcMonitor{
-		LightningService:       lightningService,
+		LightningService:       services.LightningService,
 		PsbtFundService:        psbtFundService,
 		ChannelRequestResolver: channelrequest.NewResolver(repositoryService),
 		channelRequestLock:     make(map[int64]db.ChannelRequest),

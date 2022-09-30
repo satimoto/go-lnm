@@ -8,7 +8,7 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/db/mocks"
-	lightningnetwork "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
+	"github.com/satimoto/go-lsp/internal/service"
 )
 
 type OpenChannelMockData struct {
@@ -21,7 +21,7 @@ type MockPsbtFundService struct {
 	openChannelResponseMockData []error
 }
 
-func NewService(repositoryService *mocks.MockRepositoryService, lightningService *lightningnetwork.MockLightningNetworkService) *MockPsbtFundService {
+func NewService(repositoryService *mocks.MockRepositoryService, services *service.ServiceResolver) *MockPsbtFundService {
 	return &MockPsbtFundService{}
 }
 

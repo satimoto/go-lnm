@@ -6,24 +6,19 @@ import (
 	invoicerequest "github.com/satimoto/go-datastore/pkg/invoicerequest/mocks"
 	promotion "github.com/satimoto/go-datastore/pkg/promotion/mocks"
 	"github.com/satimoto/go-lsp/internal/cdr"
-	ferp "github.com/satimoto/go-lsp/internal/ferp/mocks"
-	lightningnetwork "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
-	notification "github.com/satimoto/go-lsp/internal/notification/mocks"
+	"github.com/satimoto/go-lsp/internal/service"
 	session "github.com/satimoto/go-lsp/internal/session/mocks"
-	ocpi "github.com/satimoto/go-ocpi/pkg/ocpi/mocks"
 )
 
-func NewResolver(repositoryService *mocks.MockRepositoryService, ferpService *ferp.MockFerpService, lightningService *lightningnetwork.MockLightningNetworkService, ocpiService *ocpi.MockOcpiService) *cdr.CdrResolver {
-	notificationService := notification.NewService()
-
+func NewResolver(repositoryService *mocks.MockRepositoryService, services *service.ServiceResolver) *cdr.CdrResolver {
 	return &cdr.CdrResolver{
 		Repository:               cdrMocks.NewRepository(repositoryService),
-		FerpService:              ferpService,
-		LightningService:         lightningService,
-		NotificationService:      notificationService,
-		OcpiService:              ocpiService,
+		FerpService:              services.FerpService,
+		LightningService:         services.LightningService,
+		NotificationService:      services.NotificationService,
+		OcpiService:              services.OcpiService,
 		InvoiceRequestRepository: invoicerequest.NewRepository(repositoryService),
 		PromotionRepository:      promotion.NewRepository(repositoryService),
-		SessionResolver:          session.NewResolver(repositoryService, ferpService, lightningService, notificationService, ocpiService),
+		SessionResolver:          session.NewResolver(repositoryService, services),
 	}
 }

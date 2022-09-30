@@ -16,6 +16,7 @@ import (
 	lightningnetworkMocks "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
 	invoiceMocks "github.com/satimoto/go-lsp/internal/monitor/invoice/mocks"
 	notificationMocks "github.com/satimoto/go-lsp/internal/notification/mocks"
+	serviceMocks "github.com/satimoto/go-lsp/internal/service/mocks"
 	ocpiMocks "github.com/satimoto/go-ocpi/pkg/ocpi/mocks"
 
 	"testing"
@@ -194,8 +195,10 @@ func TestProcessCdrErrors(t *testing.T) {
 			mockRepository := dbMocks.NewMockRepositoryService()
 			mockFerpService := ferpMocks.NewService()
 			mockLightningService := lightningnetworkMocks.NewService()
+			mockNotificationService := notificationMocks.NewService()
 			mockOcpiService := ocpiMocks.NewService()
-			cdrResolver := cdrMocks.NewResolver(mockRepository, mockFerpService, mockLightningService, mockOcpiService)
+			mockServices := serviceMocks.NewService(mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
+			cdrResolver := cdrMocks.NewResolver(mockRepository, mockServices)
 
 			if tc.before != nil {
 				tc.before(mockRepository, mockFerpService, mockLightningService, mockOcpiService)
@@ -221,8 +224,10 @@ func TestProcessCdr(t *testing.T) {
 		mockRepository := dbMocks.NewMockRepositoryService()
 		mockFerpService := ferpMocks.NewService()
 		mockLightningService := lightningnetworkMocks.NewService()
+		mockNotificationService := notificationMocks.NewService()
 		mockOcpiService := ocpiMocks.NewService()
-		cdrResolver := cdrMocks.NewResolver(mockRepository, mockFerpService, mockLightningService, mockOcpiService)
+		mockServices := serviceMocks.NewService(mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
+		cdrResolver := cdrMocks.NewResolver(mockRepository, mockServices)
 
 		cdr := db.Cdr{
 			Uid: "CDR0001",
@@ -245,7 +250,8 @@ func TestProcessCdr(t *testing.T) {
 		mockLightningService := lightningnetworkMocks.NewService()
 		mockOcpiService := ocpiMocks.NewService()
 		mockNotificationService := notificationMocks.NewService()
-		invoiceMonitor := invoiceMocks.NewInvoiceMonitor(mockRepository, mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
+		mockServices := serviceMocks.NewService(mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
+		invoiceMonitor := invoiceMocks.NewInvoiceMonitor(mockRepository, mockServices)
 		recvChan := mockLightningService.NewSubscribeInvoicesMockData()
 
 		invoiceMonitor.StartMonitor(1, shutdownCtx, waitGroup)

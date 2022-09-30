@@ -9,6 +9,7 @@ import (
 	lightningnetworkMocks "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
 	notificationMocks "github.com/satimoto/go-lsp/internal/notification/mocks"
 	"github.com/satimoto/go-lsp/internal/session"
+	serviceMocks "github.com/satimoto/go-lsp/internal/service/mocks"
 	sessionsMocks "github.com/satimoto/go-lsp/internal/session/mocks"
 	"github.com/satimoto/go-lsp/internal/tariff"
 	ocpiMocks "github.com/satimoto/go-ocpi/pkg/ocpi/mocks"
@@ -188,7 +189,8 @@ func TestProcessChargingPeriods(t *testing.T) {
 			mockLightningService := lightningnetworkMocks.NewService()
 			mockNotificationService := notificationMocks.NewService()
 			mockOcpiService := ocpiMocks.NewService()
-			sessionResolver := sessionsMocks.NewResolver(mockRepository, mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
+			mockServices := serviceMocks.NewService(mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
+			sessionResolver := sessionsMocks.NewResolver(mockRepository, mockServices)
 
 			sessionIto := session.SessionIto{}
 			json.Unmarshal(tc.session, &sessionIto)
@@ -354,7 +356,8 @@ func TestProcessChargingPeriods2(t *testing.T) {
 			mockLightningService := lightningnetworkMocks.NewService()
 			mockNotificationService := notificationMocks.NewService()
 			mockOcpiService := ocpiMocks.NewService()
-			sessionResolver := sessionsMocks.NewResolver(mockRepository, mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
+			mockServices := serviceMocks.NewService(mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
+			sessionResolver := sessionsMocks.NewResolver(mockRepository, mockServices)
 
 			sessionIto := session.SessionIto{}
 			json.Unmarshal(tc.session, &sessionIto)

@@ -13,6 +13,7 @@ import (
 	"github.com/satimoto/go-lsp/internal/channelrequest"
 	"github.com/satimoto/go-lsp/internal/ferp"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	"github.com/satimoto/go-lsp/internal/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -27,10 +28,10 @@ type HtlcEventMonitor struct {
 	nodeID                 int64
 }
 
-func NewHtlcEventMonitor(repositoryService *db.RepositoryService, ferpService ferp.Ferp, lightningService lightningnetwork.LightningNetwork) *HtlcEventMonitor {
+func NewHtlcEventMonitor(repositoryService *db.RepositoryService, services *service.ServiceResolver) *HtlcEventMonitor {
 	return &HtlcEventMonitor{
-		FerpService:            ferpService,
-		LightningService:       lightningService,
+		FerpService:            services.FerpService,
+		LightningService:       services.LightningService,
 		ChannelRequestResolver: channelrequest.NewResolver(repositoryService),
 		RoutingEventRepository: routingevent.NewRepository(repositoryService),
 	}

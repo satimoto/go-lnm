@@ -2,12 +2,12 @@ package mocks
 
 import (
 	mocks "github.com/satimoto/go-datastore/pkg/db/mocks"
-	lightningnetwork "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
 	"github.com/satimoto/go-lsp/internal/monitor/blockepoch"
+	"github.com/satimoto/go-lsp/internal/service"
 )
 
-func NewBlockEpochMonitor(repositoryService *mocks.MockRepositoryService, lightningService *lightningnetwork.MockLightningNetworkService) *blockepoch.BlockEpochMonitor {
+func NewBlockEpochMonitor(repositoryService *mocks.MockRepositoryService, services *service.ServiceResolver) *blockepoch.BlockEpochMonitor {
 	return &blockepoch.BlockEpochMonitor{
-		LightningService: lightningService,
+		LightningService: services.LightningService,
 	}
 }
