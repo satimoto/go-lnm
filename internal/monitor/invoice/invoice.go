@@ -10,8 +10,8 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
 	"github.com/satimoto/go-datastore/pkg/util"
-	"github.com/satimoto/go-lsp/internal/ferp"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	"github.com/satimoto/go-lsp/internal/service"
 	"github.com/satimoto/go-lsp/internal/session"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -24,10 +24,10 @@ type InvoiceMonitor struct {
 	nodeID           int64
 }
 
-func NewInvoiceMonitor(repositoryService *db.RepositoryService, ferpService ferp.Ferp, lightningService lightningnetwork.LightningNetwork) *InvoiceMonitor {
+func NewInvoiceMonitor(repositoryService *db.RepositoryService, services *service.ServiceResolver) *InvoiceMonitor {
 	return &InvoiceMonitor{
-		LightningService: lightningService,
-		SessionResolver:  session.NewResolverWithFerpService(repositoryService, ferpService),
+		LightningService: services.LightningService,
+		SessionResolver:  session.NewResolver(repositoryService, services),
 	}
 }
 

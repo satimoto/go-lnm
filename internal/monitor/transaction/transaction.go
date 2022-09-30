@@ -11,6 +11,7 @@ import (
 	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/channelrequest"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	"github.com/satimoto/go-lsp/internal/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -22,9 +23,9 @@ type TransactionMonitor struct {
 	nodeID                 int64
 }
 
-func NewTransactionMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) *TransactionMonitor {
+func NewTransactionMonitor(repositoryService *db.RepositoryService, services *service.ServiceResolver) *TransactionMonitor {
 	return &TransactionMonitor{
-		LightningService:       lightningService,
+		LightningService:       services.LightningService,
 		ChannelRequestResolver: channelrequest.NewResolver(repositoryService),
 	}
 }

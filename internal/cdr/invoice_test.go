@@ -2,6 +2,7 @@ package cdr_test
 
 import (
 	"context"
+	"testing"
 
 	"github.com/satimoto/go-datastore/pkg/db"
 	dbMocks "github.com/satimoto/go-datastore/pkg/db/mocks"
@@ -10,10 +11,10 @@ import (
 	cdrMocks "github.com/satimoto/go-lsp/internal/cdr/mocks"
 	ferpMocks "github.com/satimoto/go-lsp/internal/ferp/mocks"
 	lightningnetworkMocks "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
+	notificationMocks "github.com/satimoto/go-lsp/internal/notification/mocks"
+	serviceMocks "github.com/satimoto/go-lsp/internal/service/mocks"
 	"github.com/satimoto/go-lsp/pkg/util"
 	ocpiMocks "github.com/satimoto/go-ocpi/pkg/ocpi/mocks"
-
-	"testing"
 )
 
 func TestIssueInvoiceRequest(t *testing.T) {
@@ -207,8 +208,10 @@ func TestIssueInvoiceRequest(t *testing.T) {
 			mockRepository := dbMocks.NewMockRepositoryService()
 			mockFerpService := ferpMocks.NewService()
 			mockLightningService := lightningnetworkMocks.NewService()
+			mockNotificationService := notificationMocks.NewService()
 			mockOcpiService := ocpiMocks.NewService()
-			cdrResolver := cdrMocks.NewResolver(mockRepository, mockFerpService, mockLightningService, mockOcpiService)
+			mockServices := serviceMocks.NewService(mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
+			cdrResolver := cdrMocks.NewResolver(mockRepository, mockServices)
 
 			if tc.before != nil {
 				tc.before(mockRepository, mockFerpService, mockLightningService, mockOcpiService)

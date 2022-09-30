@@ -12,6 +12,7 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	"github.com/satimoto/go-lsp/internal/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -22,9 +23,9 @@ type ChannelAcceptorMonitor struct {
 	nodeID                int64
 }
 
-func NewChannelAcceptorMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) *ChannelAcceptorMonitor {
+func NewChannelAcceptorMonitor(repositoryService *db.RepositoryService, services *service.ServiceResolver) *ChannelAcceptorMonitor {
 	return &ChannelAcceptorMonitor{
-		LightningService: lightningService,
+		LightningService: services.LightningService,
 	}
 }
 

@@ -5,10 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"log"
+	"time"
 
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
+	"github.com/satimoto/go-lsp/internal/notification"
 	"github.com/satimoto/go-lsp/pkg/util"
 )
 
@@ -21,7 +23,7 @@ func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, pro
 		return nil, errors.New("error retrieving exchange rate")
 	}
 
-	circuitUser, err := r.SessionResolver.UserResolver.Repository.GetUser(ctx, userID)
+	user, err := r.SessionResolver.UserResolver.Repository.GetUser(ctx, userID)
 
 	if err != nil {
 		dbUtil.LogOnError("LSP112", "Error retrieving user", err)
@@ -41,7 +43,7 @@ func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, pro
 	invoiceParams = util.FillInvoiceRequestParams(invoiceParams, rateMsat)
 
 	getUnsettledInvoiceRequestParams := db.GetUnsettledInvoiceRequestParams{
-		UserID:      circuitUser.ID,
+		UserID:      user.ID,
 		PromotionID: promotion.ID,
 		Memo:        memo,
 	}
@@ -68,7 +70,7 @@ func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, pro
 		}
 	} else {
 		createInvoiceRequestParams := db.CreateInvoiceRequestParams{
-			UserID:         circuitUser.ID,
+			UserID:         user.ID,
 			PromotionID:    promotion.ID,
 			Currency:       currency,
 			Memo:           memo,
@@ -90,6 +92,30 @@ func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, pro
 			dbUtil.LogOnError("LSP115", "Error creating invoice request", err)
 			log.Printf("LSP115: Params=%#v", createInvoiceRequestParams)
 			return nil, errors.New("error creating invoice request")
+		}
+
+		// Send a notification 1 day after release date
+		sendDate := time.Now()
+
+		if invoiceParams.ReleaseDate.Valid {
+			sendDate = invoiceParams.ReleaseDate.Time
+		}
+
+		createPendingNotificationParams := db.CreatePendingNotificationParams{
+			UserID: user.ID,
+			NodeID: user.NodeID.Int64,
+			InvoiceRequestID: dbUtil.SqlNullInt64(invoiceRequest.ID),
+			DeviceToken: user.DeviceToken,
+			Type: notification.INVOICE_REQUEST,
+			SendDate: sendDate.Add(time.Hour * 24),
+		}
+
+		_, err := r.PendingNotificationRepository.CreatePendingNotification(ctx, createPendingNotificationParams)
+
+		if err != nil {
+			dbUtil.LogOnError("LSP130", "Error creating pending notification", err)
+			log.Printf("LSP130: Params=%#v", createPendingNotificationParams)
+			return nil, errors.New("error creating pending notification")
 		}
 	}
 

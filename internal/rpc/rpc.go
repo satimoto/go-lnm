@@ -11,13 +11,12 @@ import (
 
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
-	"github.com/satimoto/go-lsp/internal/ferp"
-	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/rpc/cdr"
 	"github.com/satimoto/go-lsp/internal/rpc/channel"
 	"github.com/satimoto/go-lsp/internal/rpc/invoice"
 	"github.com/satimoto/go-lsp/internal/rpc/rpc"
 	"github.com/satimoto/go-lsp/internal/rpc/session"
+	"github.com/satimoto/go-lsp/internal/service"
 	"github.com/satimoto/go-lsp/lsprpc"
 	"github.com/satimoto/go-ocpi/ocpirpc"
 	"google.golang.org/grpc"
@@ -38,17 +37,17 @@ type RpcService struct {
 	ShutdownCtx        context.Context
 }
 
-func NewRpc(shutdownCtx context.Context, d *sql.DB, ferpService ferp.Ferp, lightningService lightningnetwork.LightningNetwork) Rpc {
+func NewRpc(shutdownCtx context.Context, d *sql.DB, services *service.ServiceResolver) Rpc {
 	repositoryService := db.NewRepositoryService(d)
 
 	return &RpcService{
 		RepositoryService:  repositoryService,
 		Server:             grpc.NewServer(),
-		RpcCdrResolver:     cdr.NewResolver(repositoryService, ferpService),
-		RpcChannelResolver: channel.NewResolverWithServices(repositoryService, lightningService),
-		RpcInvoiceResolver: invoice.NewResolverWithServices(repositoryService, lightningService),
-		RpcResolver:        rpc.NewResolver(repositoryService),
-		RpcSessionResolver: session.NewResolver(repositoryService, ferpService),
+		RpcCdrResolver:     cdr.NewResolver(repositoryService, services),
+		RpcChannelResolver: channel.NewResolver(repositoryService, services),
+		RpcInvoiceResolver: invoice.NewResolver(repositoryService, services),
+		RpcResolver:        rpc.NewResolver(repositoryService, services),
+		RpcSessionResolver: session.NewResolver(repositoryService, services),
 		ShutdownCtx:        shutdownCtx,
 	}
 }

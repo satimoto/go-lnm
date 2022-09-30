@@ -6,21 +6,22 @@ import (
 	"github.com/appleboy/go-fcm"
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
+	"github.com/satimoto/go-lsp/internal/notification"
 )
 
 func (r *SessionResolver) SendSessionInvoiceNotification(user db.User, session db.Session, sessionInvoice db.SessionInvoice) {
-	dto := CreateSessionInvoiceNotificationDto(session, sessionInvoice)
+	dto := notification.CreateSessionInvoiceNotificationDto(session, sessionInvoice)
 	
 	r.sendNotification(user, dto)
 }
 
 func (r *SessionResolver) SendSessionUpdateNotification(user db.User, session db.Session) {
-	dto := CreateSessionUpdateNotificationDto(session)
+	dto := notification.CreateSessionUpdateNotificationDto(session)
 	
 	r.sendNotification(user, dto)
 }
 
-func (r *SessionResolver) sendNotification(user db.User, data NotificationDto) {
+func (r *SessionResolver) sendNotification(user db.User, data notification.NotificationDto) {
 	message := &fcm.Message{
 		To:               user.DeviceToken,
 		ContentAvailable: true,
