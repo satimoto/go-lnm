@@ -29,12 +29,12 @@ func NewChannelAcceptorMonitor(repositoryService *db.RepositoryService, services
 	}
 }
 
-func (m *ChannelAcceptorMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup *sync.WaitGroup) {
+func (m *ChannelAcceptorMonitor) StartMonitor(nodeID int64, shutdownCtx context.Context, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting up Channel Acceptor")
 	channelAcceptorChan := make(chan lnrpc.ChannelAcceptRequest)
 
 	m.nodeID = nodeID
-	go m.waitForChannelAcceptor(ctx, waitGroup, channelAcceptorChan)
+	go m.waitForChannelAcceptor(shutdownCtx, waitGroup, channelAcceptorChan)
 	go m.subscribeChannelAcceptor(channelAcceptorChan)
 }
 
@@ -77,14 +77,14 @@ func (m *ChannelAcceptorMonitor) subscribeChannelAcceptor(channelAcceptorChan ch
 	}
 }
 
-func (m *ChannelAcceptorMonitor) waitForChannelAcceptor(ctx context.Context, waitGroup *sync.WaitGroup, channelAcceptorChan chan lnrpc.ChannelAcceptRequest) {
+func (m *ChannelAcceptorMonitor) waitForChannelAcceptor(shutdownCtx context.Context, waitGroup *sync.WaitGroup, channelAcceptorChan chan lnrpc.ChannelAcceptRequest) {
 	waitGroup.Add(1)
 	defer close(channelAcceptorChan)
 	defer waitGroup.Done()
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-shutdownCtx.Done():
 			log.Printf("Shutting down Channel Acceptor")
 			return
 		case channelAcceptor := <-channelAcceptorChan:

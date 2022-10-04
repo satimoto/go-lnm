@@ -76,11 +76,12 @@ func (r *SessionResolver) ProcessChargingPeriods(sessionIto *SessionIto, tariffI
 	return totalAmount
 }
 
-func (r *SessionResolver) UpdateSession(ctx context.Context, session db.Session) {
+func (r *SessionResolver) UpdateSession(session db.Session) {
 	/** Session status has changed.
 	 *  Send a SessionUpdate notification to the user
 	 */
 	 
+	ctx := context.Background()
 	user, err := r.UserResolver.Repository.GetUser(ctx, session.UserID)
 
 	if err != nil {

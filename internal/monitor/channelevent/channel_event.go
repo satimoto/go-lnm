@@ -42,12 +42,12 @@ func NewChannelEventMonitor(repositoryService *db.RepositoryService, services *s
 	}
 }
 
-func (m *ChannelEventMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup *sync.WaitGroup) {
+func (m *ChannelEventMonitor) StartMonitor(nodeID int64, shutdownCtx context.Context, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting up Channel Events")
 	channelEventChan := make(chan lnrpc.ChannelEventUpdate)
 
 	m.nodeID = nodeID
-	go m.waitForChannelEvents(ctx, waitGroup, channelEventChan)
+	go m.waitForChannelEvents(shutdownCtx, waitGroup, channelEventChan)
 	go m.subscribeChannelEvents(channelEventChan)
 }
 
@@ -149,14 +149,14 @@ func (m *ChannelEventMonitor) updateNode(ctx context.Context) {
 	}
 }
 
-func (m *ChannelEventMonitor) waitForChannelEvents(ctx context.Context, waitGroup *sync.WaitGroup, channelEventChan chan lnrpc.ChannelEventUpdate) {
+func (m *ChannelEventMonitor) waitForChannelEvents(shutdownCtx context.Context, waitGroup *sync.WaitGroup, channelEventChan chan lnrpc.ChannelEventUpdate) {
 	waitGroup.Add(1)
 	defer close(channelEventChan)
 	defer waitGroup.Done()
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-shutdownCtx.Done():
 			log.Printf("Shutting down Channel Events")
 			return
 		case channelEvent := <-channelEventChan:

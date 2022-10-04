@@ -31,12 +31,12 @@ func NewInvoiceMonitor(repositoryService *db.RepositoryService, services *servic
 	}
 }
 
-func (m *InvoiceMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup *sync.WaitGroup) {
+func (m *InvoiceMonitor) StartMonitor(nodeID int64, shutdownCtx context.Context, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting up Invoices")
 	invoiceChan := make(chan lnrpc.Invoice)
 
 	m.nodeID = nodeID
-	go m.waitForInvoices(ctx, waitGroup, invoiceChan)
+	go m.waitForInvoices(shutdownCtx, waitGroup, invoiceChan)
 	go m.subscribeInvoiceInterceptions(invoiceChan)
 }
 
@@ -96,7 +96,7 @@ func (m *InvoiceMonitor) handleInvoice(invoice lnrpc.Invoice) {
 			}
 		} else {
 			// Monitor expiry of invoice
-			go m.waitForInvoiceExpiry(ctx, invoice)
+			go m.waitForInvoiceExpiry(invoice)
 		}
 	}
 }
@@ -118,14 +118,14 @@ func (m *InvoiceMonitor) subscribeInvoiceInterceptions(invoiceChan chan<- lnrpc.
 	}
 }
 
-func (m *InvoiceMonitor) waitForInvoices(ctx context.Context, waitGroup *sync.WaitGroup, invoiceChan chan lnrpc.Invoice) {
+func (m *InvoiceMonitor) waitForInvoices(shutdownCtx context.Context, waitGroup *sync.WaitGroup, invoiceChan chan lnrpc.Invoice) {
 	waitGroup.Add(1)
 	defer close(invoiceChan)
 	defer waitGroup.Done()
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-shutdownCtx.Done():
 			log.Printf("Shutting down Invoices")
 			return
 		case invoice := <-invoiceChan:
@@ -134,7 +134,8 @@ func (m *InvoiceMonitor) waitForInvoices(ctx context.Context, waitGroup *sync.Wa
 	}
 }
 
-func (m *InvoiceMonitor) waitForInvoiceExpiry(ctx context.Context, invoice lnrpc.Invoice) {
+func (m *InvoiceMonitor) waitForInvoiceExpiry(invoice lnrpc.Invoice) {
+	ctx := context.Background()
 	expiry := (time.Second * time.Duration(invoice.Expiry)) + time.Minute
 
 	time.Sleep(expiry)

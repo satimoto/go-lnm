@@ -20,7 +20,7 @@ func (r *RpcCdrResolver) CdrCreated(ctx context.Context, input *ocpirpc.CdrCreat
 			return nil, errors.New("cdr not found")
 		}
 
-		go r.CdrResolver.ProcessCdr(ctx, cdr)
+		go r.CdrResolver.ProcessCdr(cdr)
 
 		return &ocpirpc.CdrCreatedResponse{}, nil
 	}

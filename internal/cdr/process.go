@@ -14,11 +14,13 @@ import (
 	"github.com/satimoto/go-lsp/pkg/util"
 )
 
-func (r *CdrResolver) ProcessCdr(ctx context.Context, cdr db.Cdr) error {
+func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 	/** Cdr has been created.
 	 *  Calculate final invoiced amount.
 	 *  Issue final invoice or rebate if overpaid
 	 */
+
+	ctx := context.Background()
 
 	if !cdr.AuthorizationID.Valid {
 		log.Printf("LSP035: Cdr AuthorizationID is nil")

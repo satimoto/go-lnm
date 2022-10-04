@@ -20,7 +20,7 @@ func (r *RpcSessionResolver) SessionCreated(ctx context.Context, input *ocpirpc.
 			return nil, errors.New("session not found")
 		}
 
-		go r.SessionResolver.StartSessionMonitor(ctx, session)
+		go r.SessionResolver.StartSessionMonitor(session)
 
 		return &ocpirpc.SessionCreatedResponse{}, nil
 	}
@@ -39,7 +39,7 @@ func (r *RpcSessionResolver) SessionUpdated(ctx context.Context, input *ocpirpc.
 			return nil, errors.New("session not found")
 		}
 
-		go r.SessionResolver.UpdateSession(ctx, session)
+		go r.SessionResolver.UpdateSession(session)
 
 		return &ocpirpc.SessionUpdatedResponse{}, nil
 	}

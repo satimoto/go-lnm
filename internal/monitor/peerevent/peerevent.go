@@ -30,12 +30,12 @@ func NewPeerEventMonitor(repositoryService *db.RepositoryService, services *serv
 	}
 }
 
-func (m *PeerEventMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup *sync.WaitGroup) {
+func (m *PeerEventMonitor) StartMonitor(nodeID int64, shutdownCtx context.Context, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting up Peer Events")
 	peerEventChan := make(chan lnrpc.PeerEvent)
 
 	m.nodeID = nodeID
-	go m.waitForPeerEvents(ctx, waitGroup, peerEventChan)
+	go m.waitForPeerEvents(shutdownCtx, waitGroup, peerEventChan)
 	go m.subscribePeerEventInterceptions(peerEventChan)
 }
 
@@ -74,14 +74,14 @@ func (m *PeerEventMonitor) subscribePeerEventInterceptions(peerEventChan chan<- 
 	}
 }
 
-func (m *PeerEventMonitor) waitForPeerEvents(ctx context.Context, waitGroup *sync.WaitGroup, peerEventChan chan lnrpc.PeerEvent) {
+func (m *PeerEventMonitor) waitForPeerEvents(shutdownCtx context.Context, waitGroup *sync.WaitGroup, peerEventChan chan lnrpc.PeerEvent) {
 	waitGroup.Add(1)
 	defer close(peerEventChan)
 	defer waitGroup.Done()
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-shutdownCtx.Done():
 			log.Printf("Shutting down Peer Events")
 			return
 		case peerEvent := <-peerEventChan:

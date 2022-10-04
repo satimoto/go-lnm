@@ -42,7 +42,7 @@ func NewHtlcMonitor(repositoryService *db.RepositoryService, services *service.S
 	}
 }
 
-func (m *HtlcMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup *sync.WaitGroup) {
+func (m *HtlcMonitor) StartMonitor(nodeID int64, shutdownCtx context.Context, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting up Htlcs")
 	htlcInterceptChan := make(chan routerrpc.ForwardHtlcInterceptRequest)
 
@@ -51,7 +51,7 @@ func (m *HtlcMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup 
 	m.timeLockDelta = uint32(dbUtil.GetEnvInt32("TIME_LOCK_DELTA", 100))
 	m.nodeID = nodeID
 
-	go m.waitForHtlcs(ctx, waitGroup, htlcInterceptChan)
+	go m.waitForHtlcs(shutdownCtx, waitGroup, htlcInterceptChan)
 	go m.subscribeHtlcInterceptions(htlcInterceptChan)
 }
 
@@ -237,7 +237,7 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 			// Start payment timeout to cleanup failures
 			if startPaymentMonitor {
 				// TODO: Add monitoring task to worker group, this should prevent shutdown while awaiting payments
-				go m.waitForPaymentTimeout(ctx, channelRequest.PaymentHash, 30)
+				go m.waitForPaymentTimeout(channelRequest.PaymentHash, 30)
 			}
 		} else {
 			log.Printf("LSP025: Invalid channel request state")
@@ -273,14 +273,14 @@ func (m *HtlcMonitor) subscribeHtlcInterceptions(htlcInterceptChan chan<- router
 	}
 }
 
-func (m *HtlcMonitor) waitForHtlcs(ctx context.Context, waitGroup *sync.WaitGroup, htlcInterceptChan chan routerrpc.ForwardHtlcInterceptRequest) {
+func (m *HtlcMonitor) waitForHtlcs(shutdownCtx context.Context, waitGroup *sync.WaitGroup, htlcInterceptChan chan routerrpc.ForwardHtlcInterceptRequest) {
 	waitGroup.Add(1)
 	defer close(htlcInterceptChan)
 	defer waitGroup.Done()
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-shutdownCtx.Done():
 			log.Printf("Shutting down Htlcs")
 			return
 		case htlcInterceptRequest := <-htlcInterceptChan:
@@ -308,7 +308,8 @@ func (m *HtlcMonitor) waitForHtlcInterceptorClient(initialDelay, retryDelay time
 	}
 }
 
-func (m *HtlcMonitor) waitForPaymentTimeout(ctx context.Context, paymentHash []byte, timeoutSeconds int) {
+func (m *HtlcMonitor) waitForPaymentTimeout(paymentHash []byte, timeoutSeconds int) {
+	ctx := context.Background()
 	deadline := time.Now().Add(time.Duration(timeoutSeconds) * time.Second)
 	paymentHashString := hex.EncodeToString(paymentHash)
 	log.Printf("Payment timeout set for %v seconds: %v", timeoutSeconds, paymentHashString)
