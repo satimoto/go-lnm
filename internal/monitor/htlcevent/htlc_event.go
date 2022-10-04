@@ -261,14 +261,14 @@ func (m *HtlcEventMonitor) subscribeHtlcEventInterceptions(htlcEventChan chan<- 
 	}
 }
 
-func (m *HtlcEventMonitor) waitForHtlcEvents(ctx context.Context, waitGroup *sync.WaitGroup, htlcEventChan chan routerrpc.HtlcEvent) {
+func (m *HtlcEventMonitor) waitForHtlcEvents(shutdownCtx context.Context, waitGroup *sync.WaitGroup, htlcEventChan chan routerrpc.HtlcEvent) {
 	waitGroup.Add(1)
 	defer close(htlcEventChan)
 	defer waitGroup.Done()
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-shutdownCtx.Done():
 			log.Printf("Shutting down Htlc Events")
 			return
 		case htlcInterceptRequest := <-htlcEventChan:

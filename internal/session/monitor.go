@@ -12,7 +12,7 @@ import (
 	"github.com/satimoto/go-ocpi/ocpirpc"
 )
 
-func (r *SessionResolver) StartSessionMonitor(ctx context.Context, session db.Session) {
+func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 	/** Session has been created.
 	 *  Send SessionUpdate notification to user.
 	 *  Calculate invoiced amount.
@@ -21,6 +21,7 @@ func (r *SessionResolver) StartSessionMonitor(ctx context.Context, session db.Se
 	 *  Monitor issued invoices, if invoices go unpaid, cancel session.
 	 */
 
+	ctx := context.Background()
 	user, err := r.UserResolver.Repository.GetUser(ctx, session.UserID)
 
 	if err != nil {

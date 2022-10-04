@@ -31,12 +31,12 @@ func NewChannelBackupMonitor(repositoryService *db.RepositoryService, backupServ
 	}
 }
 
-func (m *ChannelBackupMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup *sync.WaitGroup) {
+func (m *ChannelBackupMonitor) StartMonitor(nodeID int64, shutdownCtx context.Context, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting up Channel Backups")
 	channelBackupChan := make(chan lnrpc.ChanBackupSnapshot)
 
 	m.nodeID = nodeID
-	go m.waitForChannelBackups(ctx, waitGroup, channelBackupChan)
+	go m.waitForChannelBackups(shutdownCtx, waitGroup, channelBackupChan)
 	go m.subscribeChannelBackupInterceptions(channelBackupChan)
 }
 
@@ -68,14 +68,14 @@ func (m *ChannelBackupMonitor) subscribeChannelBackupInterceptions(channelBackup
 	}
 }
 
-func (m *ChannelBackupMonitor) waitForChannelBackups(ctx context.Context, waitGroup *sync.WaitGroup, channelBackupChan chan lnrpc.ChanBackupSnapshot) {
+func (m *ChannelBackupMonitor) waitForChannelBackups(shutdownCtx context.Context, waitGroup *sync.WaitGroup, channelBackupChan chan lnrpc.ChanBackupSnapshot) {
 	waitGroup.Add(1)
 	defer close(channelBackupChan)
 	defer waitGroup.Done()
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-shutdownCtx.Done():
 			log.Printf("Shutting down Channel Backups")
 			return
 		case htlcInterceptRequest := <-channelBackupChan:

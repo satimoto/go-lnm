@@ -32,12 +32,12 @@ func NewCustomMessageMonitor(repositoryService *db.RepositoryService, services *
 	}
 }
 
-func (m *CustomMessageMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup *sync.WaitGroup) {
+func (m *CustomMessageMonitor) StartMonitor(nodeID int64, shutdownCtx context.Context, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting up Custom Messages")
 	customMessageChan := make(chan lnrpc.CustomMessage)
 
 	m.nodeID = nodeID
-	go m.waitForCustomMessages(ctx, waitGroup, customMessageChan)
+	go m.waitForCustomMessages(shutdownCtx, waitGroup, customMessageChan)
 	go m.subscribeCustomMessages(customMessageChan)
 }
 
@@ -74,14 +74,14 @@ func (m *CustomMessageMonitor) subscribeCustomMessages(customMessageChan chan<- 
 	}
 }
 
-func (m *CustomMessageMonitor) waitForCustomMessages(ctx context.Context, waitGroup *sync.WaitGroup, customMessageChan chan lnrpc.CustomMessage) {
+func (m *CustomMessageMonitor) waitForCustomMessages(shutdownCtx context.Context, waitGroup *sync.WaitGroup, customMessageChan chan lnrpc.CustomMessage) {
 	waitGroup.Add(1)
 	defer close(customMessageChan)
 	defer waitGroup.Done()
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-shutdownCtx.Done():
 			log.Printf("Shutting down Custom Messages")
 			return
 		case customMessage := <-customMessageChan:

@@ -30,12 +30,12 @@ func NewTransactionMonitor(repositoryService *db.RepositoryService, services *se
 	}
 }
 
-func (m *TransactionMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup *sync.WaitGroup) {
+func (m *TransactionMonitor) StartMonitor(nodeID int64, shutdownCtx context.Context, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting up Transactions")
 	transactionChan := make(chan lnrpc.Transaction)
 
 	m.nodeID = nodeID
-	go m.waitForTransactions(ctx, waitGroup, transactionChan)
+	go m.waitForTransactions(shutdownCtx, waitGroup, transactionChan)
 	go m.subscribeTransactionInterceptions(transactionChan)
 }
 
@@ -84,14 +84,14 @@ func (m *TransactionMonitor) updateWalletBalance() {
 	log.Printf("LockedBalance: %v", walletBalance.LockedBalance)
 }
 
-func (m *TransactionMonitor) waitForTransactions(ctx context.Context, waitGroup *sync.WaitGroup, transactionChan chan lnrpc.Transaction) {
+func (m *TransactionMonitor) waitForTransactions(shutdownCtx context.Context, waitGroup *sync.WaitGroup, transactionChan chan lnrpc.Transaction) {
 	waitGroup.Add(1)
 	defer close(transactionChan)
 	defer waitGroup.Done()
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-shutdownCtx.Done():
 			log.Printf("Shutting down Transactions")
 			return
 		case transaction := <-transactionChan:
