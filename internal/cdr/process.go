@@ -91,31 +91,35 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 			sessionInvoices = append(sessionInvoices, *sessionInvoice)
 			_, totalMsat = session.CalculateTotalInvoiced(sessionInvoices)
 		}
-	case cdrTotalFiat < priceFiat:
-		// Issue rebate if overpaid
-		// TODO: This should be launched as a goroutine to force completion/retries
-		rebateTotalFiat := priceFiat - cdrTotalFiat
-		rebatePriceFiat, rebateCommissionFiat, rebateTaxFiat := session.ReverseCommission(rebateTotalFiat, user.CommissionPercent, taxPercent)
+	case cdrTotalFiat <= priceFiat:
+		if cdrTotalFiat < priceFiat {
+			// Issue rebate if overpaid
+			// TODO: This should be launched as a goroutine to force completion/retries
+			rebateTotalFiat := priceFiat - cdrTotalFiat
+			rebatePriceFiat, rebateCommissionFiat, rebateTaxFiat := session.ReverseCommission(rebateTotalFiat, user.CommissionPercent, taxPercent)
 
-		invoiceParams := util.InvoiceParams{
-			PriceFiat:      dbUtil.SqlNullFloat64(rebatePriceFiat),
-			CommissionFiat: dbUtil.SqlNullFloat64(rebateCommissionFiat),
-			TaxFiat:        dbUtil.SqlNullFloat64(rebateTaxFiat),
-			TotalFiat:      dbUtil.SqlNullFloat64(rebateTotalFiat),
-		}
+			invoiceParams := util.InvoiceParams{
+				PriceFiat:      dbUtil.SqlNullFloat64(rebatePriceFiat),
+				CommissionFiat: dbUtil.SqlNullFloat64(rebateCommissionFiat),
+				TaxFiat:        dbUtil.SqlNullFloat64(rebateTaxFiat),
+				TotalFiat:      dbUtil.SqlNullFloat64(rebateTotalFiat),
+			}
 
-		if invoiceRequest, err := r.IssueInvoiceRequest(ctx, user.ID, "REBATE", sess.Uid, sess.Currency, invoiceParams); err == nil {
-			updateSessionByUidParams := param.NewUpdateSessionByUidParams(sess)
-			updateSessionByUidParams.InvoiceRequestID = dbUtil.SqlNullInt64(invoiceRequest.ID)
+			if invoiceRequest, err := r.IssueInvoiceRequest(ctx, user.ID, "REBATE", sess.Uid, sess.Currency, invoiceParams); err == nil {
+				updateSessionByUidParams := param.NewUpdateSessionByUidParams(sess)
+				updateSessionByUidParams.InvoiceRequestID = dbUtil.SqlNullInt64(invoiceRequest.ID)
 
-			_, err := r.SessionResolver.Repository.UpdateSessionByUid(ctx, updateSessionByUidParams)
+				_, err := r.SessionResolver.Repository.UpdateSessionByUid(ctx, updateSessionByUidParams)
 
-			if err != nil {
-				dbUtil.LogOnError("LSP117", "Error updating session", err)
-				log.Printf("LSP117: Params=%v", updateSessionByUidParams)
-				return errors.New("error updating session")
+				if err != nil {
+					dbUtil.LogOnError("LSP117", "Error updating session", err)
+					log.Printf("LSP117: Params=%v", updateSessionByUidParams)
+					return errors.New("error updating session")
+				}
 			}
 		}
+
+		r.SessionResolver.SendSessionUpdateNotification(user, sess)
 	}
 
 	// Issue invoice request to circuit user
