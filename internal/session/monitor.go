@@ -90,7 +90,7 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 			}
 
 			switch session.Status {
-			case db.SessionStatusTypeCOMPLETED, db.SessionStatusTypeINVALID:
+			case db.SessionStatusTypeCOMPLETED, db.SessionStatusTypeINVALID, db.SessionStatusTypeINVOICED:
 				// End monitoring, let the CDR issue the final invoice
 				log.Printf("Ending session monitoring for %s", session.Uid)
 				break invoiceLoop
