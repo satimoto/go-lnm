@@ -23,7 +23,6 @@ import (
 )
 
 func TestProcessCdrErrors(t *testing.T) {
-	ctx := context.Background()
 	cases := []struct {
 		desc   string
 		before func(*dbMocks.MockRepositoryService, *ferpMocks.MockFerpService, *lightningnetworkMocks.MockLightningNetworkService, *ocpiMocks.MockOcpiService)
@@ -204,7 +203,7 @@ func TestProcessCdrErrors(t *testing.T) {
 				tc.before(mockRepository, mockFerpService, mockLightningService, mockOcpiService)
 			}
 
-			err := cdrResolver.ProcessCdr(ctx, tc.cdr)
+			err := cdrResolver.ProcessCdr(tc.cdr)
 
 			if tc.after != nil {
 				tc.after(t, mockRepository, mockLightningService, mockOcpiService)
@@ -218,8 +217,6 @@ func TestProcessCdrErrors(t *testing.T) {
 }
 
 func TestProcessCdr(t *testing.T) {
-	ctx := context.Background()
-
 	t.Run("No session invoice", func(t *testing.T) {
 		mockRepository := dbMocks.NewMockRepositoryService()
 		mockFerpService := ferpMocks.NewService()
@@ -233,7 +230,7 @@ func TestProcessCdr(t *testing.T) {
 			Uid: "CDR0001",
 		}
 
-		err := cdrResolver.ProcessCdr(ctx, cdr)
+		err := cdrResolver.ProcessCdr(cdr)
 
 		if err.Error() == "Cdr AuthorizationID is nil" {
 			t.Errorf("Error mismatch: %v expecting %v", err.Error(), "Cdr AuthorizationID is nil")

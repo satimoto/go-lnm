@@ -122,6 +122,17 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 		r.SessionResolver.SendSessionUpdateNotification(user, sess)
 	}
 
+	// Set session as invoiced
+	sessionParams := param.NewUpdateSessionByUidParams(sess)
+	sessionParams.Status = db.SessionStatusTypeINVOICED
+
+	_, err = r.SessionResolver.Repository.UpdateSessionByUid(ctx, sessionParams)
+
+	if err != nil {
+		dbUtil.LogOnError("LSP133", "Error updating session", err)
+		log.Printf("LSP133: Params=%#v", sessionParams)
+	}
+
 	// Issue invoice request to circuit user
 	circuitPercent := dbUtil.GetEnvFloat64("CIRCUIT_PERCENT", 0.5)
 	circuitAmountMsat := int64((float64(totalMsat) / 100.0) * circuitPercent)
