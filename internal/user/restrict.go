@@ -9,14 +9,14 @@ import (
 )
 
 func (r *UserResolver) RestrictUser(ctx context.Context, user db.User) error {
-	return r.updateUserRestriction(ctx, user, true, db.TokenAllowedTypeNOCREDIT, db.TokenWhitelistTypeNEVER)
+	return r.updateUserRestriction(ctx, user, true, db.TokenAllowedTypeNOCREDIT)
 }
 
 func (r *UserResolver) UnrestrictUser(ctx context.Context, user db.User) error {
-	return r.updateUserRestriction(ctx, user, false, db.TokenAllowedTypeALLOWED, db.TokenWhitelistTypeALLOWED)
+	return r.updateUserRestriction(ctx, user, false, db.TokenAllowedTypeALLOWED)
 }
 
-func (r *UserResolver) updateUserRestriction(ctx context.Context, user db.User, restricted bool, tokenAllowed db.TokenAllowedType, tokenWhitelist db.TokenWhitelistType) error {
+func (r *UserResolver) updateUserRestriction(ctx context.Context, user db.User, restricted bool, tokenAllowed db.TokenAllowedType) error {
 	if user.IsRestricted != restricted {
 		updateUserParams := param.NewUpdateUserParams(user)
 		updateUserParams.IsRestricted = restricted
@@ -30,7 +30,6 @@ func (r *UserResolver) updateUserRestriction(ctx context.Context, user db.User, 
 		updateTokensRequest := &ocpirpc.UpdateTokensRequest{
 			UserId:    user.ID,
 			Allowed:   string(tokenAllowed),
-			Whitelist: string(tokenWhitelist),
 		}
 
 		_, err = r.OcpiService.UpdateTokens(ctx, updateTokensRequest)
