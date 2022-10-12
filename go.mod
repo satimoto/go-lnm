@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/joho/godotenv v1.4.0
-	github.com/lightningnetwork/lnd v0.15.1-beta.rc2
+	github.com/lightningnetwork/lnd v0.15.2-beta.rc2
 	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
 	github.com/satimoto/go-datastore v0.3.1-0.20221011141944-15837331999f
 	google.golang.org/grpc v1.47.0
@@ -16,7 +16,7 @@ require (
 	github.com/aead/siphash v1.0.1 // indirect
 	github.com/andybalholm/brotli v1.0.3 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/btcsuite/btcd v0.23.1 // indirect
+	github.com/btcsuite/btcd v0.23.2 // indirect
 	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
 	github.com/btcsuite/btcutil v1.0.3-0.20210527170813-e2ba6805a890 // indirect
 	github.com/btcsuite/btcutil/psbt v1.0.3-0.20210527170813-e2ba6805a890 // indirect
@@ -180,6 +180,6 @@ require (
 	github.com/stretchr/objx v0.2.0 // indirect
 )
 
-replace github.com/lightningnetwork/lnd => github.com/satimoto/lnd v0.15.1-beta.rc2.0.20220908054041-539aeb27a42e
+replace github.com/lightningnetwork/lnd => github.com/satimoto/lnd v0.15.2-beta.0.20221010062558-1915d31fb4d7
 
 replace git.schwanenlied.me/yawning/bsaes.git => github.com/Yawning/bsaes v0.0.0-20180720073208-c0276d75487e
