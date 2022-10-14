@@ -9,7 +9,7 @@ import (
 
 func (r *SessionResolver) Startup(nodeID int64) {
 	ctx := context.Background()
-	sessions, err := r.Repository.ListInProgressSessions(ctx, nodeID)
+	sessions, err := r.Repository.ListInProgressSessionsByNodeID(ctx, nodeID)
 
 	if err != nil {
 		dbUtil.LogOnError("LSP135", "Error listing sessions", err)
