@@ -16,6 +16,6 @@ func NewResolver(repositoryService *db.RepositoryService, services *service.Serv
 
 	return &RpcInvoiceResolver{
 		LightningService:       services.LightningService,
-		InvoiceRequestResolver: invoicerequest.NewResolver(repositoryService),
+		InvoiceRequestResolver: invoicerequest.NewResolver(repositoryService, services),
 	}
 }
