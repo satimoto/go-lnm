@@ -38,8 +38,8 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 		sessions, err := r.SessionResolver.Repository.ListInProgressSessionsByUserID(ctx, cdr.UserID)
 
 		if err != nil {
-			dbUtil.LogOnError("LSP138", "Error retrieving in progress sessions", err)
-			log.Printf("LSP138: UserID=%v", cdr.UserID)
+			dbUtil.LogOnError("LSP139", "Error retrieving in progress sessions", err)
+			log.Printf("LSP139: UserID=%v", cdr.UserID)
 			return errors.New("error retrieving in progress sessions")
 		}
 

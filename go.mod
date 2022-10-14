@@ -6,7 +6,7 @@ require (
 	github.com/joho/godotenv v1.4.0
 	github.com/lightningnetwork/lnd v0.15.2-beta.rc2
 	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
-	github.com/satimoto/go-datastore v0.3.1-0.20221014113718-b34ebe3f3cc7
+	github.com/satimoto/go-datastore v0.3.1-0.20221014132938-01360477dd5c
 	google.golang.org/grpc v1.47.0
 )
 
@@ -159,7 +159,7 @@ require (
 	github.com/btcsuite/winsvc v1.0.0 // indirect
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/decred/dcrd/crypto/blake256 v1.0.0 // indirect
-	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0
 	github.com/dvyukov/go-fuzz v0.0.0-20210602112143-b1f3d6f4ef4e // indirect
 	github.com/golang/protobuf v1.5.2
 	github.com/jackpal/gateway v1.0.5 // indirect
@@ -168,7 +168,7 @@ require (
 	github.com/lightningnetwork/lnd/cert v1.1.1 // indirect
 	github.com/lightningnetwork/lnd/tlv v1.0.3 // indirect
 	github.com/lightningnetwork/lnd/tor v1.0.1 // indirect
-	github.com/satimoto/go-ocpi v0.0.3-0.20220718065459-d1352ae31bf1
+	github.com/satimoto/go-ocpi v0.2.1-0.20221013124642-a890d137f37c
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/tv42/zbase32 v0.0.0-20160707012821-501572607d02 // indirect
 	gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec // indirect
