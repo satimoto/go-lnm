@@ -21,19 +21,61 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 	 */
 
 	ctx := context.Background()
+	authorizationId := cdr.AuthorizationID
 
-	if !cdr.AuthorizationID.Valid {
+	if !authorizationId.Valid {
+		// There is no AuthorizationID set,
+		// we cannot reconcile the session without it.
+		// Flag the cdr to be looked at later.
 		log.Printf("LSP035: Cdr AuthorizationID is nil")
 		log.Printf("LSP035: CdrUid=%v", cdr.Uid)
-		return errors.New("cdr AuthorizationID is nil")
+
+		r.Repository.UpdateCdrIsFlaggedByUid(ctx, db.UpdateCdrIsFlaggedByUidParams{
+			Uid:       cdr.Uid,
+			IsFlagged: true,
+		})
+
+		sessions, err := r.SessionResolver.Repository.ListInProgressSessionsByUserID(ctx, cdr.UserID)
+
+		if err != nil {
+			dbUtil.LogOnError("LSP138", "Error retrieving in progress sessions", err)
+			log.Printf("LSP138: UserID=%v", cdr.UserID)
+			return errors.New("error retrieving in progress sessions")
+		}
+
+		// TODO: Should we close out all sessions or pick the best fitting session match
+		if len(sessions) == 1 {
+			// There is one in progress session, we can assume this is cdr session
+			sess := sessions[0]
+
+			// Check the session and cdr location/evs/connector matches
+			if sess.AuthID == cdr.AuthID && sess.LocationID == cdr.LocationID && sess.EvseID == cdr.EvseID && sess.ConnectorID == cdr.ConnectorID {
+				log.Printf("LSP035: Using matched session %v with authorization %v instead", sess.Uid, sess.AuthorizationID.String)
+				authorizationId = sess.AuthorizationID
+			}
+		}
+
+		if !authorizationId.Valid {
+			for _, sess := range sessions {
+				log.Printf("LSP035: Stopping session %v", sess.Uid)
+				sessionParams := param.NewUpdateSessionByUidParams(sess)
+				sessionParams.Status = db.SessionStatusTypeCOMPLETED
+			
+				_, err = r.SessionResolver.Repository.UpdateSessionByUid(ctx, sessionParams)
+
+				r.SessionResolver.StopSession(ctx, sess)
+			}
+	
+			return errors.New("cdr AuthorizationID is nil")	
+		}
 	}
 
 	// TODO: How to deal with Sessions and CDRs with no AuthorizationID
-	sess, err := r.SessionResolver.Repository.GetSessionByAuthorizationID(ctx, cdr.AuthorizationID.String)
+	sess, err := r.SessionResolver.Repository.GetSessionByAuthorizationID(ctx, authorizationId.String)
 
 	if err != nil {
 		dbUtil.LogOnError("LSP043", "Error retrieving cdr session", err)
-		log.Printf("LSP043: CdrUid=%v, AuthorizationID=%v", cdr.Uid, cdr.AuthorizationID)
+		log.Printf("LSP043: CdrUid=%v, AuthorizationID=%v", cdr.Uid, authorizationId)
 		return errors.New("error retrieving cdr session")
 	}
 

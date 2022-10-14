@@ -22,12 +22,30 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 	 */
 
 	ctx := context.Background()
+
+	if !session.AuthorizationID.Valid {
+		// There is no AuthorizationID set, stop the session.
+		// The session could be monitored, but cannot be invoiced as the
+		// associated token authorization with the signing key cannot be
+		// retrieved. Flag the cdr to be looked at later.
+		log.Printf("LSP137: Session AuthorizationID is nil")
+		log.Printf("LSP137: SessionUid=%v", session.Uid)
+
+		r.Repository.UpdateSessionIsFlaggedByUid(ctx, db.UpdateSessionIsFlaggedByUidParams{
+			Uid:       session.Uid,
+			IsFlagged: true,
+		})
+
+		r.StopSession(ctx, session)
+		return
+	}
+
 	user, err := r.UserResolver.Repository.GetUser(ctx, session.UserID)
 
 	if err != nil {
 		dbUtil.LogOnError("LSP037", "Error retrieving user from session", err)
 		log.Printf("LSP037: SessionUid=%v, UserID=%v", session.Uid, session.UserID)
-		r.stopSession(ctx, session)
+		r.StopSession(ctx, session)
 		return
 	}
 
@@ -36,7 +54,7 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 	if err != nil {
 		dbUtil.LogOnError("LSP001", "Error retrieving session connector", err)
 		log.Printf("LSP001: SessionUid=%v, ConnectorID=%v", session.Uid, session.ConnectorID)
-		r.stopSession(ctx, session)
+		r.StopSession(ctx, session)
 		return
 	}
 
@@ -47,7 +65,7 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 	if err != nil {
 		dbUtil.LogOnError("LSP127", "Error retrieving token authorization", err)
 		log.Printf("LSP127: SessionUid=%v, AuthorizationID=%v", session.Uid, session.AuthorizationID.String)
-		r.stopSession(ctx, session)
+		r.StopSession(ctx, session)
 		return
 	}
 
@@ -119,7 +137,7 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 		// Suspend tokens until balance is settled
 		// TODO: handle expired invoices, reissue invoices on request
 		log.Printf("Session %s has unsettled invoices, stopping the session", session.Uid)
-		r.stopSession(ctx, session)
+		r.StopSession(ctx, session)
 
 		// Lock user tokens until all session invoices are settled
 		err = r.UserResolver.RestrictUser(ctx, user)
@@ -152,7 +170,7 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 	return true
 }
 
-func (r *SessionResolver) stopSession(ctx context.Context, session db.Session) (*ocpirpc.StopSessionResponse, error) {
+func (r *SessionResolver) StopSession(ctx context.Context, session db.Session) (*ocpirpc.StopSessionResponse, error) {
 	return r.OcpiService.StopSession(ctx, &ocpirpc.StopSessionRequest{
 		SessionUid: session.Uid,
 	})
