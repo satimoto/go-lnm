@@ -44,12 +44,3 @@ func CreateSessionUpdateNotificationDto(session db.Session) NotificationDto {
 
 	return response
 }
-
-func CreateTokenuthorizeNotificationDto(tokenAuthorization db.TokenAuthorization) NotificationDto {
-	response := map[string]interface{}{
-		"type":            TOKEN_AUTHORIZE,
-		"authorizationId": tokenAuthorization.AuthorizationID,
-	}
-
-	return response
-}

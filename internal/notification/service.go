@@ -1,6 +1,8 @@
 package notification
 
 import (
+	"log"
+
 	"github.com/appleboy/go-fcm"
 	"github.com/satimoto/go-datastore/pkg/util"
 )
@@ -24,9 +26,13 @@ func NewService(apiKey string) Notification {
 }
 
 func (s *NotificationService) SendNotification(message *fcm.Message) (*fcm.Response, error) {
+	log.Printf("Sending notification: %v", message.To)
+	log.Printf("Data=%#v", message.Data)
 	return s.client.Send(message)
 }
 
 func (s *NotificationService) SendNotificationWithRetry(message *fcm.Message, retries int) (*fcm.Response, error) {
+	log.Printf("Sending notification with retry: %v", message.To)
+	log.Printf("Data=%#v", message.Data)
 	return s.client.SendWithRetry(message, retries)
 }

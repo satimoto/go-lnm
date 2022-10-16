@@ -16,7 +16,6 @@ import (
 	"github.com/satimoto/go-lsp/internal/rpc/invoice"
 	"github.com/satimoto/go-lsp/internal/rpc/rpc"
 	"github.com/satimoto/go-lsp/internal/rpc/session"
-	"github.com/satimoto/go-lsp/internal/rpc/tokenauthorization"
 	"github.com/satimoto/go-lsp/internal/service"
 	"github.com/satimoto/go-lsp/lsprpc"
 	"github.com/satimoto/go-ocpi/ocpirpc"
@@ -35,7 +34,6 @@ type RpcService struct {
 	RpcInvoiceResolver            *invoice.RpcInvoiceResolver
 	RpcResolver                   *rpc.RpcResolver
 	RpcSessionResolver            *session.RpcSessionResolver
-	RpcTokenAuthorizationResolver *tokenauthorization.RpcTokenAuthorizationResolver
 	ShutdownCtx                   context.Context
 }
 
@@ -50,7 +48,6 @@ func NewRpc(shutdownCtx context.Context, d *sql.DB, services *service.ServiceRes
 		RpcInvoiceResolver:            invoice.NewResolver(repositoryService, services),
 		RpcResolver:                   rpc.NewResolver(repositoryService, services),
 		RpcSessionResolver:            session.NewResolver(repositoryService, services),
-		RpcTokenAuthorizationResolver: tokenauthorization.NewResolver(repositoryService, services),
 		ShutdownCtx:                   shutdownCtx,
 	}
 }
@@ -81,7 +78,6 @@ func (rs *RpcService) listenAndServe() {
 	ocpirpc.RegisterCdrServiceServer(rs.Server, rs.RpcCdrResolver)
 	ocpirpc.RegisterRpcServiceServer(rs.Server, rs.RpcResolver)
 	ocpirpc.RegisterSessionServiceServer(rs.Server, rs.RpcSessionResolver)
-	ocpirpc.RegisterTokenAuthorizationServiceServer(rs.Server, rs.RpcTokenAuthorizationResolver)
 
 	err = rs.Server.Serve(listener)
 	util.LogOnError("LSP029", "Error in Rpc service", err)
