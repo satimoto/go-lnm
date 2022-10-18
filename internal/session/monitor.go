@@ -69,6 +69,12 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 		return
 	}
 
+	if !tokenAuthorization.Authorized {
+		log.Printf("Ending unauthorized session %s", session.Uid)
+		r.StopSession(ctx, session)
+		return
+	}
+
 	r.SendSessionUpdateNotification(user, session)
 
 	if connector.TariffID.Valid {
