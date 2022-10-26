@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/joho/godotenv v1.4.0
-	github.com/lightningnetwork/lnd v0.15.2-beta.rc2
+	github.com/lightningnetwork/lnd v0.15.3-beta
 	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
 	github.com/satimoto/go-datastore v0.3.1-0.20221014172535-5cb6fc2609b6
 	google.golang.org/grpc v1.47.0
@@ -164,14 +164,24 @@ require (
 )
 
 require (
+	github.com/NebulousLabs/fastrand v0.0.0-20181203155948-6fb6489aac4e // indirect
+	github.com/NebulousLabs/go-upnp v0.0.0-20180202185039-29b680b06c82 // indirect
+	github.com/Yawning/aez v0.0.0-20211027044916-e49e68abd344 // indirect
+	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/gofrs/uuid v4.2.0+incompatible // indirect
+	github.com/jackpal/gateway v1.0.5 // indirect
+	github.com/jackpal/go-nat-pmp v0.0.0-20170405195558-28a68d0c24ad // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/juju/clock v1.0.2 // indirect
 	github.com/juju/errors v1.0.0 // indirect
 	github.com/juju/testing v1.0.1 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
+	github.com/lightningnetwork/lnd/cert v1.1.1 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/stretchr/objx v0.2.0 // indirect
+	github.com/tv42/zbase32 v0.0.0-20160707012821-501572607d02 // indirect
+	gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec // indirect
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 )
 
 replace github.com/lightningnetwork/lnd => github.com/satimoto/lnd v0.15.2-beta.0.20221010062558-1915d31fb4d7
