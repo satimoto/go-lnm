@@ -116,6 +116,7 @@ Allow ports
 ```bash
 sudo ufw allow OpenSSH
 sudo ufw allow 9002
+sudo ufw allow 9102
 sudo ufw allow 9735
 sudo ufw allow 10009
 sudo ufw allow 50000
@@ -579,6 +580,7 @@ PBST_HTLC_RESUME_TIMEOUT=20
 BASE_FEE_MSAT=0
 FEE_RATE_PPM=10
 TIME_LOCK_DELTA=100
+METRIC_PORT=9102
 REST_PORT=9002
 RPC_PORT=50000
 SHUTDOWN_TIMEOUT=20

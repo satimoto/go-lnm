@@ -13,6 +13,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
+	"github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/internal/monitor"
 	"github.com/satimoto/go-lsp/internal/rest"
 	"github.com/satimoto/go-lsp/internal/rpc"
@@ -72,6 +73,9 @@ func startLsp(cmd *cobra.Command, args []string) {
 
 	services := service.NewService()
 	services.FerpService.Start(shutdownCtx, waitGroup)
+
+	metricService := metric.NewMetric()
+	metricService.StartMetric(shutdownCtx, waitGroup)
 
 	restService := rest.NewRest(database)
 	restService.StartRest(shutdownCtx, waitGroup)
