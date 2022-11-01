@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/joho/godotenv v1.4.0
-	github.com/lightningnetwork/lnd v0.15.3-beta
+	github.com/lightningnetwork/lnd v0.15.4-beta
 	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
 	github.com/satimoto/go-datastore v0.3.1-0.20221014172535-5cb6fc2609b6
 	google.golang.org/grpc v1.47.0
@@ -16,7 +16,7 @@ require (
 	github.com/aead/siphash v1.0.1 // indirect
 	github.com/andybalholm/brotli v1.0.3 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/btcsuite/btcd v0.23.2 // indirect
+	github.com/btcsuite/btcd v0.23.3 // indirect
 	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
 	github.com/btcsuite/btcwallet v0.15.1 // indirect
 	github.com/btcsuite/btcwallet/wallet/txauthor v1.2.3 // indirect
