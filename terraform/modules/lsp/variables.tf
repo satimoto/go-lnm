@@ -93,8 +93,13 @@ variable "route53_domain_name" {
   description = "The Route53 full domain name"
 }
 
+variable "metric_port" {
+  description = "The port to access metrics"
+  default     = 9102
+}
+
 variable "rest_port" {
-  description = "The port to access metrics and health"
+  description = "The port to access health"
   default     = 9002
 }
 

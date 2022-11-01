@@ -105,6 +105,7 @@ module "lsp" {
   ebs_throughput        = 125
   route53_zone_id       = module.subdomain_zone[count.index].route53_zone_id
   route53_domain_name   = "lsp${count.index + 1}.${data.terraform_remote_state.infrastructure.outputs.route53_zone_name}"
+  metric_port           = var.metric_port
   rest_port             = var.rest_port
   rpc_port              = var.rpc_port
   btc_p2p_port          = var.btc_p2p_port

@@ -14,6 +14,8 @@ lsp_count = 1
 
 ec2_instance_type = "t3.medium"
 
+metric_port = 9102
+
 rest_port = 9002
 
 rpc_port = 50000
