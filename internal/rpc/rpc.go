@@ -11,6 +11,7 @@ import (
 
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/internal/rpc/cdr"
 	"github.com/satimoto/go-lsp/internal/rpc/channel"
 	"github.com/satimoto/go-lsp/internal/rpc/invoice"
@@ -27,28 +28,28 @@ type Rpc interface {
 }
 
 type RpcService struct {
-	RepositoryService             *db.RepositoryService
-	Server                        *grpc.Server
-	RpcCdrResolver                *cdr.RpcCdrResolver
-	RpcChannelResolver            *channel.RpcChannelResolver
-	RpcInvoiceResolver            *invoice.RpcInvoiceResolver
-	RpcResolver                   *rpc.RpcResolver
-	RpcSessionResolver            *session.RpcSessionResolver
-	ShutdownCtx                   context.Context
+	RepositoryService  *db.RepositoryService
+	Server             *grpc.Server
+	RpcCdrResolver     *cdr.RpcCdrResolver
+	RpcChannelResolver *channel.RpcChannelResolver
+	RpcInvoiceResolver *invoice.RpcInvoiceResolver
+	RpcResolver        *rpc.RpcResolver
+	RpcSessionResolver *session.RpcSessionResolver
+	ShutdownCtx        context.Context
 }
 
 func NewRpc(shutdownCtx context.Context, d *sql.DB, services *service.ServiceResolver) Rpc {
 	repositoryService := db.NewRepositoryService(d)
 
 	return &RpcService{
-		RepositoryService:             repositoryService,
-		Server:                        grpc.NewServer(),
-		RpcCdrResolver:                cdr.NewResolver(repositoryService, services),
-		RpcChannelResolver:            channel.NewResolver(repositoryService, services),
-		RpcInvoiceResolver:            invoice.NewResolver(repositoryService, services),
-		RpcResolver:                   rpc.NewResolver(repositoryService, services),
-		RpcSessionResolver:            session.NewResolver(repositoryService, services),
-		ShutdownCtx:                   shutdownCtx,
+		RepositoryService:  repositoryService,
+		Server:             grpc.NewServer(),
+		RpcCdrResolver:     cdr.NewResolver(repositoryService, services),
+		RpcChannelResolver: channel.NewResolver(repositoryService, services),
+		RpcInvoiceResolver: invoice.NewResolver(repositoryService, services),
+		RpcResolver:        rpc.NewResolver(repositoryService, services),
+		RpcSessionResolver: session.NewResolver(repositoryService, services),
+		ShutdownCtx:        shutdownCtx,
 	}
 }
 
@@ -80,7 +81,7 @@ func (rs *RpcService) listenAndServe() {
 	ocpirpc.RegisterSessionServiceServer(rs.Server, rs.RpcSessionResolver)
 
 	err = rs.Server.Serve(listener)
-	util.LogOnError("LSP029", "Error in Rpc service", err)
+	metrics.RecordError("LSP029", "Error in Rpc service", err)
 }
 
 func (rs *RpcService) shutdown() {

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"log"
 
-	"github.com/satimoto/go-datastore/pkg/util"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-ocpi/ocpirpc"
 )
 
@@ -15,7 +15,7 @@ func (r *RpcSessionResolver) SessionCreated(ctx context.Context, input *ocpirpc.
 		session, err := r.SessionResolver.Repository.GetSessionByUid(ctx, input.SessionUid)
 
 		if err != nil {
-			util.LogOnError("LSP058", "Error retrieving session", err)
+			metrics.RecordError("LSP058", "Error retrieving session", err)
 			log.Printf("LSP058: SessionUid=%v", input.SessionUid)
 			return nil, errors.New("session not found")
 		}
@@ -34,7 +34,7 @@ func (r *RpcSessionResolver) SessionUpdated(ctx context.Context, input *ocpirpc.
 		session, err := r.SessionResolver.Repository.GetSessionByUid(ctx, input.SessionUid)
 
 		if err != nil {
-			util.LogOnError("LSP050", "Error retrieving session", err)
+			metrics.RecordError("LSP050", "Error retrieving session", err)
 			log.Printf("LSP050: SessionUid=%v", input.SessionUid)
 			return nil, errors.New("session not found")
 		}

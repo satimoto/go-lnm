@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/satimoto/go-datastore/pkg/db"
-	"github.com/satimoto/go-datastore/pkg/util"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/internal/tariff"
 )
 
@@ -80,12 +80,12 @@ func (r *SessionResolver) UpdateSession(session db.Session) {
 	/** Session status has changed.
 	 *  Send a SessionUpdate notification to the user
 	 */
-	 
+
 	ctx := context.Background()
 	user, err := r.UserResolver.Repository.GetUser(ctx, session.UserID)
 
 	if err != nil {
-		util.LogOnError("LSP051", "Error retrieving user from session", err)
+		metrics.RecordError("LSP051", "Error retrieving user from session", err)
 		log.Printf("LSP051: SessionUid=%v, UserID=%v", session.Uid, session.UserID)
 		return
 	}

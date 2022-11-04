@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	dbUtil "github.com/satimoto/go-datastore/pkg/util"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
 )
 
 func (r *CdrResolver) Startup(nodeID int64) {
@@ -12,7 +12,7 @@ func (r *CdrResolver) Startup(nodeID int64) {
 	cdrs, err := r.Repository.ListCdrsByCompletedSessionStatus(ctx, nodeID)
 
 	if err != nil {
-		dbUtil.LogOnError("LSP134", "Error listing cdrs", err)
+		metrics.RecordError("LSP134", "Error listing cdrs", err)
 		log.Printf("LSP134: NodeID=%v", nodeID)
 	}
 

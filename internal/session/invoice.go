@@ -10,8 +10,8 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
-	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/pkg/util"
 )
 
@@ -19,7 +19,7 @@ func (r *SessionResolver) IssueSessionInvoice(ctx context.Context, user db.User,
 	currencyRate, err := r.FerpService.GetRate(session.Currency)
 
 	if err != nil {
-		dbUtil.LogOnError("LSP054", "Error retrieving exchange rate", err)
+		metrics.RecordError("LSP054", "Error retrieving exchange rate", err)
 		log.Printf("LSP054: Currency=%v", session.Currency)
 		return nil
 	}
@@ -28,7 +28,7 @@ func (r *SessionResolver) IssueSessionInvoice(ctx context.Context, user db.User,
 	invoiceParams = util.FillInvoiceRequestParams(invoiceParams, rateMsat)
 
 	if !invoiceParams.TotalMsat.Valid {
-		dbUtil.LogOnError("LSP116", "Error filling request params", err)
+		metrics.RecordError("LSP116", "Error filling request params", err)
 		log.Printf("LSP116: SessionUid=%v, Params=%#v", session.Uid, invoiceParams)
 		return nil
 	}
@@ -36,7 +36,7 @@ func (r *SessionResolver) IssueSessionInvoice(ctx context.Context, user db.User,
 	preimage, err := lightningnetwork.RandomPreimage()
 
 	if err != nil {
-		dbUtil.LogOnError("LSP030", "Error creating invoice preimage", err)
+		metrics.RecordError("LSP030", "Error creating invoice preimage", err)
 		log.Printf("LSP030: SessionUid=%v", session.Uid)
 		return nil
 	}
@@ -48,7 +48,7 @@ func (r *SessionResolver) IssueSessionInvoice(ctx context.Context, user db.User,
 	})
 
 	if err != nil {
-		dbUtil.LogOnError("LSP031", "Error creating lightning invoice", err)
+		metrics.RecordError("LSP031", "Error creating lightning invoice", err)
 		log.Printf("LSP031: Preimage=%v, ValueMsat=%v", preimage.String(), invoiceParams.TotalMsat.Int64)
 		return nil
 	}
@@ -76,10 +76,21 @@ func (r *SessionResolver) IssueSessionInvoice(ctx context.Context, user db.User,
 	sessionInvoice, err := r.Repository.CreateSessionInvoice(ctx, sessionInvoiceParams)
 
 	if err != nil {
-		dbUtil.LogOnError("LSP003", "Could not create session invoice", err)
+		metrics.RecordError("LSP003", "Could not create session invoice", err)
 		log.Printf("LSP003: Params=%#v", sessionInvoiceParams)
 		return nil
 	}
+
+	// Metrics
+	metricSessionInvoicesTotal.Inc()
+	metricSessionInvoicesCommissionFiat.WithLabelValues(session.Currency).Add(sessionInvoice.CommissionFiat)
+	metricSessionInvoicesCommissionSatoshis.Add(float64(sessionInvoice.CommissionMsat / 1000))
+	metricSessionInvoicesPriceFiat.WithLabelValues(session.Currency).Add(sessionInvoice.PriceFiat)
+	metricSessionInvoicesPriceSatoshis.Add(float64(sessionInvoice.PriceMsat / 1000))
+	metricSessionInvoicesTaxFiat.WithLabelValues(session.Currency).Add(sessionInvoice.TaxFiat)
+	metricSessionInvoicesTaxSatoshis.Add(float64(sessionInvoice.TaxMsat / 1000))
+	metricSessionInvoicesTotalFiat.WithLabelValues(session.Currency).Add(sessionInvoice.TotalFiat)
+	metricSessionInvoicesTotalSatoshis.Add(float64(sessionInvoice.TotalMsat / 1000))
 
 	// TODO: handle notification failure
 	r.SendSessionInvoiceNotification(user, session, sessionInvoice)

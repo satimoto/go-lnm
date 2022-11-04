@@ -10,8 +10,8 @@ import (
 	"github.com/satimoto/go-datastore/pkg/channelrequest"
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/pendingnotification"
-	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/internal/notification"
 	"github.com/satimoto/go-lsp/internal/service"
 )
@@ -71,7 +71,7 @@ func (s *PendingNotificationMonitor) startPendingNotificationLoop() {
 				// TODO go-lsp#22: Handle application uninstall
 
 				if err != nil {
-					util.LogOnError("LSP131", "Error sending notification", err)
+					metrics.RecordError("LSP131", "Error sending notification", err)
 					log.Printf("LSP131: Message=%#v", message)
 				} else {
 					updatePendingNotificationsParams := db.UpdatePendingNotificationsParams{
@@ -82,9 +82,11 @@ func (s *PendingNotificationMonitor) startPendingNotificationLoop() {
 					err = s.PendingNotificationRepository.UpdatePendingNotifications(ctx, updatePendingNotificationsParams)
 
 					if err != nil {
-						util.LogOnError("LSP132", "Error updating pending notifications", err)
+						metrics.RecordError("LSP132", "Error updating pending notifications", err)
 						log.Printf("LSP132: Params=%#v", updatePendingNotificationsParams)
 					}
+
+					notification.RecordNotificationSent(notification.INVOICE_REQUEST, len(registrationIDs))
 				}
 			}
 		}

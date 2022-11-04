@@ -10,6 +10,7 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/lsprpc"
 )
 
@@ -18,19 +19,19 @@ func (r *RpcInvoiceResolver) UpdateInvoice(ctx context.Context, input *lsprpc.Up
 		invoiceRequest, err := r.InvoiceRequestResolver.Repository.GetInvoiceRequest(ctx, input.Id)
 
 		if err != nil {
-			dbUtil.LogOnError("LSP118", "Error retrieving invoice request", err)
+			metrics.RecordError("LSP118", "Error retrieving invoice request", err)
 			log.Printf("LSP118: Input=%#v", input)
 			return nil, errors.New("error retrieving invoice request")
 		}
 
 		if invoiceRequest.UserID != input.UserId {
-			dbUtil.LogOnError("LSP119", "Error invalid user for invoice request", err)
+			metrics.RecordError("LSP119", "Error invalid user for invoice request", err)
 			log.Printf("LSP119: Input=%#v", input)
 			return nil, errors.New("error invalid user for invoice request")
 		}
 
 		if invoiceRequest.IsSettled || invoiceRequest.PaymentRequest.Valid {
-			dbUtil.LogOnError("LSP120", "Error invoice request in progress or settled", err)
+			metrics.RecordError("LSP120", "Error invoice request in progress or settled", err)
 			log.Printf("LSP120: Input=%#v", input)
 
 			return &lsprpc.UpdateInvoiceResponse{
@@ -47,7 +48,7 @@ func (r *RpcInvoiceResolver) UpdateInvoice(ctx context.Context, input *lsprpc.Up
 		invoiceRequest, err = r.InvoiceRequestResolver.Repository.UpdateInvoiceRequest(ctx, updateInvoiceRequestParams)
 
 		if err != nil {
-			dbUtil.LogOnError("LSP121", "Error updating invoice request", err)
+			metrics.RecordError("LSP121", "Error updating invoice request", err)
 			log.Printf("LSP121: Params=%#v", updateInvoiceRequestParams)
 			return nil, errors.New("error updating invoice request")
 		}
@@ -57,14 +58,14 @@ func (r *RpcInvoiceResolver) UpdateInvoice(ctx context.Context, input *lsprpc.Up
 		})
 
 		if err != nil {
-			dbUtil.LogOnError("LSP122", "Error decoding payment request", err)
+			metrics.RecordError("LSP122", "Error decoding payment request", err)
 			log.Printf("LSP122: Input=%#v", input)
 			return nil, errors.New("error decoding payment request")
 		}
 
 		// TODO go-api#12: Allow invoice request to be split
 		if payReq.NumMsat != invoiceRequest.TotalMsat {
-			dbUtil.LogOnError("LSP123", "Error payment request amount mismatch", err)
+			metrics.RecordError("LSP123", "Error payment request amount mismatch", err)
 			log.Printf("LSP123: Input=%#v", input)
 			log.Printf("LSP123: PayReq=%#v", payReq)
 			return nil, errors.New("error payment request amount mismatch")
@@ -84,7 +85,7 @@ func (r *RpcInvoiceResolver) waitForPayment(invoiceRequest db.InvoiceRequest) {
 	})
 
 	if err != nil {
-		dbUtil.LogOnError("LSP124", "Error sending payment", err)
+		metrics.RecordError("LSP124", "Error sending payment", err)
 		log.Printf("LSP124: InvoiceRequest=%#v", invoiceRequest)
 		return
 	}
@@ -97,7 +98,7 @@ waitLoop:
 		payment, err := client.Recv()
 
 		if err != nil {
-			dbUtil.LogOnError("LSP125", "Error waiting for payment", err)
+			metrics.RecordError("LSP125", "Error waiting for payment", err)
 			log.Printf("LSP125: PaymentRequest=%v", invoiceRequest.PaymentRequest)
 			updateInvoiceRequestParams.PaymentRequest = dbUtil.SqlNullString(nil)
 			break
@@ -116,7 +117,7 @@ waitLoop:
 	_, err = r.InvoiceRequestResolver.Repository.UpdateInvoiceRequest(ctx, updateInvoiceRequestParams)
 
 	if err != nil {
-		dbUtil.LogOnError("LSP126", "Error updating invoice request", err)
+		metrics.RecordError("LSP126", "Error updating invoice request", err)
 		log.Printf("LSP126: Params=%#v", updateInvoiceRequestParams)
 	}
 }

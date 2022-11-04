@@ -16,6 +16,7 @@ import (
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/backup"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/internal/monitor/blockepoch"
 	"github.com/satimoto/go-lsp/internal/monitor/channelacceptor"
 	"github.com/satimoto/go-lsp/internal/monitor/channelbackup"
@@ -128,7 +129,7 @@ func (m *Monitor) register() error {
 		getInfoResponse, err := m.LightningService.GetInfo(&lnrpc.GetInfoRequest{})
 
 		if err != nil {
-			dbUtil.LogOnError("LSP004", "Error getting info", err)
+			metrics.RecordError("LSP004", "Error getting info", err)
 			return err
 		}
 
@@ -162,7 +163,7 @@ func (m *Monitor) register() error {
 				updatedNode, err := m.NodeRepository.UpdateNode(ctx, updateNodeParams)
 
 				if err != nil {
-					dbUtil.LogOnError("LSP075", "Error updating node", err)
+					metrics.RecordError("LSP075", "Error updating node", err)
 					log.Printf("LSP075: Params=%#v", updateNodeParams)
 				}
 
@@ -185,12 +186,14 @@ func (m *Monitor) register() error {
 				createdNode, err := m.NodeRepository.CreateNode(ctx, createNodeParams)
 
 				if err != nil {
-					dbUtil.LogOnError("LSP076", "Error creating node", err)
+					metrics.RecordError("LSP076", "Error creating node", err)
 					log.Printf("LSP076: Params=%#v", createNodeParams)
 				}
 
 				m.nodeID = createdNode.ID
 			}
+
+			channelevent.RecordChannels(uint32(numChannels))
 
 			log.Print("Registered node")
 			break

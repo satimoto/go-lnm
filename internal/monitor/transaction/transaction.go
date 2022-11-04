@@ -11,6 +11,7 @@ import (
 	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/channelrequest"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/internal/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -37,6 +38,7 @@ func (m *TransactionMonitor) StartMonitor(nodeID int64, shutdownCtx context.Cont
 	m.nodeID = nodeID
 	go m.waitForTransactions(shutdownCtx, waitGroup, transactionChan)
 	go m.subscribeTransactionInterceptions(transactionChan)
+	go m.updateWalletBalance()
 }
 
 func (m *TransactionMonitor) handleTransaction(transaction lnrpc.Transaction) {
@@ -75,13 +77,19 @@ func (m *TransactionMonitor) updateWalletBalance() {
 	walletBalance, err := m.LightningService.WalletBalance(&lnrpc.WalletBalanceRequest{})
 
 	if err != nil {
-		util.LogOnError("LSP080", "Error requesting wallet balance", err)
+		metrics.RecordError("LSP080", "Error requesting wallet balance", err)
 	}
 
 	log.Printf("TotalBalance: %v", walletBalance.TotalBalance)
 	log.Printf("ConfirmedBalance: %v", walletBalance.ConfirmedBalance)
 	log.Printf("UnconfirmedBalance: %v", walletBalance.UnconfirmedBalance)
 	log.Printf("LockedBalance: %v", walletBalance.LockedBalance)
+
+	metricWalletTotalBalanceSatoshis.Set(float64(walletBalance.TotalBalance))
+	metricWalletConfirmedBalanceSatoshis.Set(float64(walletBalance.ConfirmedBalance))
+	metricWalletUnconfirmedBalanceSatoshis.Set(float64(walletBalance.UnconfirmedBalance))
+	metricWalletLockedBalanceSatoshis.Set(float64(walletBalance.LockedBalance))
+	metricWalletReservedBalanceSatoshis.Set(float64(walletBalance.ReservedBalanceAnchorChan))
 }
 
 func (m *TransactionMonitor) waitForTransactions(shutdownCtx context.Context, waitGroup *sync.WaitGroup, transactionChan chan lnrpc.Transaction) {

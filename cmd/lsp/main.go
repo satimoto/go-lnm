@@ -74,8 +74,8 @@ func startLsp(cmd *cobra.Command, args []string) {
 	services := service.NewService()
 	services.FerpService.Start(shutdownCtx, waitGroup)
 
-	metricService := metric.NewMetric()
-	metricService.StartMetric(shutdownCtx, waitGroup)
+	metricsService := metrics.NewMetrics()
+	metricsService.StartMetrics(shutdownCtx, waitGroup)
 
 	restService := rest.NewRest(database)
 	restService.StartRest(shutdownCtx, waitGroup)

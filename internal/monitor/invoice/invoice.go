@@ -11,6 +11,7 @@ import (
 	"github.com/satimoto/go-datastore/pkg/param"
 	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/internal/service"
 	"github.com/satimoto/go-lsp/internal/session"
 	"google.golang.org/grpc/codes"
@@ -41,9 +42,11 @@ func (m *InvoiceMonitor) StartMonitor(nodeID int64, shutdownCtx context.Context,
 }
 
 func (m *InvoiceMonitor) handleInvoice(invoice lnrpc.Invoice) {
+	settled := invoice.State == lnrpc.Invoice_SETTLED
+
 	log.Print("Invoice")
 	log.Printf("PaymentRequest: %v", invoice.PaymentRequest)
-	log.Printf("Settled: %v", invoice.Settled)
+	log.Printf("Settled: %v", settled)
 
 	/** Invoice received.
 	 *  Check that the invoice is settled.
@@ -54,24 +57,27 @@ func (m *InvoiceMonitor) handleInvoice(invoice lnrpc.Invoice) {
 	ctx := context.Background()
 
 	if sessionInvoice, err := m.SessionResolver.Repository.GetSessionInvoiceByPaymentRequest(ctx, invoice.PaymentRequest); err == nil {
-		if invoice.Settled {
+		if settled {
 			// Settle session invoice
 			updateSessionInvoiceParams := param.NewUpdateSessionInvoiceParams(sessionInvoice)
-			updateSessionInvoiceParams.IsSettled = invoice.Settled
+			updateSessionInvoiceParams.IsSettled = true
 
 			_, err = m.SessionResolver.Repository.UpdateSessionInvoice(ctx, updateSessionInvoiceParams)
 
 			if err != nil {
-				util.LogOnError("LSP027", "Error updating session invoice", err)
+				metrics.RecordError("LSP027", "Error updating session invoice", err)
 				log.Printf("LSP027: Params=%#v", updateSessionInvoiceParams)
 				return
 			}
+
+			// Metrics: Increment number of settled session invoices
+			metricSessionInvoicesSettledTotal.Inc()
 
 			// Get the user from the session ID
 			user, err := m.SessionResolver.UserResolver.Repository.GetUserBySessionID(ctx, sessionInvoice.SessionID)
 
 			if err != nil {
-				util.LogOnError("LSP039", "Error retrieving session user", err)
+				metrics.RecordError("LSP039", "Error retrieving session user", err)
 				log.Printf("LSP039: SessionID=%v", sessionInvoice.SessionID)
 				return
 			}
@@ -80,7 +86,7 @@ func (m *InvoiceMonitor) handleInvoice(invoice lnrpc.Invoice) {
 			sessionInvoices, err := m.SessionResolver.Repository.ListUnsettledSessionInvoicesByUserID(ctx, user.ID)
 
 			if err != nil {
-				util.LogOnError("LSP040", "Error retrieving user unsettled session invoices", err)
+				metrics.RecordError("LSP040", "Error retrieving user unsettled session invoices", err)
 				log.Printf("LSP040: SessionID=%v, UserID=%v", sessionInvoice.SessionID, user.ID)
 				return
 			}
@@ -90,7 +96,7 @@ func (m *InvoiceMonitor) handleInvoice(invoice lnrpc.Invoice) {
 				err = m.SessionResolver.UserResolver.UnrestrictUser(ctx, user)
 
 				if err != nil {
-					util.LogOnError("LSP041", "Error unrestricting user", err)
+					metrics.RecordError("LSP041", "Error unrestricting user", err)
 					log.Printf("LSP041: SessionID=%v, UserID=%v", sessionInvoice.SessionID, user.ID)
 				}
 			}
@@ -148,9 +154,12 @@ func (m *InvoiceMonitor) waitForInvoiceExpiry(invoice lnrpc.Invoice) {
 			_, err = m.SessionResolver.Repository.UpdateSessionInvoice(ctx, updateSessionInvoiceParams)
 
 			if err != nil {
-				util.LogOnError("LSP036", "Error updating session invoice", err)
+				metrics.RecordError("LSP036", "Error updating session invoice", err)
 				log.Printf("LSP036: Params=%#v", updateSessionInvoiceParams)
 			}
+
+			// Metrics: Increment number of expired session invoices
+			metricSessionInvoicesExpiredTotal.Inc()
 		}
 	}
 }

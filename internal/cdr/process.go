@@ -10,6 +10,7 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/internal/session"
 	"github.com/satimoto/go-lsp/pkg/util"
 )
@@ -35,10 +36,12 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 			IsFlagged: true,
 		})
 
+		metricCdrsFlaggedTotal.Inc()
+
 		sessions, err := r.SessionResolver.Repository.ListInProgressSessionsByUserID(ctx, cdr.UserID)
 
 		if err != nil {
-			dbUtil.LogOnError("LSP139", "Error retrieving in progress sessions", err)
+			metrics.RecordError("LSP139", "Error retrieving in progress sessions", err)
 			log.Printf("LSP139: UserID=%v", cdr.UserID)
 			return errors.New("error retrieving in progress sessions")
 		}
@@ -60,13 +63,13 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 				log.Printf("LSP035: Stopping session %v", sess.Uid)
 				sessionParams := param.NewUpdateSessionByUidParams(sess)
 				sessionParams.Status = db.SessionStatusTypeCOMPLETED
-			
+
 				_, err = r.SessionResolver.Repository.UpdateSessionByUid(ctx, sessionParams)
 
 				r.SessionResolver.StopSession(ctx, sess)
 			}
-	
-			return errors.New("cdr AuthorizationID is nil")	
+
+			return errors.New("cdr AuthorizationID is nil")
 		}
 	}
 
@@ -74,7 +77,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 	sess, err := r.SessionResolver.Repository.GetSessionByAuthorizationID(ctx, authorizationId.String)
 
 	if err != nil {
-		dbUtil.LogOnError("LSP043", "Error retrieving cdr session", err)
+		metrics.RecordError("LSP043", "Error retrieving cdr session", err)
 		log.Printf("LSP043: CdrUid=%v, AuthorizationID=%v", cdr.Uid, authorizationId)
 		return errors.New("error retrieving cdr session")
 	}
@@ -82,7 +85,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 	user, err := r.SessionResolver.UserResolver.Repository.GetUser(ctx, sess.UserID)
 
 	if err != nil {
-		dbUtil.LogOnError("LSP044", "Error retrieving session user", err)
+		metrics.RecordError("LSP044", "Error retrieving session user", err)
 		log.Printf("LSP044: SessionUid=%v, UserID=%v", sess.Uid, sess.UserID)
 		return errors.New("error retrieving session user")
 	}
@@ -90,7 +93,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 	location, err := r.SessionResolver.LocationRepository.GetLocation(ctx, sess.LocationID)
 
 	if err != nil {
-		dbUtil.LogOnError("LSP045", "Error retrieving session location", err)
+		metrics.RecordError("LSP045", "Error retrieving session location", err)
 		log.Printf("LSP045: SessionUid=%v, LocationID=%v", sess.Uid, sess.LocationID)
 		return errors.New("error retrieving session location")
 	}
@@ -98,7 +101,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 	sessionInvoices, err := r.SessionResolver.Repository.ListSessionInvoices(ctx, sess.ID)
 
 	if err != nil {
-		dbUtil.LogOnError("LSP046", "Error retrieving session invoices", err)
+		metrics.RecordError("LSP046", "Error retrieving session invoices", err)
 		log.Printf("LSP046: SessionUid=%v", sess.Uid)
 		return errors.New("error retrieving session invoices")
 	}
@@ -115,7 +118,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 		tokenAuthorization, err := r.SessionResolver.TokenAuthorizationRepository.GetTokenAuthorizationByAuthorizationID(ctx, sess.AuthorizationID.String)
 
 		if err != nil {
-			dbUtil.LogOnError("LSP128", "Error retrieving token authorization", err)
+			metrics.RecordError("LSP128", "Error retrieving token authorization", err)
 			log.Printf("LSP128: SessionUid=%v, AuthorizationID=%v", sess.Uid, sess.AuthorizationID.String)
 			return errors.New("error retrieving token authorization")
 		}
@@ -154,7 +157,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 				_, err := r.SessionResolver.Repository.UpdateSessionByUid(ctx, updateSessionByUidParams)
 
 				if err != nil {
-					dbUtil.LogOnError("LSP117", "Error updating session", err)
+					metrics.RecordError("LSP117", "Error updating session", err)
 					log.Printf("LSP117: Params=%v", updateSessionByUidParams)
 					return errors.New("error updating session")
 				}
@@ -171,7 +174,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 	_, err = r.SessionResolver.Repository.UpdateSessionByUid(ctx, sessionParams)
 
 	if err != nil {
-		dbUtil.LogOnError("LSP133", "Error updating session", err)
+		metrics.RecordError("LSP133", "Error updating session", err)
 		log.Printf("LSP133: Params=%#v", sessionParams)
 	}
 
