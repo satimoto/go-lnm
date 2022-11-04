@@ -14,6 +14,7 @@ import (
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/channelrequest"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/internal/monitor/htlc"
 	"github.com/satimoto/go-lsp/internal/service"
 	"github.com/satimoto/go-lsp/internal/user"
@@ -85,7 +86,7 @@ func (m *ChannelEventMonitor) handleChannelEvent(channelEvent lnrpc.ChannelEvent
 			user, err := m.UserResolver.Repository.GetUser(ctx, channelRequest.UserID)
 
 			if err != nil {
-				dbUtil.LogOnError("LSP048", "Error retieving channel request user", err)
+				metrics.RecordError("LSP048", "Error retieving channel request user", err)
 				log.Printf("LSP048: ChannelRequestID=%v, UserID=%v", channelRequest.ID, channelRequest.UserID)
 				return
 			}
@@ -93,7 +94,7 @@ func (m *ChannelEventMonitor) handleChannelEvent(channelEvent lnrpc.ChannelEvent
 			err = m.UserResolver.UnrestrictUser(ctx, user)
 
 			if err != nil {
-				dbUtil.LogOnError("LSP049", "Error unrestricting user", err)
+				metrics.RecordError("LSP049", "Error unrestricting user", err)
 				log.Printf("LSP049: ChannelRequestID=%v, UserID=%v", channelRequest.ID, channelRequest.UserID)
 			}
 		}
@@ -126,27 +127,30 @@ func (m *ChannelEventMonitor) updateNode(ctx context.Context) {
 	getInfoResponse, err := m.LightningService.GetInfo(&lnrpc.GetInfoRequest{})
 
 	if err != nil {
-		dbUtil.LogOnError("LSP077", "Error getting info", err)
+		metrics.RecordError("LSP077", "Error getting info", err)
 	}
 
 	n, err := m.NodeRepository.GetNode(ctx, m.nodeID)
 
 	if err != nil {
-		dbUtil.LogOnError("LSP078", "Error getting info", err)
+		metrics.RecordError("LSP078", "Error getting info", err)
 		log.Printf("LSP078: NodeID=%v", m.nodeID)
-
 	}
 
+	numChannels := int64(getInfoResponse.NumActiveChannels + getInfoResponse.NumInactiveChannels + getInfoResponse.NumPendingChannels)
+
 	updateNodeParams := param.NewUpdateNodeParams(n)
-	updateNodeParams.Channels = int64(getInfoResponse.NumActiveChannels + getInfoResponse.NumInactiveChannels + getInfoResponse.NumPendingChannels)
+	updateNodeParams.Channels = numChannels
 	updateNodeParams.Peers = int64(getInfoResponse.NumPeers)
 
 	_, err = m.NodeRepository.UpdateNode(ctx, updateNodeParams)
 
 	if err != nil {
-		dbUtil.LogOnError("LSP079", "Error updating node", err)
+		metrics.RecordError("LSP079", "Error updating node", err)
 		log.Printf("LSP079: Params=%#v", updateNodeParams)
 	}
+
+	metricChannelsTotal.Set(float64(numChannels))
 }
 
 func (m *ChannelEventMonitor) waitForChannelEvents(shutdownCtx context.Context, waitGroup *sync.WaitGroup, channelEventChan chan lnrpc.ChannelEventUpdate) {

@@ -21,6 +21,7 @@ type MockLightningNetworkService struct {
 	fundPsbtMockData                []*walletrpc.FundPsbtResponse
 	getInfoMockData                 []*lnrpc.GetInfoResponse
 	htlcInterceptorMockData         []routerrpc.Router_HtlcInterceptorClient
+	listPeersMockData               []*lnrpc.ListPeersResponse
 	openChannelMockData             []lnrpc.Lightning_OpenChannelClient
 	openChannelSyncMockData         []*lnrpc.ChannelPoint
 	publishTransactionMockData      []*walletrpc.PublishResponse
@@ -180,6 +181,20 @@ func (s *MockLightningNetworkService) NewHtlcInterceptorMockData() (<-chan *rout
 	s.htlcInterceptorMockData = append(s.htlcInterceptorMockData, NewMockHtlcInterceptorClient(sendChan, recvChan))
 
 	return sendChan, recvChan
+}
+
+func (s *MockLightningNetworkService) ListPeers(in *lnrpc.ListPeersRequest, opts ...grpc.CallOption) (*lnrpc.ListPeersResponse, error) {
+	if len(s.listPeersMockData) == 0 {
+		return &lnrpc.ListPeersResponse{}, errors.New("NotFound")
+	}
+
+	response := s.listPeersMockData[0]
+	s.listPeersMockData = s.listPeersMockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) SetListPeersMockData(mockData *lnrpc.ListPeersResponse) {
+	s.listPeersMockData = append(s.listPeersMockData, mockData)
 }
 
 func (s *MockLightningNetworkService) OpenChannel(in *lnrpc.OpenChannelRequest, opts ...grpc.CallOption) (lnrpc.Lightning_OpenChannelClient, error) {

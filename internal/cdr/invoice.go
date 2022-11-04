@@ -10,6 +10,7 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/internal/notification"
 	"github.com/satimoto/go-lsp/pkg/util"
 )
@@ -18,7 +19,7 @@ func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, pro
 	currencyRate, err := r.FerpService.GetRate(currency)
 
 	if err != nil {
-		dbUtil.LogOnError("LSP111", "Error retrieving exchange rate", err)
+		metrics.RecordError("LSP111", "Error retrieving exchange rate", err)
 		log.Printf("LSP111: Currency=%v", currency)
 		return nil, errors.New("error retrieving exchange rate")
 	}
@@ -26,7 +27,7 @@ func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, pro
 	user, err := r.SessionResolver.UserResolver.Repository.GetUser(ctx, userID)
 
 	if err != nil {
-		dbUtil.LogOnError("LSP112", "Error retrieving user", err)
+		metrics.RecordError("LSP112", "Error retrieving user", err)
 		log.Printf("LSP112: UserID=%v", userID)
 		return nil, errors.New("error retrieving user")
 	}
@@ -34,7 +35,7 @@ func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, pro
 	promotion, err := r.PromotionRepository.GetPromotionByCode(ctx, promotionCode)
 
 	if err != nil {
-		dbUtil.LogOnError("LSP113", "Error retrieving promotion", err)
+		metrics.RecordError("LSP113", "Error retrieving promotion", err)
 		log.Printf("LSP113: Code=%v", promotionCode)
 		return nil, errors.New("error retrieving promotion")
 	}
@@ -64,7 +65,7 @@ func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, pro
 		invoiceRequest, err = r.InvoiceRequestRepository.UpdateInvoiceRequest(ctx, updateInvoiceRequestParams)
 
 		if err != nil {
-			dbUtil.LogOnError("LSP114", "Error updating invoice request", err)
+			metrics.RecordError("LSP114", "Error updating invoice request", err)
 			log.Printf("LSP114: Params=%#v", updateInvoiceRequestParams)
 			return nil, errors.New("error updating invoice request")
 		}
@@ -89,7 +90,7 @@ func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, pro
 		invoiceRequest, err = r.InvoiceRequestRepository.CreateInvoiceRequest(ctx, createInvoiceRequestParams)
 
 		if err != nil {
-			dbUtil.LogOnError("LSP115", "Error creating invoice request", err)
+			metrics.RecordError("LSP115", "Error creating invoice request", err)
 			log.Printf("LSP115: Params=%#v", createInvoiceRequestParams)
 			return nil, errors.New("error creating invoice request")
 		}
@@ -102,22 +103,34 @@ func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, pro
 		}
 
 		createPendingNotificationParams := db.CreatePendingNotificationParams{
-			UserID: user.ID,
-			NodeID: user.NodeID.Int64,
+			UserID:           user.ID,
+			NodeID:           user.NodeID.Int64,
 			InvoiceRequestID: dbUtil.SqlNullInt64(invoiceRequest.ID),
-			DeviceToken: user.DeviceToken,
-			Type: notification.INVOICE_REQUEST,
-			SendDate: sendDate.Add(time.Hour * 24),
+			DeviceToken:      user.DeviceToken,
+			Type:             notification.INVOICE_REQUEST,
+			SendDate:         sendDate.Add(time.Hour * 24),
 		}
 
 		_, err := r.PendingNotificationRepository.CreatePendingNotification(ctx, createPendingNotificationParams)
 
 		if err != nil {
-			dbUtil.LogOnError("LSP130", "Error creating pending notification", err)
+			metrics.RecordError("LSP130", "Error creating pending notification", err)
 			log.Printf("LSP130: Params=%#v", createPendingNotificationParams)
 			return nil, errors.New("error creating pending notification")
 		}
+
+		metricInvoiceRequestsTotal.Inc()
 	}
+
+	// Metrics
+	metricInvoiceRequestsCommissionFiat.WithLabelValues(currency).Add(invoiceParams.CommissionFiat.Float64)
+	metricInvoiceRequestsCommissionSatoshis.Add(float64(invoiceParams.CommissionMsat.Int64 / 1000))
+	metricInvoiceRequestsPriceFiat.WithLabelValues(currency).Add(invoiceParams.PriceFiat.Float64)
+	metricInvoiceRequestsPriceSatoshis.Add(float64(invoiceParams.PriceMsat.Int64 / 1000))
+	metricInvoiceRequestsTaxFiat.WithLabelValues(currency).Add(invoiceParams.TaxFiat.Float64)
+	metricInvoiceRequestsTaxSatoshis.Add(float64(invoiceParams.TaxMsat.Int64 / 1000))
+	metricInvoiceRequestsTotalFiat.WithLabelValues(currency).Add(invoiceRequest.TotalFiat)
+	metricInvoiceRequestsTotalSatoshis.Add(float64(invoiceParams.TotalMsat.Int64 / 1000))
 
 	return &invoiceRequest, nil
 }

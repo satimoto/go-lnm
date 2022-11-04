@@ -7,6 +7,7 @@ import (
 
 	"github.com/satimoto/go-datastore/pkg/db"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/internal/tariff"
 	"github.com/satimoto/go-lsp/pkg/util"
 	"github.com/satimoto/go-ocpi/ocpirpc"
@@ -20,6 +21,9 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 	 *  Periodically calculate session total, issue an invoice to the user.
 	 *  Monitor issued invoices, if invoices go unpaid, cancel session.
 	 */
+
+	metricSessionMonitoringGoroutines.Inc()
+	defer metricSessionMonitoringGoroutines.Dec()
 
 	ctx := context.Background()
 
@@ -36,6 +40,8 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 			IsFlagged: true,
 		})
 
+		metricSessionsFlaggedTotal.Inc()
+
 		r.StopSession(ctx, session)
 		return
 	}
@@ -43,7 +49,7 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 	user, err := r.UserResolver.Repository.GetUser(ctx, session.UserID)
 
 	if err != nil {
-		dbUtil.LogOnError("LSP037", "Error retrieving user from session", err)
+		metrics.RecordError("LSP037", "Error retrieving user from session", err)
 		log.Printf("LSP037: SessionUid=%v, UserID=%v", session.Uid, session.UserID)
 		r.StopSession(ctx, session)
 		return
@@ -52,7 +58,7 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 	connector, err := r.LocationRepository.GetConnector(ctx, session.ConnectorID)
 
 	if err != nil {
-		dbUtil.LogOnError("LSP001", "Error retrieving session connector", err)
+		metrics.RecordError("LSP001", "Error retrieving session connector", err)
 		log.Printf("LSP001: SessionUid=%v, ConnectorID=%v", session.Uid, session.ConnectorID)
 		r.StopSession(ctx, session)
 		return
@@ -63,7 +69,7 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 	tokenAuthorization, err := r.TokenAuthorizationRepository.GetTokenAuthorizationByAuthorizationID(ctx, session.AuthorizationID.String)
 
 	if err != nil {
-		dbUtil.LogOnError("LSP127", "Error retrieving token authorization", err)
+		metrics.RecordError("LSP127", "Error retrieving token authorization", err)
 		log.Printf("LSP127: SessionUid=%v, AuthorizationID=%v", session.Uid, session.AuthorizationID.String)
 		r.StopSession(ctx, session)
 		return
@@ -81,7 +87,7 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 		tariff, err := r.TariffResolver.Repository.GetTariffByUid(ctx, connector.TariffID.String)
 
 		if err != nil {
-			dbUtil.LogOnError("LSP002", "Error retrieving session tariff", err)
+			metrics.RecordError("LSP002", "Error retrieving session tariff", err)
 			log.Printf("LSP002: SessionUid=%v, TariffID=%v", session.Uid, connector.TariffID.String)
 			return
 		}
@@ -90,7 +96,7 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 		location, err := r.LocationRepository.GetLocation(ctx, session.LocationID)
 
 		if err != nil {
-			dbUtil.LogOnError("LSP038", "Error retrieving session location", err)
+			metrics.RecordError("LSP038", "Error retrieving session location", err)
 			log.Printf("LSP038: SessionUid=%v, LocationID=%v", session.Uid, session.LocationID)
 			return
 		}
@@ -108,7 +114,7 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 			session, err = r.Repository.GetSessionByUid(ctx, session.Uid)
 
 			if err != nil {
-				dbUtil.LogOnError("LSP032", "Error retrieving session", err)
+				metrics.RecordError("LSP032", "Error retrieving session", err)
 				log.Printf("LSP032: SessionUid=%v", session.Uid)
 				continue
 			}
@@ -133,7 +139,7 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 	sessionInvoices, err := r.Repository.ListSessionInvoices(ctx, session.ID)
 
 	if err != nil {
-		dbUtil.LogOnError("LSP033", "Error retrieving session invoices", err)
+		metrics.RecordError("LSP033", "Error retrieving session invoices", err)
 		log.Printf("LSP033: SessionUid=%v", session.Uid)
 		return true
 	}
@@ -149,7 +155,7 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 		err = r.UserResolver.RestrictUser(ctx, user)
 
 		if err != nil {
-			dbUtil.LogOnError("LSP042", "Error restricting user", err)
+			metrics.RecordError("LSP042", "Error restricting user", err)
 			log.Printf("LSP042: SessionUID=%v, UserID=%v", session.Uid, session.UserID)
 		}
 
