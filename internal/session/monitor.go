@@ -2,10 +2,12 @@ package session
 
 import (
 	"context"
+	"errors"
 	"log"
 	"time"
 
 	"github.com/satimoto/go-datastore/pkg/db"
+	"github.com/satimoto/go-datastore/pkg/param"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/internal/tariff"
@@ -28,22 +30,31 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 	ctx := context.Background()
 
 	if !session.AuthorizationID.Valid {
-		// There is no AuthorizationID set, stop the session.
-		// The session could be monitored, but cannot be invoiced as the
-		// associated token authorization with the signing key cannot be
-		// retrieved. Flag the cdr to be looked at later.
-		log.Printf("LSP137: Session AuthorizationID is nil")
+		// There is no AuthorizationID set, flag the session.
+		metrics.RecordError("LSP137", "Error in session", errors.New("authorizationID is nil"))
 		log.Printf("LSP137: SessionUid=%v", session.Uid)
+		
+		// Get the last token authorization for the session token
+		tokenAuthorization, err := r.TokenAuthorizationRepository.GetLastTokenAuthorizationByTokenID(ctx, session.TokenID)
 
-		r.Repository.UpdateSessionIsFlaggedByUid(ctx, db.UpdateSessionIsFlaggedByUidParams{
-			Uid:       session.Uid,
-			IsFlagged: true,
-		})
+		if err != nil {
+			// No last token authorization found
+			metrics.RecordError("LSP136", "Error last token authorization not found", err)
+			log.Printf("LSP136: SessionUid=%v, TokenID=%v", session.Uid, session.TokenID)	
+			r.StopSession(ctx, session)
+			return
+		}
 
-		metricSessionsFlaggedTotal.Inc()
+		// Manually set the session authorizationID
+		updateSessionByUidParams := param.NewUpdateSessionByUidParams(session)
+		updateSessionByUidParams.AuthorizationID = dbUtil.SqlNullString(tokenAuthorization.AuthorizationID)
+		updateSessionByUidParams.IsFlagged = true
 
-		r.StopSession(ctx, session)
-		return
+		if updatedSession, err := r.Repository.UpdateSessionByUid(ctx, updateSessionByUidParams); err == nil {
+			session = updatedSession
+		}
+
+		RecordFlaggedSession()
 	}
 
 	user, err := r.UserResolver.Repository.GetUser(ctx, session.UserID)
@@ -64,8 +75,6 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 		return
 	}
 
-	// TODO: Find an alternative way to get TokenAuthorization if Session has no AuthorizationID set.
-	//       Maybe last TokenAuthorization created by TokenID
 	tokenAuthorization, err := r.TokenAuthorizationRepository.GetTokenAuthorizationByAuthorizationID(ctx, session.AuthorizationID.String)
 
 	if err != nil {
@@ -153,12 +162,6 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 	}
 
 	if hasUnsettledInvoices(sessionInvoices) {
-		// Kill session
-		// Suspend tokens until balance is settled
-		// TODO: handle expired invoices, reissue invoices on request
-		log.Printf("Session %s has unsettled invoices, stopping the session", session.Uid)
-		r.StopSession(ctx, session)
-
 		// Lock user tokens until all session invoices are settled
 		err = r.UserResolver.RestrictUser(ctx, user)
 
@@ -167,8 +170,15 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 			log.Printf("LSP042: SessionUID=%v, UserID=%v", session.Uid, session.UserID)
 		}
 
-		// End invoice loop
-		return false
+		if session.AuthMethod == db.AuthMethodTypeAUTHREQUEST {
+			// Kill session
+			// TODO: handle expired invoices, reissue invoices on request
+			log.Printf("Session %s has unsettled invoices, stopping the session", session.Uid)
+			r.StopSession(ctx, session)
+
+			// End invoice loop, let the cdr settle the session
+			return false
+		}
 	}
 
 	priceFiat, _ := CalculatePriceInvoiced(sessionInvoices)
@@ -190,8 +200,23 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 	return true
 }
 
-func (r *SessionResolver) StopSession(ctx context.Context, session db.Session) (*ocpirpc.StopSessionResponse, error) {
-	return r.OcpiService.StopSession(ctx, &ocpirpc.StopSessionRequest{
-		SessionUid: session.Uid,
+func (r *SessionResolver) FlagSession(ctx context.Context, session db.Session) {
+	r.Repository.UpdateSessionIsFlaggedByUid(ctx, db.UpdateSessionIsFlaggedByUidParams{
+		Uid:       session.Uid,
+		IsFlagged: true,
 	})
+
+	RecordFlaggedSession()
+}
+
+func (r *SessionResolver) StopSession(ctx context.Context, session db.Session) (*ocpirpc.StopSessionResponse, error) {
+	r.FlagSession(ctx, session)
+
+	if session.AuthMethod == db.AuthMethodTypeAUTHREQUEST {
+		return r.OcpiService.StopSession(ctx, &ocpirpc.StopSessionRequest{
+			SessionUid: session.Uid,
+		})
+	}
+
+	return nil, errors.New("cannot remotely stop this session")
 }
