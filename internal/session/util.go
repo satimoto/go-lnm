@@ -79,9 +79,10 @@ func getPriceComponentByType(priceComponents []*tariff.PriceComponentIto, tariff
 	return nil
 }
 
-func getPriceComponents(elements []*tariff.ElementIto, startDatetime time.Time, endDatetime time.Time, energy float64, minPower float64, maxPower float64) []*tariff.PriceComponentIto {
+func getPriceComponents(elements []*tariff.ElementIto, timeLocation *time.Location, startDatetime time.Time, endDatetime time.Time, energy float64, minPower float64, maxPower float64) []*tariff.PriceComponentIto {
 	list := []*tariff.PriceComponentIto{}
-	weekday := strings.ToUpper(startDatetime.Weekday().String())
+	startDatetimeAtLocation := startDatetime.In(timeLocation)
+	weekday := strings.ToUpper(startDatetimeAtLocation.Weekday().String())
 	duration := int32(endDatetime.Sub(startDatetime).Seconds())
 
 	for _, element := range elements {
@@ -89,15 +90,15 @@ func getPriceComponents(elements []*tariff.ElementIto, startDatetime time.Time, 
 			list = append(list, element.PriceComponents...)
 		} else {
 			restrictions := element.Restrictions
-			restrictionStartTime := parseTimeOfDay(restrictions.StartTime, startDatetime)
-			restrictionStartDate := parseDate(restrictions.StartDate, startDatetime)
-			restrictionEndTime := parseTimeOfDay(restrictions.EndTime, startDatetime)
-			restrictionEndDate := parseDate(restrictions.EndDate, startDatetime)
+			restrictionStartTime := parseTimeOfDay(restrictions.StartTime, timeLocation, startDatetimeAtLocation)
+			restrictionStartDate := parseDate(restrictions.StartDate, startDatetimeAtLocation)
+			restrictionEndTime := parseTimeOfDay(restrictions.EndTime, timeLocation, startDatetimeAtLocation)
+			restrictionEndDate := parseDate(restrictions.EndDate, startDatetimeAtLocation)
 
-			if (restrictionStartTime == nil || startDatetime.After(*restrictionStartTime)) &&
-				(restrictionEndTime == nil || startDatetime.Before(*restrictionEndTime)) &&
-				(restrictionStartDate == nil || startDatetime.After(*restrictionStartDate)) &&
-				(restrictionEndDate == nil || startDatetime.Before(*restrictionEndDate)) &&
+			if (restrictionStartTime == nil || startDatetimeAtLocation.After(*restrictionStartTime)) &&
+				(restrictionEndTime == nil || startDatetimeAtLocation.Before(*restrictionEndTime)) &&
+				(restrictionStartDate == nil || startDatetimeAtLocation.After(*restrictionStartDate)) &&
+				(restrictionEndDate == nil || startDatetimeAtLocation.Before(*restrictionEndDate)) &&
 				(restrictions.MinKwh == nil || energy >= *restrictions.MinKwh) &&
 				(restrictions.MaxKwh == nil || (energy > 0 && energy < *restrictions.MaxKwh)) &&
 				(restrictions.MinPower == nil || minPower >= *restrictions.MinPower) &&
@@ -135,7 +136,7 @@ func parseDate(dateStr *string, datetime time.Time) *time.Time {
 	return nil
 }
 
-func parseTimeOfDay(timeStr *string, datetime time.Time) *time.Time {
+func parseTimeOfDay(timeStr *string, timeLocation *time.Location, datetime time.Time) *time.Time {
 	if timeStr != nil {
 		splitTime := strings.Split(*timeStr, ":")
 		date := time.Date(

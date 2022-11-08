@@ -41,8 +41,9 @@ type PriceComponentRoundingIto struct {
 }
 
 type TariffIto struct {
-	Elements    []*ElementIto         `json:"elements"`
-	Restriction *TariffRestrictionIto `json:"restriction,omitempty"`
+	Elements                 []*ElementIto         `json:"elements"`
+	Restriction              *TariffRestrictionIto `json:"restriction,omitempty"`
+	IsIntermediateCdrCapable bool                  `json:"isIntermediateCdrCapable"`
 }
 
 type TariffRestrictionIto struct {
@@ -158,7 +159,9 @@ func (r *TariffResolver) CreatePriceComponentRoundingIto(ctx context.Context, pr
 }
 
 func (r *TariffResolver) CreateTariffIto(ctx context.Context, tariff db.Tariff) *TariffIto {
-	tariffIto := &TariffIto{}
+	tariffIto := &TariffIto{
+		IsIntermediateCdrCapable: tariff.IsIntermediateCdrCapable,
+	}
 
 	if elements, err := r.Repository.ListElements(ctx, tariff.ID); err == nil {
 		tariffIto.Elements = r.CreateElementListIto(ctx, elements)
