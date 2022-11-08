@@ -101,6 +101,14 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 			return
 		}
 
+		timeLocation, err := time.LoadLocation(location.TimeZone.String)
+
+		if err != nil {
+			metrics.RecordError("LSP005", "Error loading time location", err)
+			log.Printf("LSP005: TimeZone=%v", location.TimeZone.String)
+			timeLocation, err = time.LoadLocation("UTC")
+		}
+
 		taxPercent := r.CountryAccountResolver.GetTaxPercentByCountry(ctx, location.Country, dbUtil.GetEnvFloat64("DEFAULT_TAX_PERCENT", 19))
 		invoiceInterval := calculateInvoiceInterval(connector.Wattage)
 		log.Printf("Monitor session for %s, running every %v seconds", session.Uid, invoiceInterval/time.Second)
@@ -126,7 +134,7 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 				break invoiceLoop
 			case db.SessionStatusTypeACTIVE:
 				// Session is active, calculate new invoice
-				if ok := r.processInvoicePeriod(ctx, user, session, tokenAuthorization, tariffIto, taxPercent); !ok {
+				if ok := r.processInvoicePeriod(ctx, user, session, tokenAuthorization, timeLocation, tariffIto, connector.Wattage, taxPercent); !ok {
 					log.Printf("Ending session monitoring for %s with errors", session.Uid)
 					break invoiceLoop
 				}
@@ -135,7 +143,7 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 	}
 }
 
-func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User, session db.Session, tokenAuthorization db.TokenAuthorization, tariffIto *tariff.TariffIto, taxPercent float64) bool {
+func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User, session db.Session, tokenAuthorization db.TokenAuthorization, timeLocation *time.Location, tariffIto *tariff.TariffIto, connectorWattage int32, taxPercent float64) bool {
 	sessionInvoices, err := r.Repository.ListSessionInvoices(ctx, session.ID)
 
 	if err != nil {
@@ -165,7 +173,7 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 
 	priceFiat, _ := CalculatePriceInvoiced(sessionInvoices)
 	sessionIto := r.CreateSessionIto(ctx, session)
-	sessionFiat := r.ProcessChargingPeriods(sessionIto, tariffIto, time.Now().UTC())
+	sessionFiat := r.ProcessChargingPeriods(sessionIto, tariffIto, connectorWattage, timeLocation, time.Now().UTC())
 
 	if sessionFiat > priceFiat {
 		invoicePriceFiat := sessionFiat - priceFiat

@@ -2,14 +2,15 @@ package session_test
 
 import (
 	"encoding/json"
+	"time"
 
 	dbMocks "github.com/satimoto/go-datastore/pkg/db/mocks"
 	"github.com/satimoto/go-datastore/pkg/util"
 	ferpMocks "github.com/satimoto/go-lsp/internal/ferp/mocks"
 	lightningnetworkMocks "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
 	notificationMocks "github.com/satimoto/go-lsp/internal/notification/mocks"
-	"github.com/satimoto/go-lsp/internal/session"
 	serviceMocks "github.com/satimoto/go-lsp/internal/service/mocks"
+	"github.com/satimoto/go-lsp/internal/session"
 	sessionsMocks "github.com/satimoto/go-lsp/internal/session/mocks"
 	"github.com/satimoto/go-lsp/internal/tariff"
 	ocpiMocks "github.com/satimoto/go-ocpi/pkg/ocpi/mocks"
@@ -19,15 +20,71 @@ import (
 
 func TestProcessChargingPeriods(t *testing.T) {
 	cases := []struct {
-		desc    string
-		session []byte
-		tariff  []byte
-		date    string
-		value   float64
+		desc     string
+		session  []byte
+		tariff   []byte
+		wattage  int32
+		location string
+		date     string
+		value    float64
 	}{
 		{
-			"Simple",
-			[]byte(`{
+			desc: "No periods - time",
+			session: []byte(`{
+				"start_datetime": "2015-06-29T21:39:09Z",
+				"kwh": 0.00,
+				"currency": "EUR",
+				"charging_periods": [],
+				"total_cost": 0,
+				"status": "ACTIVE",
+				"last_updated": "2015-06-29T23:37:32Z"
+			}`),
+			tariff: []byte(`{
+				"elements": [{
+					"price_components": [{
+						"type": "TIME",
+						"price": 2.00,
+						"step_size": 300
+					}]
+				}]
+			}`),
+			wattage:  11040,
+			location: "Europe/Berlin",
+			date:     "2015-06-29T23:37:32Z",
+			value:    4,
+		}, {
+			desc: "No periods - time and energy",
+			session: []byte(`{
+				"start_datetime": "2015-06-29T21:39:09Z",
+				"kwh": 0.00,
+				"currency": "EUR",
+				"charging_periods": [],
+				"total_cost": 0,
+				"status": "ACTIVE",
+				"last_updated": "2015-06-29T23:37:32Z"
+			}`),
+			tariff: []byte(`{
+				"elements": [{
+					"price_components": [{
+						"type": "TIME",
+						"price": 2.00,
+						"step_size": 300
+					}]
+				}, {
+					"price_components": [{
+						"type": "ENERGY",
+						"price": 0.30,
+						"step_size": 1
+					}]
+				}]
+			}`),
+			wattage:  11040,
+			location: "Europe/Berlin",
+			date:     "2015-06-29T23:37:32Z",
+			value:    10.6,
+		}, {
+			desc: "Simple",
+			session: []byte(`{
 				"start_datetime": "2015-06-29T21:39:09Z",
 				"kwh": 0.00,
 				"currency": "EUR",
@@ -42,7 +99,7 @@ func TestProcessChargingPeriods(t *testing.T) {
 				"status": "ACTIVE",
 				"last_updated": "2015-06-29T23:37:32Z"
 			}`),
-			[]byte(`{
+			tariff: []byte(`{
 				"elements": [{
 					"price_components": [{
 						"type": "TIME",
@@ -51,11 +108,13 @@ func TestProcessChargingPeriods(t *testing.T) {
 					}]
 				}]
 			}`),
-			"2015-06-29T23:37:32Z",
-			4,
+			wattage:  11040,
+			location: "Europe/Berlin",
+			date:     "2015-06-29T23:37:32Z",
+			value:    4,
 		}, {
-			"Simple",
-			[]byte(`{
+			desc: "Simple",
+			session: []byte(`{
 				"start_datetime": "2015-06-29T21:39:09Z",
 				"kwh": 0.00,
 				"currency": "EUR",
@@ -70,7 +129,7 @@ func TestProcessChargingPeriods(t *testing.T) {
 				"status": "ACTIVE",
 				"last_updated": "2015-06-29T23:37:32Z"
 			}`),
-			[]byte(`{
+			tariff: []byte(`{
 				"elements": [{
 					"price_components": [{
 						"type": "TIME",
@@ -79,11 +138,13 @@ func TestProcessChargingPeriods(t *testing.T) {
 					}]
 				}]
 			}`),
-			"2015-06-30T00:07:32Z",
-			5,
+			wattage:  11040,
+			location: "Europe/Berlin",
+			date:     "2015-06-30T00:07:32Z",
+			value:    5,
 		}, {
-			"Simple",
-			[]byte(`{
+			desc: "Simple",
+			session: []byte(`{
 				"start_datetime": "2015-06-29T22:39:09Z",
 				"end_datetime": "2015-06-29T23:50:16Z",
 				"kwh": 41.00,
@@ -117,7 +178,7 @@ func TestProcessChargingPeriods(t *testing.T) {
 				"status": "COMPLETED",
 				"last_updated": "2015-06-29T23:09:10Z"
 			}`),
-			[]byte(`{
+			tariff: []byte(`{
 				"elements": [{
 					"price_components": [{
 						"type": "FLAT",
@@ -177,8 +238,10 @@ func TestProcessChargingPeriods(t *testing.T) {
 					}
 				}]
 			}`),
-			"2015-06-30T00:07:32Z",
-			14.22,
+			wattage:  11040,
+			location: "Europe/Berlin",
+			date:     "2015-06-30T00:07:32Z",
+			value:    14.22,
 		},
 	}
 
@@ -198,8 +261,10 @@ func TestProcessChargingPeriods(t *testing.T) {
 			tariffIto := tariff.TariffIto{}
 			json.Unmarshal(tc.tariff, &tariffIto)
 
+			timeLocation, _ := time.LoadLocation(tc.location)
+
 			processTime := util.ParseTime(tc.date, nil)
-			value := sessionResolver.ProcessChargingPeriods(&sessionIto, &tariffIto, *processTime)
+			value := sessionResolver.ProcessChargingPeriods(&sessionIto, &tariffIto, tc.wattage, timeLocation, *processTime)
 
 			if value != tc.value {
 				t.Errorf("Value mismatch: %v expecting %v", value, tc.value)
@@ -226,15 +291,17 @@ func TestProcessChargingPeriods2(t *testing.T) {
 	}`)
 
 	cases := []struct {
-		desc    string
-		session []byte
-		tariff  []byte
-		date    string
-		value   float64
+		desc     string
+		session  []byte
+		tariff   []byte
+		wattage  int32
+		location string
+		date     string
+		value    float64
 	}{
 		{
-			"Simple",
-			[]byte(`{
+			desc: "Simple",
+			session: []byte(`{
 				"start_datetime": "2015-06-29T21:00:00Z",
 				"kwh": 0.00,
 				"currency": "EUR",
@@ -243,12 +310,14 @@ func TestProcessChargingPeriods2(t *testing.T) {
 				"status": "ACTIVE",
 				"last_updated": "2015-06-29T21:00:00Z"
 			}`),
-			tariffBytes,
-			"2015-06-29T21:00:00Z",
-			2.5,
+			tariff:   tariffBytes,
+			wattage: 11040,
+			location: "Europe/Berlin",
+			date:     "2015-06-29T21:00:00Z",
+			value:    2.5,
 		}, {
-			"Simple",
-			[]byte(`{
+			desc: "Simple",
+			session: []byte(`{
 				"start_datetime": "2015-06-29T21:00:00Z",
 				"kwh": 0.00,
 				"currency": "EUR",
@@ -263,12 +332,14 @@ func TestProcessChargingPeriods2(t *testing.T) {
 				"status": "ACTIVE",
 				"last_updated": "2015-06-29T21:02:00Z"
 			}`),
-			tariffBytes,
-			"2015-06-29T21:02:00Z",
-			2.667,
+			tariff:   tariffBytes,
+			wattage: 11040,
+			location: "Europe/Berlin",
+			date:     "2015-06-29T21:02:00Z",
+			value:    2.667,
 		}, {
-			"Simple",
-			[]byte(`{
+			desc: "Simple",
+			session: []byte(`{
 				"start_datetime": "2015-06-29T21:00:00Z",
 				"kwh": 0.00,
 				"currency": "EUR",
@@ -283,12 +354,14 @@ func TestProcessChargingPeriods2(t *testing.T) {
 				"status": "ACTIVE",
 				"last_updated": "2015-06-29T21:02:00Z"
 			}`),
-			tariffBytes,
-			"2015-06-29T21:03:00Z",
-			2.667,
+			tariff:   tariffBytes,
+			wattage: 11040,
+			location: "Europe/Berlin",
+			date:     "2015-06-29T21:03:00Z",
+			value:    2.667,
 		}, {
-			"Simple",
-			[]byte(`{
+			desc: "Simple",
+			session: []byte(`{
 				"start_datetime": "2015-06-29T21:00:00Z",
 				"kwh": 0.00,
 				"currency": "EUR",
@@ -303,12 +376,14 @@ func TestProcessChargingPeriods2(t *testing.T) {
 				"status": "ACTIVE",
 				"last_updated": "2015-06-29T21:02:00Z"
 			}`),
-			tariffBytes,
-			"2015-06-29T21:07:00Z",
-			2.833,
+			tariff:   tariffBytes,
+			wattage: 11040,
+			location: "Europe/Berlin",
+			date:     "2015-06-29T21:07:00Z",
+			value:    2.833,
 		}, {
-			"Simple",
-			[]byte(`{
+			desc: "Simple",
+			session: []byte(`{
 				"start_datetime": "2015-06-29T21:00:00Z",
 				"kwh": 0.00,
 				"currency": "EUR",
@@ -323,12 +398,14 @@ func TestProcessChargingPeriods2(t *testing.T) {
 				"status": "ACTIVE",
 				"last_updated": "2015-06-29T21:02:00Z"
 			}`),
-			tariffBytes,
-			"2015-06-29T22:02:00Z",
-			4.5,
+			tariff:   tariffBytes,
+			wattage: 11040,
+			location: "Europe/Berlin",
+			date:     "2015-06-29T22:02:00Z",
+			value:    4.5,
 		}, {
-			"Simple",
-			[]byte(`{
+			desc: "Simple",
+			session: []byte(`{
 				"start_datetime": "2015-06-29T21:00:00Z",
 				"kwh": 0.00,
 				"currency": "EUR",
@@ -343,9 +420,11 @@ func TestProcessChargingPeriods2(t *testing.T) {
 				"status": "ACTIVE",
 				"last_updated": "2015-06-29T22:01:00Z"
 			}`),
-			tariffBytes,
-			"2015-06-29T22:02:00Z",
-			4.667,
+			tariff:   tariffBytes,
+			wattage: 11040,
+			location: "Europe/Berlin",
+			date:     "2015-06-29T22:02:00Z",
+			value:    4.667,
 		},
 	}
 
@@ -365,8 +444,10 @@ func TestProcessChargingPeriods2(t *testing.T) {
 			tariffIto := tariff.TariffIto{}
 			json.Unmarshal(tc.tariff, &tariffIto)
 
+			timeLocation, _ := time.LoadLocation(tc.location)
+
 			processTime := util.ParseTime(tc.date, nil)
-			value := sessionResolver.ProcessChargingPeriods(&sessionIto, &tariffIto, *processTime)
+			value := sessionResolver.ProcessChargingPeriods(&sessionIto, &tariffIto, tc.wattage, timeLocation, *processTime)
 
 			if value != tc.value {
 				t.Errorf("Value mismatch: %v expecting %v", value, tc.value)

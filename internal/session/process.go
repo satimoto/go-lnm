@@ -10,7 +10,7 @@ import (
 	"github.com/satimoto/go-lsp/internal/tariff"
 )
 
-func (r *SessionResolver) ProcessChargingPeriods(sessionIto *SessionIto, tariffIto *tariff.TariffIto, processDatetime time.Time) float64 {
+func (r *SessionResolver) ProcessChargingPeriods(sessionIto *SessionIto, tariffIto *tariff.TariffIto, connectorWattage int32, timeLocation *time.Location, processDatetime time.Time) float64 {
 	totalAmount := float64(0)
 	lastDatetime := sessionIto.LastUpdated
 	numChargingPeriods := len(sessionIto.ChargingPeriods)
@@ -19,57 +19,87 @@ func (r *SessionResolver) ProcessChargingPeriods(sessionIto *SessionIto, tariffI
 		processDatetime = *sessionIto.EndDatetime
 	}
 
-	priceComponents := getPriceComponents(tariffIto.Elements, sessionIto.StartDatetime, processDatetime, 0, 0, 0)
+	priceComponents := getPriceComponents(tariffIto.Elements, timeLocation, sessionIto.StartDatetime, processDatetime, 0, 0, 0)
 	flatPriceComponent := getPriceComponentByType(priceComponents, db.TariffDimensionFLAT)
 
 	if flatPriceComponent != nil {
 		totalAmount += flatPriceComponent.Price
 	}
 
-	for i, chargingPeriod := range sessionIto.ChargingPeriods {
-		startDatetime := chargingPeriod.StartDateTime
-		endDatetime := lastDatetime
-		energyVolume := getVolumeByType(chargingPeriod.Dimensions, db.ChargingPeriodDimensionTypeENERGY)
-		minPowerVolume := getVolumeByType(chargingPeriod.Dimensions, db.ChargingPeriodDimensionTypeMINCURRENT)
-		maxPowerVolume := getVolumeByType(chargingPeriod.Dimensions, db.ChargingPeriodDimensionTypeMAXCURRENT)
-		parkingTimeVolume := getVolumeByType(chargingPeriod.Dimensions, db.ChargingPeriodDimensionTypePARKINGTIME)
-		timeVolume := getVolumeByType(chargingPeriod.Dimensions, db.ChargingPeriodDimensionTypeTIME)
+	if numChargingPeriods == 0 {
+		// Estimation based on duration and connector wattage
+		startDatetime := sessionIto.StartDatetime
+		currentDuration := processDatetime.Sub(startDatetime).Hours()
+		estimatedMaxEnergy := (float64(connectorWattage) * currentDuration) / 1000
 
-		if i < numChargingPeriods-1 {
-			endDatetime = sessionIto.ChargingPeriods[i+1].StartDateTime
-		} else {
-			// Latest charging period
-			ratio := float64(1)
-			chargingPeriodDuration := endDatetime.Sub(startDatetime).Hours()
-			currentDuration := processDatetime.Sub(startDatetime).Hours()
+		energyVolume := calculateRoundedValue(estimatedMaxEnergy, db.RoundingGranularityUNIT, db.RoundingRuleROUNDNEAR)
+		timeVolume := calculateRoundedValue(currentDuration, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
 
-			if chargingPeriodDuration > 0 && currentDuration > 0 {
-				ratio = (1 / chargingPeriodDuration) * currentDuration
-			}
-
-			energyVolume = calculateRoundedValue(energyVolume*ratio, db.RoundingGranularityUNIT, db.RoundingRuleROUNDNEAR)
-			parkingTimeVolume = calculateRoundedValue(parkingTimeVolume*ratio, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
-			timeVolume = calculateRoundedValue(timeVolume*ratio, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
-		}
-
-		priceComponents = getPriceComponents(tariffIto.Elements, startDatetime, endDatetime, energyVolume, minPowerVolume, maxPowerVolume)
-
+		// TODO: Simulate the charging periods through the time of the session
+		//       This includes grouping in periods by restrictions
 		if energyPriceComponent := getPriceComponentByType(priceComponents, db.TariffDimensionENERGY); energyPriceComponent != nil {
 			// 	Defined in kWh, step_size multiplier: 1 Wh
+			priceRound := getPriceComponentRounding(energyPriceComponent.PriceRound, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
 			cost := calculateCost(energyPriceComponent, energyVolume, 1000)
-			totalAmount = calculateRoundedValue(totalAmount+cost, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
+			totalAmount = calculateRoundedValue(totalAmount+cost, priceRound.Granularity, priceRound.Rule)
 		}
 
 		if timePriceComponent := getPriceComponentByType(priceComponents, db.TariffDimensionTIME); timePriceComponent != nil {
 			// Time charging: defined in hours, step_size multiplier: 1 second
+			priceRound := getPriceComponentRounding(timePriceComponent.PriceRound, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
 			cost := calculateCost(timePriceComponent, timeVolume, 3600)
-			totalAmount = calculateRoundedValue(totalAmount+cost, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
+			totalAmount = calculateRoundedValue(totalAmount+cost, priceRound.Granularity, priceRound.Rule)
 		}
+	} else {
+		// Estimation based on charging periods
+		for i, chargingPeriod := range sessionIto.ChargingPeriods {
+			startDatetime := chargingPeriod.StartDateTime
+			endDatetime := lastDatetime
+			energyVolume := getVolumeByType(chargingPeriod.Dimensions, db.ChargingPeriodDimensionTypeENERGY)
+			minPowerVolume := getVolumeByType(chargingPeriod.Dimensions, db.ChargingPeriodDimensionTypeMINCURRENT)
+			maxPowerVolume := getVolumeByType(chargingPeriod.Dimensions, db.ChargingPeriodDimensionTypeMAXCURRENT)
+			parkingTimeVolume := getVolumeByType(chargingPeriod.Dimensions, db.ChargingPeriodDimensionTypePARKINGTIME)
+			timeVolume := getVolumeByType(chargingPeriod.Dimensions, db.ChargingPeriodDimensionTypeTIME)
 
-		if parkingTimePriceComponent := getPriceComponentByType(priceComponents, db.TariffDimensionPARKINGTIME); parkingTimePriceComponent != nil {
-			// Time not charging: defined in hours, step_size multiplier: 1 second
-			cost := calculateCost(parkingTimePriceComponent, parkingTimeVolume, 3600)
-			totalAmount = calculateRoundedValue(totalAmount+cost, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
+			if i < numChargingPeriods-1 {
+				endDatetime = sessionIto.ChargingPeriods[i+1].StartDateTime
+			} else {
+				// Latest charging period
+				ratio := float64(1)
+				chargingPeriodDuration := endDatetime.Sub(startDatetime).Hours()
+				currentDuration := processDatetime.Sub(startDatetime).Hours()
+
+				if chargingPeriodDuration > 0 && currentDuration > 0 {
+					ratio = (1 / chargingPeriodDuration) * currentDuration
+				}
+
+				energyVolume = calculateRoundedValue(energyVolume*ratio, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
+				parkingTimeVolume = calculateRoundedValue(parkingTimeVolume*ratio, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
+				timeVolume = calculateRoundedValue(timeVolume*ratio, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
+			}
+
+			priceComponents = getPriceComponents(tariffIto.Elements, timeLocation, startDatetime, endDatetime, energyVolume, minPowerVolume, maxPowerVolume)
+
+			if energyPriceComponent := getPriceComponentByType(priceComponents, db.TariffDimensionENERGY); energyPriceComponent != nil {
+				// 	Defined in kWh, step_size multiplier: 1 Wh
+				priceRound := getPriceComponentRounding(energyPriceComponent.PriceRound, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
+				cost := calculateCost(energyPriceComponent, energyVolume, 1000)
+				totalAmount = calculateRoundedValue(totalAmount+cost, priceRound.Granularity, priceRound.Rule)
+			}
+
+			if timePriceComponent := getPriceComponentByType(priceComponents, db.TariffDimensionTIME); timePriceComponent != nil {
+				// Time charging: defined in hours, step_size multiplier: 1 second
+				priceRound := getPriceComponentRounding(timePriceComponent.PriceRound, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
+				cost := calculateCost(timePriceComponent, timeVolume, 3600)
+				totalAmount = calculateRoundedValue(totalAmount+cost, priceRound.Granularity, priceRound.Rule)
+			}
+
+			if parkingTimePriceComponent := getPriceComponentByType(priceComponents, db.TariffDimensionPARKINGTIME); parkingTimePriceComponent != nil {
+				// Time not charging: defined in hours, step_size multiplier: 1 second
+				priceRound := getPriceComponentRounding(parkingTimePriceComponent.PriceRound, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
+				cost := calculateCost(parkingTimePriceComponent, parkingTimeVolume, 3600)
+				totalAmount = calculateRoundedValue(totalAmount+cost, priceRound.Granularity, priceRound.Rule)
+			}
 		}
 	}
 
