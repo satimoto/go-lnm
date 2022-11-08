@@ -51,3 +51,7 @@ var (
 		Help: "The total invoiced in satoshis",
 	})
 )
+
+func RecordFlaggedSession() {
+	metricSessionsFlaggedTotal.Inc()
+}

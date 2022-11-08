@@ -69,7 +69,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 				r.SessionResolver.StopSession(ctx, sess)
 			}
 
-			return errors.New("cdr AuthorizationID is nil")
+			return errors.New("cdr authorization ID is nil")
 		}
 	}
 
