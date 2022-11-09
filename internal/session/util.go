@@ -160,7 +160,7 @@ func calculateRoundedValue(value float64, granularity db.RoundingGranularity, ru
 
 	if granularity == db.RoundingGranularityTENTH {
 		factor = 10
-	} else if granularity == db.RoundingGranularityHUNDRETH {
+	} else if granularity == db.RoundingGranularityHUNDREDTH {
 		factor = 100
 	} else if granularity == db.RoundingGranularityTHOUSANDTH {
 		factor = 1000
