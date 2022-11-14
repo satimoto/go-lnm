@@ -83,7 +83,11 @@ func (m *InvoiceMonitor) handleInvoice(invoice lnrpc.Invoice) {
 			}
 
 			// List users unsettled session invoices
-			sessionInvoices, err := m.SessionResolver.Repository.ListUnsettledSessionInvoicesByUserID(ctx, user.ID)
+			sessionInvoices, err := m.SessionResolver.Repository.ListSessionInvoicesByUserID(ctx, db.ListSessionInvoicesByUserIDParams{
+				ID: user.ID,
+				IsSettled: false,
+				IsExpired: false,
+			})
 
 			if err != nil {
 				metrics.RecordError("LSP040", "Error retrieving user unsettled session invoices", err)
