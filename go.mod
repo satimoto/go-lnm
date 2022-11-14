@@ -6,7 +6,7 @@ require (
 	github.com/joho/godotenv v1.4.0
 	github.com/lightningnetwork/lnd v0.15.4-beta
 	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
-	github.com/satimoto/go-datastore v0.3.1-0.20221109220450-732c9dd4fd7f
+	github.com/satimoto/go-datastore v0.3.1-0.20221114075353-14deb7511161
 	google.golang.org/grpc v1.47.0
 )
 
@@ -18,10 +18,10 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd v0.23.3 // indirect
 	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
-	github.com/btcsuite/btcwallet v0.15.1 // indirect
-	github.com/btcsuite/btcwallet/wallet/txauthor v1.2.3 // indirect
+	github.com/btcsuite/btcwallet v0.16.1 // indirect
+	github.com/btcsuite/btcwallet/wallet/txauthor v1.3.2 // indirect
 	github.com/btcsuite/btcwallet/wallet/txrules v1.2.0 // indirect
-	github.com/btcsuite/btcwallet/wallet/txsizes v1.1.0 // indirect
+	github.com/btcsuite/btcwallet/wallet/txsizes v1.2.3 // indirect
 	github.com/btcsuite/btcwallet/walletdb v1.4.0 // indirect
 	github.com/btcsuite/btcwallet/wtxmgr v1.5.0 // indirect
 	github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd // indirect
@@ -184,6 +184,6 @@ require (
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 )
 
-replace github.com/lightningnetwork/lnd => github.com/satimoto/lnd v0.15.2-beta.0.20221010062558-1915d31fb4d7
+replace github.com/lightningnetwork/lnd => github.com/satimoto/lnd v0.15.4-beta.0.20221101125829-64752303da12
 
 replace git.schwanenlied.me/yawning/bsaes.git => github.com/Yawning/bsaes v0.0.0-20180720073208-c0276d75487e

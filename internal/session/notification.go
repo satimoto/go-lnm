@@ -23,7 +23,7 @@ func (r *SessionResolver) SendSessionUpdateNotification(user db.User, session db
 
 func (r *SessionResolver) sendNotification(user db.User, data notification.NotificationDto, notificationType string) {
 	message := &fcm.Message{
-		To:               user.DeviceToken,
+		To:               user.DeviceToken.String,
 		ContentAvailable: true,
 		Data:             data,
 	}

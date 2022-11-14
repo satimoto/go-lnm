@@ -19,6 +19,7 @@ type ChargingPeriodDimensionIto struct {
 }
 
 type SessionIto struct {
+	Uid             string               `json:"uid"`
 	StartDatetime   time.Time            `json:"start_datetime"`
 	EndDatetime     *time.Time           `json:"end_datetime,omitempty"`
 	Kwh             float64              `json:"kwh"`
@@ -44,6 +45,7 @@ func NewChargingPeriodDimensionIto(chargingPeriodDimension db.ChargingPeriodDime
 
 func NewSessionIto(session db.Session) *SessionIto {
 	return &SessionIto{
+		Uid:           session.Uid,
 		StartDatetime: session.StartDatetime,
 		EndDatetime:   util.NilTime(session.EndDatetime.Time),
 		Kwh:           session.Kwh,

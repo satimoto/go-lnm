@@ -46,7 +46,7 @@ func (r *RpcChannelResolver) OpenChannel(ctx context.Context, input *lsprpc.Open
 		log.Printf("Allocating alias ShortChannelID: %v", shortChanID.String())
 
 		baseFeeMsat := int64(dbUtil.GetEnvInt32("BASE_FEE_MSAT", 0))
-		feeRatePpm := uint32(dbUtil.GetEnvInt32("FEE_RATE_PPM", 10))
+		feeRatePpm := uint32(dbUtil.GetEnvInt32("FEE_RATE_PPM", 0))
 		timeLockDelta := uint32(dbUtil.GetEnvInt32("TIME_LOCK_DELTA", 100))
 
 		return &lsprpc.OpenChannelResponse{

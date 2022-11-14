@@ -48,7 +48,7 @@ func (m *HtlcMonitor) StartMonitor(nodeID int64, shutdownCtx context.Context, wa
 	htlcInterceptChan := make(chan routerrpc.ForwardHtlcInterceptRequest)
 
 	m.baseFeeMsat = int64(dbUtil.GetEnvInt32("BASE_FEE_MSAT", 0))
-	m.feeRatePpm = uint32(dbUtil.GetEnvInt32("FEE_RATE_PPM", 10))
+	m.feeRatePpm = uint32(dbUtil.GetEnvInt32("FEE_RATE_PPM", 0))
 	m.timeLockDelta = uint32(dbUtil.GetEnvInt32("TIME_LOCK_DELTA", 100))
 	m.nodeID = nodeID
 
