@@ -181,9 +181,18 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 		}
 	}
 
+	timeNow := time.Now().UTC()
+	delta := timeNow.Sub(session.LastUpdated).Minutes()
+	log.Printf("Processing session %v with currency %v", session.Uid, session.Currency)
+	log.Printf("%v: Kwh=%v, LastUpdated=%v, DeltaMinutes=%v", session.Uid, session.Kwh, session.LastUpdated.Format(time.RFC3339), delta)
+
+	if session.TotalCost.Valid {
+		log.Printf("%v: TotalCost=%v", session.Uid, session.TotalCost.Float64)
+	}
+
 	priceFiat, _ := CalculatePriceInvoiced(sessionInvoices)
 	sessionIto := r.CreateSessionIto(ctx, session)
-	sessionFiat := r.ProcessChargingPeriods(sessionIto, tariffIto, connectorWattage, timeLocation, time.Now().UTC())
+	sessionFiat := r.ProcessChargingPeriods(sessionIto, tariffIto, connectorWattage, timeLocation, timeNow)
 
 	if sessionFiat > priceFiat {
 		invoicePriceFiat := sessionFiat - priceFiat

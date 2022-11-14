@@ -54,8 +54,10 @@ func (s *PendingNotificationMonitor) startPendingNotificationLoop() {
 				registrationIDs := []string{}
 
 				for _, pendingNotification := range pendingNotifications {
-					ids = append(ids, pendingNotification.ID)
-					registrationIDs = append(registrationIDs, pendingNotification.DeviceToken)
+					if pendingNotification.DeviceToken.Valid {
+						ids = append(ids, pendingNotification.ID)
+						registrationIDs = append(registrationIDs, pendingNotification.DeviceToken.String)
+					}
 				}
 
 				message := &fcm.Message{

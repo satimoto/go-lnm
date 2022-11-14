@@ -83,6 +83,126 @@ func TestProcessChargingPeriods(t *testing.T) {
 			date:     "2015-06-29T23:37:32Z",
 			value:    10.6,
 		}, {
+			desc: "No periods - kWh",
+			session: []byte(`{
+				"start_datetime": "2015-06-29T21:39:00Z",
+				"kwh": 3.00,
+				"currency": "EUR",
+				"charging_periods": [],
+				"total_cost": 0,
+				"status": "ACTIVE",
+				"last_updated": "2015-06-29T23:39:00Z"
+			}`),
+			tariff: []byte(`{
+				"elements": [{
+					"price_components": [{
+						"type": "TIME",
+						"price": 2.00,
+						"step_size": 300
+					}]
+				}, {
+					"price_components": [{
+						"type": "ENERGY",
+						"price": 0.30,
+						"step_size": 1
+					}]
+				}]
+			}`),
+			wattage:  11040,
+			location: "Europe/Berlin",
+			date:     "2015-06-29T23:39:00Z",
+			value:    4.9,
+		}, {
+			desc: "No periods - kWh + delta",
+			session: []byte(`{
+				"start_datetime": "2015-06-29T21:39:00Z",
+				"kwh": 3.00,
+				"currency": "EUR",
+				"charging_periods": [],
+				"total_cost": 0,
+				"status": "ACTIVE",
+				"last_updated": "2015-06-29T23:39:00Z"
+			}`),
+			tariff: []byte(`{
+				"elements": [{
+					"price_components": [{
+						"type": "TIME",
+						"price": 2.00,
+						"step_size": 300
+					}]
+				}, {
+					"price_components": [{
+						"type": "ENERGY",
+						"price": 0.30,
+						"step_size": 1
+					}]
+				}]
+			}`),
+			wattage:  11040,
+			location: "Europe/Berlin",
+			date:     "2015-06-29T23:44:00Z",
+			value:    4.9,
+		}, {
+			desc: "No periods - total cost",
+			session: []byte(`{
+				"start_datetime": "2015-06-29T21:39:00Z",
+				"kwh": 3.00,
+				"currency": "EUR",
+				"charging_periods": [],
+				"total_cost": 5,
+				"status": "ACTIVE",
+				"last_updated": "2015-06-29T23:39:00Z"
+			}`),
+			tariff: []byte(`{
+				"elements": [{
+					"price_components": [{
+						"type": "TIME",
+						"price": 2.00,
+						"step_size": 300
+					}]
+				}, {
+					"price_components": [{
+						"type": "ENERGY",
+						"price": 0.30,
+						"step_size": 1
+					}]
+				}]
+			}`),
+			wattage:  11040,
+			location: "Europe/Berlin",
+			date:     "2015-06-29T23:37:32Z",
+			value:    5.067,
+		}, {
+			desc: "No periods - total cost + delta",
+			session: []byte(`{
+				"start_datetime": "2015-06-29T21:39:00Z",
+				"kwh": 3.00,
+				"currency": "EUR",
+				"charging_periods": [],
+				"total_cost": 5,
+				"status": "ACTIVE",
+				"last_updated": "2015-06-29T23:39:00Z"
+			}`),
+			tariff: []byte(`{
+				"elements": [{
+					"price_components": [{
+						"type": "TIME",
+						"price": 2.00,
+						"step_size": 300
+					}]
+				}, {
+					"price_components": [{
+						"type": "ENERGY",
+						"price": 0.30,
+						"step_size": 1
+					}]
+				}]
+			}`),
+			wattage:  11040,
+			location: "Europe/Berlin",
+			date:     "2015-06-29T23:44:00Z",
+			value:    5.208333333333334,
+		}, {
 			desc: "Simple",
 			session: []byte(`{
 				"start_datetime": "2015-06-29T21:39:09Z",
@@ -133,6 +253,36 @@ func TestProcessChargingPeriods(t *testing.T) {
 				"elements": [{
 					"price_components": [{
 						"type": "TIME",
+						"price": 2.00,
+						"step_size": 300
+					}]
+				}]
+			}`),
+			wattage:  11040,
+			location: "Europe/Berlin",
+			date:     "2015-06-29T23:37:32Z",
+			value:    4,
+		}, {
+			desc: "Simple Session time",
+			session: []byte(`{
+				"start_datetime": "2015-06-29T21:39:09Z",
+				"kwh": 0.00,
+				"currency": "EUR",
+				"charging_periods": [{
+					"start_date_time": "2015-06-29T21:39:09Z",
+					"dimensions": [{
+						"type": "TIME",
+						"volume": 1.973
+					}]
+				}],
+				"total_cost": 4.00,
+				"status": "ACTIVE",
+				"last_updated": "2015-06-29T23:37:32Z"
+			}`),
+			tariff: []byte(`{
+				"elements": [{
+					"price_components": [{
+						"type": "SESSION_TIME",
 						"price": 2.00,
 						"step_size": 300
 					}]
