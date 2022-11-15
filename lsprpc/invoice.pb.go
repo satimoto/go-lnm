@@ -24,7 +24,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
-type UpdateInvoiceRequest struct {
+type UpdateInvoiceRequestRequest struct {
 	Id                   int64    `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	UserId               int64    `protobuf:"varint,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	PaymentRequest       string   `protobuf:"bytes,3,opt,name=payment_request,json=paymentRequest,proto3" json:"payment_request,omitempty"`
@@ -33,53 +33,53 @@ type UpdateInvoiceRequest struct {
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *UpdateInvoiceRequest) Reset()         { *m = UpdateInvoiceRequest{} }
-func (m *UpdateInvoiceRequest) String() string { return proto.CompactTextString(m) }
-func (*UpdateInvoiceRequest) ProtoMessage()    {}
-func (*UpdateInvoiceRequest) Descriptor() ([]byte, []int) {
+func (m *UpdateInvoiceRequestRequest) Reset()         { *m = UpdateInvoiceRequestRequest{} }
+func (m *UpdateInvoiceRequestRequest) String() string { return proto.CompactTextString(m) }
+func (*UpdateInvoiceRequestRequest) ProtoMessage()    {}
+func (*UpdateInvoiceRequestRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_5fef7841c2201b9b, []int{0}
 }
 
-func (m *UpdateInvoiceRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_UpdateInvoiceRequest.Unmarshal(m, b)
+func (m *UpdateInvoiceRequestRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_UpdateInvoiceRequestRequest.Unmarshal(m, b)
 }
-func (m *UpdateInvoiceRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_UpdateInvoiceRequest.Marshal(b, m, deterministic)
+func (m *UpdateInvoiceRequestRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_UpdateInvoiceRequestRequest.Marshal(b, m, deterministic)
 }
-func (m *UpdateInvoiceRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_UpdateInvoiceRequest.Merge(m, src)
+func (m *UpdateInvoiceRequestRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UpdateInvoiceRequestRequest.Merge(m, src)
 }
-func (m *UpdateInvoiceRequest) XXX_Size() int {
-	return xxx_messageInfo_UpdateInvoiceRequest.Size(m)
+func (m *UpdateInvoiceRequestRequest) XXX_Size() int {
+	return xxx_messageInfo_UpdateInvoiceRequestRequest.Size(m)
 }
-func (m *UpdateInvoiceRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_UpdateInvoiceRequest.DiscardUnknown(m)
+func (m *UpdateInvoiceRequestRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_UpdateInvoiceRequestRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_UpdateInvoiceRequest proto.InternalMessageInfo
+var xxx_messageInfo_UpdateInvoiceRequestRequest proto.InternalMessageInfo
 
-func (m *UpdateInvoiceRequest) GetId() int64 {
+func (m *UpdateInvoiceRequestRequest) GetId() int64 {
 	if m != nil {
 		return m.Id
 	}
 	return 0
 }
 
-func (m *UpdateInvoiceRequest) GetUserId() int64 {
+func (m *UpdateInvoiceRequestRequest) GetUserId() int64 {
 	if m != nil {
 		return m.UserId
 	}
 	return 0
 }
 
-func (m *UpdateInvoiceRequest) GetPaymentRequest() string {
+func (m *UpdateInvoiceRequestRequest) GetPaymentRequest() string {
 	if m != nil {
 		return m.PaymentRequest
 	}
 	return ""
 }
 
-type UpdateInvoiceResponse struct {
+type UpdateInvoiceRequestResponse struct {
 	Id                   int64    `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	UserId               int64    `protobuf:"varint,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	PaymentRequest       string   `protobuf:"bytes,3,opt,name=payment_request,json=paymentRequest,proto3" json:"payment_request,omitempty"`
@@ -89,84 +89,208 @@ type UpdateInvoiceResponse struct {
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *UpdateInvoiceResponse) Reset()         { *m = UpdateInvoiceResponse{} }
-func (m *UpdateInvoiceResponse) String() string { return proto.CompactTextString(m) }
-func (*UpdateInvoiceResponse) ProtoMessage()    {}
-func (*UpdateInvoiceResponse) Descriptor() ([]byte, []int) {
+func (m *UpdateInvoiceRequestResponse) Reset()         { *m = UpdateInvoiceRequestResponse{} }
+func (m *UpdateInvoiceRequestResponse) String() string { return proto.CompactTextString(m) }
+func (*UpdateInvoiceRequestResponse) ProtoMessage()    {}
+func (*UpdateInvoiceRequestResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_5fef7841c2201b9b, []int{1}
 }
 
-func (m *UpdateInvoiceResponse) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_UpdateInvoiceResponse.Unmarshal(m, b)
+func (m *UpdateInvoiceRequestResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_UpdateInvoiceRequestResponse.Unmarshal(m, b)
 }
-func (m *UpdateInvoiceResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_UpdateInvoiceResponse.Marshal(b, m, deterministic)
+func (m *UpdateInvoiceRequestResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_UpdateInvoiceRequestResponse.Marshal(b, m, deterministic)
 }
-func (m *UpdateInvoiceResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_UpdateInvoiceResponse.Merge(m, src)
+func (m *UpdateInvoiceRequestResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UpdateInvoiceRequestResponse.Merge(m, src)
 }
-func (m *UpdateInvoiceResponse) XXX_Size() int {
-	return xxx_messageInfo_UpdateInvoiceResponse.Size(m)
+func (m *UpdateInvoiceRequestResponse) XXX_Size() int {
+	return xxx_messageInfo_UpdateInvoiceRequestResponse.Size(m)
 }
-func (m *UpdateInvoiceResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_UpdateInvoiceResponse.DiscardUnknown(m)
+func (m *UpdateInvoiceRequestResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_UpdateInvoiceRequestResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_UpdateInvoiceResponse proto.InternalMessageInfo
+var xxx_messageInfo_UpdateInvoiceRequestResponse proto.InternalMessageInfo
 
-func (m *UpdateInvoiceResponse) GetId() int64 {
+func (m *UpdateInvoiceRequestResponse) GetId() int64 {
 	if m != nil {
 		return m.Id
 	}
 	return 0
 }
 
-func (m *UpdateInvoiceResponse) GetUserId() int64 {
+func (m *UpdateInvoiceRequestResponse) GetUserId() int64 {
 	if m != nil {
 		return m.UserId
 	}
 	return 0
 }
 
-func (m *UpdateInvoiceResponse) GetPaymentRequest() string {
+func (m *UpdateInvoiceRequestResponse) GetPaymentRequest() string {
 	if m != nil {
 		return m.PaymentRequest
 	}
 	return ""
 }
 
-func (m *UpdateInvoiceResponse) GetIsSettled() bool {
+func (m *UpdateInvoiceRequestResponse) GetIsSettled() bool {
 	if m != nil {
 		return m.IsSettled
 	}
 	return false
 }
 
+type UpdateSessionInvoiceRequest struct {
+	Id                   int64    `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	UserId               int64    `protobuf:"varint,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *UpdateSessionInvoiceRequest) Reset()         { *m = UpdateSessionInvoiceRequest{} }
+func (m *UpdateSessionInvoiceRequest) String() string { return proto.CompactTextString(m) }
+func (*UpdateSessionInvoiceRequest) ProtoMessage()    {}
+func (*UpdateSessionInvoiceRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_5fef7841c2201b9b, []int{2}
+}
+
+func (m *UpdateSessionInvoiceRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_UpdateSessionInvoiceRequest.Unmarshal(m, b)
+}
+func (m *UpdateSessionInvoiceRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_UpdateSessionInvoiceRequest.Marshal(b, m, deterministic)
+}
+func (m *UpdateSessionInvoiceRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UpdateSessionInvoiceRequest.Merge(m, src)
+}
+func (m *UpdateSessionInvoiceRequest) XXX_Size() int {
+	return xxx_messageInfo_UpdateSessionInvoiceRequest.Size(m)
+}
+func (m *UpdateSessionInvoiceRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_UpdateSessionInvoiceRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UpdateSessionInvoiceRequest proto.InternalMessageInfo
+
+func (m *UpdateSessionInvoiceRequest) GetId() int64 {
+	if m != nil {
+		return m.Id
+	}
+	return 0
+}
+
+func (m *UpdateSessionInvoiceRequest) GetUserId() int64 {
+	if m != nil {
+		return m.UserId
+	}
+	return 0
+}
+
+type UpdateSessionInvoiceResponse struct {
+	Id                   int64    `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	UserId               int64    `protobuf:"varint,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	PaymentRequest       string   `protobuf:"bytes,3,opt,name=payment_request,json=paymentRequest,proto3" json:"payment_request,omitempty"`
+	IsSettled            bool     `protobuf:"varint,4,opt,name=is_settled,json=isSettled,proto3" json:"is_settled,omitempty"`
+	IsExpired            bool     `protobuf:"varint,5,opt,name=is_expired,json=isExpired,proto3" json:"is_expired,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *UpdateSessionInvoiceResponse) Reset()         { *m = UpdateSessionInvoiceResponse{} }
+func (m *UpdateSessionInvoiceResponse) String() string { return proto.CompactTextString(m) }
+func (*UpdateSessionInvoiceResponse) ProtoMessage()    {}
+func (*UpdateSessionInvoiceResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_5fef7841c2201b9b, []int{3}
+}
+
+func (m *UpdateSessionInvoiceResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_UpdateSessionInvoiceResponse.Unmarshal(m, b)
+}
+func (m *UpdateSessionInvoiceResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_UpdateSessionInvoiceResponse.Marshal(b, m, deterministic)
+}
+func (m *UpdateSessionInvoiceResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UpdateSessionInvoiceResponse.Merge(m, src)
+}
+func (m *UpdateSessionInvoiceResponse) XXX_Size() int {
+	return xxx_messageInfo_UpdateSessionInvoiceResponse.Size(m)
+}
+func (m *UpdateSessionInvoiceResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_UpdateSessionInvoiceResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UpdateSessionInvoiceResponse proto.InternalMessageInfo
+
+func (m *UpdateSessionInvoiceResponse) GetId() int64 {
+	if m != nil {
+		return m.Id
+	}
+	return 0
+}
+
+func (m *UpdateSessionInvoiceResponse) GetUserId() int64 {
+	if m != nil {
+		return m.UserId
+	}
+	return 0
+}
+
+func (m *UpdateSessionInvoiceResponse) GetPaymentRequest() string {
+	if m != nil {
+		return m.PaymentRequest
+	}
+	return ""
+}
+
+func (m *UpdateSessionInvoiceResponse) GetIsSettled() bool {
+	if m != nil {
+		return m.IsSettled
+	}
+	return false
+}
+
+func (m *UpdateSessionInvoiceResponse) GetIsExpired() bool {
+	if m != nil {
+		return m.IsExpired
+	}
+	return false
+}
+
 func init() {
-	proto.RegisterType((*UpdateInvoiceRequest)(nil), "invoice.UpdateInvoiceRequest")
-	proto.RegisterType((*UpdateInvoiceResponse)(nil), "invoice.UpdateInvoiceResponse")
+	proto.RegisterType((*UpdateInvoiceRequestRequest)(nil), "invoice.UpdateInvoiceRequestRequest")
+	proto.RegisterType((*UpdateInvoiceRequestResponse)(nil), "invoice.UpdateInvoiceRequestResponse")
+	proto.RegisterType((*UpdateSessionInvoiceRequest)(nil), "invoice.UpdateSessionInvoiceRequest")
+	proto.RegisterType((*UpdateSessionInvoiceResponse)(nil), "invoice.UpdateSessionInvoiceResponse")
 }
 
 func init() { proto.RegisterFile("lsprpc/invoice.proto", fileDescriptor_5fef7841c2201b9b) }
 
 var fileDescriptor_5fef7841c2201b9b = []byte{
-	// 246 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x91, 0x41, 0x4b, 0xc3, 0x40,
-	0x10, 0x85, 0xd9, 0x56, 0x5a, 0x3b, 0x60, 0x84, 0xa5, 0x62, 0x10, 0x2a, 0xb1, 0x1e, 0xcc, 0xc5,
-	0x04, 0xf4, 0x1f, 0x78, 0xeb, 0xc5, 0x43, 0x8a, 0x17, 0x2f, 0x31, 0xcd, 0x0e, 0xed, 0x40, 0x92,
-	0x5d, 0x77, 0x26, 0x05, 0xff, 0x81, 0x3f, 0x5b, 0xec, 0xc6, 0x83, 0xa2, 0x37, 0x8f, 0xef, 0x5b,
-	0x76, 0xdf, 0xdb, 0xf7, 0x60, 0xde, 0xb0, 0xf3, 0xae, 0xce, 0xa9, 0xdb, 0x5b, 0xaa, 0x31, 0x73,
-	0xde, 0x8a, 0xd5, 0xd3, 0x41, 0x2e, 0x77, 0x30, 0x7f, 0x72, 0xa6, 0x12, 0x5c, 0x05, 0x50, 0xe0,
-	0x6b, 0x8f, 0x2c, 0x3a, 0x82, 0x11, 0x99, 0x58, 0x25, 0x2a, 0x1d, 0x17, 0x23, 0x32, 0xfa, 0x1c,
-	0xa6, 0x3d, 0xa3, 0x2f, 0xc9, 0xc4, 0xa3, 0x03, 0x9c, 0x7c, 0xca, 0x95, 0xd1, 0x37, 0x70, 0xea,
-	0xaa, 0xb7, 0x16, 0x3b, 0x29, 0x7d, 0xb8, 0x1b, 0x8f, 0x13, 0x95, 0xce, 0x8a, 0x68, 0xc0, 0xc3,
-	0x8b, 0xcb, 0x77, 0x05, 0x67, 0x3f, 0xac, 0xd8, 0xd9, 0x8e, 0xf1, 0xff, 0xbd, 0xf4, 0x02, 0x80,
-	0xb8, 0x64, 0x14, 0x69, 0xd0, 0xc4, 0x47, 0x89, 0x4a, 0x8f, 0x8b, 0x19, 0xf1, 0x3a, 0x80, 0xbb,
-	0x17, 0x88, 0x86, 0x0c, 0x6b, 0xf4, 0x7b, 0xaa, 0x51, 0x3f, 0xc2, 0xc9, 0xb7, 0x6c, 0x7a, 0x91,
-	0x7d, 0x15, 0xf6, 0x5b, 0x3d, 0x17, 0x97, 0x7f, 0x1d, 0x87, 0x2f, 0x3d, 0x5c, 0x3f, 0x5f, 0x6d,
-	0x49, 0x76, 0xfd, 0x26, 0xab, 0x6d, 0x9b, 0x73, 0x25, 0xd4, 0x5a, 0xb1, 0xf9, 0xd6, 0xde, 0x36,
-	0xec, 0xf2, 0x30, 0xc9, 0x66, 0x72, 0xd8, 0xe2, 0xfe, 0x23, 0x00, 0x00, 0xff, 0xff, 0x65, 0xdb,
-	0xbc, 0xe6, 0xa3, 0x01, 0x00, 0x00,
+	// 306 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xc4, 0x53, 0xcf, 0x4a, 0xfb, 0x40,
+	0x10, 0x66, 0xdb, 0xdf, 0xaf, 0xb5, 0x7b, 0xa8, 0xb0, 0x14, 0x0c, 0xfe, 0x81, 0x1a, 0x15, 0x73,
+	0x31, 0x01, 0x7d, 0x03, 0x41, 0xa1, 0xd7, 0x04, 0x2f, 0x5e, 0x42, 0x9a, 0x1d, 0xea, 0x40, 0x92,
+	0x5d, 0x77, 0x36, 0x45, 0x9f, 0xc2, 0x37, 0xf1, 0x81, 0x7c, 0x1a, 0xb1, 0xd9, 0x14, 0x6a, 0x83,
+	0x7a, 0x10, 0x3c, 0x85, 0xf9, 0x26, 0x3b, 0xdf, 0x37, 0xdf, 0xcc, 0xf0, 0x49, 0x41, 0xda, 0xe8,
+	0x3c, 0xc2, 0x6a, 0xa9, 0x30, 0x87, 0x50, 0x1b, 0x65, 0x95, 0x18, 0xba, 0xd0, 0x57, 0xfc, 0xe0,
+	0x4e, 0xcb, 0xcc, 0xc2, 0xac, 0x01, 0x62, 0x78, 0xac, 0x81, 0xac, 0xfb, 0x88, 0x31, 0xef, 0xa1,
+	0xf4, 0xd8, 0x94, 0x05, 0xfd, 0xb8, 0x87, 0x52, 0xec, 0xf1, 0x61, 0x4d, 0x60, 0x52, 0x94, 0x5e,
+	0x6f, 0x05, 0x0e, 0x3e, 0xc2, 0x99, 0x14, 0xe7, 0x7c, 0x57, 0x67, 0xcf, 0x25, 0x54, 0x36, 0x35,
+	0xcd, 0x5b, 0xaf, 0x3f, 0x65, 0xc1, 0x28, 0x1e, 0x3b, 0xd8, 0x55, 0xf4, 0x5f, 0x18, 0x3f, 0xec,
+	0x66, 0x24, 0xad, 0x2a, 0x82, 0xdf, 0xa7, 0x14, 0x47, 0x9c, 0x23, 0xa5, 0x04, 0xd6, 0x16, 0x20,
+	0xbd, 0x7f, 0x53, 0x16, 0xec, 0xc4, 0x23, 0xa4, 0xa4, 0x01, 0xfc, 0xdb, 0xd6, 0x82, 0x04, 0x88,
+	0x50, 0x55, 0x9b, 0xba, 0x7e, 0xac, 0xc7, 0x7f, 0x5d, 0x77, 0xf6, 0xb9, 0xd0, 0x1f, 0x75, 0xe6,
+	0xd2, 0xf0, 0xa4, 0xd1, 0x80, 0xf4, 0xfe, 0xb7, 0xe9, 0x9b, 0x06, 0xb8, 0x7c, 0x63, 0x7c, 0xec,
+	0x34, 0x26, 0x60, 0x96, 0x98, 0x83, 0xc8, 0xf9, 0xa4, 0x6b, 0x38, 0xe2, 0x34, 0x6c, 0xf7, 0xe7,
+	0x8b, 0x6d, 0xd9, 0x3f, 0xfb, 0xe6, 0x2f, 0xe7, 0xc3, 0x9a, 0x64, 0xd3, 0xa7, 0x2d, 0x92, 0xce,
+	0x79, 0x6c, 0x91, 0x74, 0x9b, 0x7d, 0x7d, 0x72, 0x7f, 0xbc, 0x40, 0xfb, 0x50, 0xcf, 0xc3, 0x5c,
+	0x95, 0x11, 0x65, 0x16, 0x4b, 0x65, 0x55, 0xb4, 0x50, 0x17, 0x05, 0xe9, 0xa8, 0x39, 0x8a, 0xf9,
+	0x60, 0x75, 0x0d, 0x57, 0xef, 0x01, 0x00, 0x00, 0xff, 0xff, 0xc8, 0x43, 0x36, 0xd6, 0x25, 0x03,
+	0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -181,7 +305,8 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type InvoiceServiceClient interface {
-	UpdateInvoice(ctx context.Context, in *UpdateInvoiceRequest, opts ...grpc.CallOption) (*UpdateInvoiceResponse, error)
+	UpdateInvoiceRequest(ctx context.Context, in *UpdateInvoiceRequestRequest, opts ...grpc.CallOption) (*UpdateInvoiceRequestResponse, error)
+	UpdateSessionInvoice(ctx context.Context, in *UpdateSessionInvoiceRequest, opts ...grpc.CallOption) (*UpdateSessionInvoiceResponse, error)
 }
 
 type invoiceServiceClient struct {
@@ -192,9 +317,18 @@ func NewInvoiceServiceClient(cc *grpc.ClientConn) InvoiceServiceClient {
 	return &invoiceServiceClient{cc}
 }
 
-func (c *invoiceServiceClient) UpdateInvoice(ctx context.Context, in *UpdateInvoiceRequest, opts ...grpc.CallOption) (*UpdateInvoiceResponse, error) {
-	out := new(UpdateInvoiceResponse)
-	err := c.cc.Invoke(ctx, "/invoice.InvoiceService/UpdateInvoice", in, out, opts...)
+func (c *invoiceServiceClient) UpdateInvoiceRequest(ctx context.Context, in *UpdateInvoiceRequestRequest, opts ...grpc.CallOption) (*UpdateInvoiceRequestResponse, error) {
+	out := new(UpdateInvoiceRequestResponse)
+	err := c.cc.Invoke(ctx, "/invoice.InvoiceService/UpdateInvoiceRequest", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *invoiceServiceClient) UpdateSessionInvoice(ctx context.Context, in *UpdateSessionInvoiceRequest, opts ...grpc.CallOption) (*UpdateSessionInvoiceResponse, error) {
+	out := new(UpdateSessionInvoiceResponse)
+	err := c.cc.Invoke(ctx, "/invoice.InvoiceService/UpdateSessionInvoice", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -203,35 +337,57 @@ func (c *invoiceServiceClient) UpdateInvoice(ctx context.Context, in *UpdateInvo
 
 // InvoiceServiceServer is the server API for InvoiceService service.
 type InvoiceServiceServer interface {
-	UpdateInvoice(context.Context, *UpdateInvoiceRequest) (*UpdateInvoiceResponse, error)
+	UpdateInvoiceRequest(context.Context, *UpdateInvoiceRequestRequest) (*UpdateInvoiceRequestResponse, error)
+	UpdateSessionInvoice(context.Context, *UpdateSessionInvoiceRequest) (*UpdateSessionInvoiceResponse, error)
 }
 
 // UnimplementedInvoiceServiceServer can be embedded to have forward compatible implementations.
 type UnimplementedInvoiceServiceServer struct {
 }
 
-func (*UnimplementedInvoiceServiceServer) UpdateInvoice(ctx context.Context, req *UpdateInvoiceRequest) (*UpdateInvoiceResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateInvoice not implemented")
+func (*UnimplementedInvoiceServiceServer) UpdateInvoiceRequest(ctx context.Context, req *UpdateInvoiceRequestRequest) (*UpdateInvoiceRequestResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateInvoiceRequest not implemented")
+}
+func (*UnimplementedInvoiceServiceServer) UpdateSessionInvoice(ctx context.Context, req *UpdateSessionInvoiceRequest) (*UpdateSessionInvoiceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateSessionInvoice not implemented")
 }
 
 func RegisterInvoiceServiceServer(s *grpc.Server, srv InvoiceServiceServer) {
 	s.RegisterService(&_InvoiceService_serviceDesc, srv)
 }
 
-func _InvoiceService_UpdateInvoice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateInvoiceRequest)
+func _InvoiceService_UpdateInvoiceRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateInvoiceRequestRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(InvoiceServiceServer).UpdateInvoice(ctx, in)
+		return srv.(InvoiceServiceServer).UpdateInvoiceRequest(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/invoice.InvoiceService/UpdateInvoice",
+		FullMethod: "/invoice.InvoiceService/UpdateInvoiceRequest",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(InvoiceServiceServer).UpdateInvoice(ctx, req.(*UpdateInvoiceRequest))
+		return srv.(InvoiceServiceServer).UpdateInvoiceRequest(ctx, req.(*UpdateInvoiceRequestRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _InvoiceService_UpdateSessionInvoice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateSessionInvoiceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InvoiceServiceServer).UpdateSessionInvoice(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/invoice.InvoiceService/UpdateSessionInvoice",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InvoiceServiceServer).UpdateSessionInvoice(ctx, req.(*UpdateSessionInvoiceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -241,8 +397,12 @@ var _InvoiceService_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*InvoiceServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "UpdateInvoice",
-			Handler:    _InvoiceService_UpdateInvoice_Handler,
+			MethodName: "UpdateInvoiceRequest",
+			Handler:    _InvoiceService_UpdateInvoiceRequest_Handler,
+		},
+		{
+			MethodName: "UpdateSessionInvoice",
+			Handler:    _InvoiceService_UpdateSessionInvoice_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

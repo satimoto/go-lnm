@@ -2,21 +2,25 @@ package invoice
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"log"
 
+	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
+	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/lsprpc"
 )
 
-func (r *RpcInvoiceResolver) UpdateInvoice(ctx context.Context, input *lsprpc.UpdateInvoiceRequest) (*lsprpc.UpdateInvoiceResponse, error) {
+func (r *RpcInvoiceResolver) UpdateInvoiceRequest(ctx context.Context, input *lsprpc.UpdateInvoiceRequestRequest) (*lsprpc.UpdateInvoiceRequestResponse, error) {
 	if input != nil {
-		invoiceRequest, err := r.InvoiceRequestResolver.Repository.GetInvoiceRequest(ctx, input.Id)
+		invoiceRequest, err := r.InvoiceRequestRepository.GetInvoiceRequest(ctx, input.Id)
 
 		if err != nil {
 			metrics.RecordError("LSP118", "Error retrieving invoice request", err)
@@ -34,7 +38,7 @@ func (r *RpcInvoiceResolver) UpdateInvoice(ctx context.Context, input *lsprpc.Up
 			metrics.RecordError("LSP120", "Error invoice request in progress or settled", err)
 			log.Printf("LSP120: Input=%#v", input)
 
-			return &lsprpc.UpdateInvoiceResponse{
+			return &lsprpc.UpdateInvoiceRequestResponse{
 				Id:             invoiceRequest.ID,
 				UserId:         invoiceRequest.UserID,
 				PaymentRequest: invoiceRequest.PaymentRequest.String,
@@ -45,7 +49,7 @@ func (r *RpcInvoiceResolver) UpdateInvoice(ctx context.Context, input *lsprpc.Up
 		updateInvoiceRequestParams := param.NewUpdateInvoiceRequestParams(invoiceRequest)
 		updateInvoiceRequestParams.PaymentRequest = dbUtil.SqlNullString(input.PaymentRequest)
 
-		invoiceRequest, err = r.InvoiceRequestResolver.Repository.UpdateInvoiceRequest(ctx, updateInvoiceRequestParams)
+		invoiceRequest, err = r.InvoiceRequestRepository.UpdateInvoiceRequest(ctx, updateInvoiceRequestParams)
 
 		if err != nil {
 			metrics.RecordError("LSP121", "Error updating invoice request", err)
@@ -73,7 +77,102 @@ func (r *RpcInvoiceResolver) UpdateInvoice(ctx context.Context, input *lsprpc.Up
 
 		go r.waitForPayment(invoiceRequest)
 
-		return &lsprpc.UpdateInvoiceResponse{}, nil
+		return &lsprpc.UpdateInvoiceRequestResponse{}, nil
+	}
+
+	return nil, errors.New("missing request")
+}
+
+func (r *RpcInvoiceResolver) UpdateSessionInvoice(ctx context.Context, input *lsprpc.UpdateSessionInvoiceRequest) (*lsprpc.UpdateSessionInvoiceResponse, error) {
+	if input != nil {
+		sessionInvoice, err := r.SessionRepository.GetSessionInvoice(ctx, input.Id)
+
+		if err != nil {
+			metrics.RecordError("LSP145", "Error retrieving session invoice", err)
+			log.Printf("LSP145: Input=%#v", input)
+			return nil, errors.New("error retrieving session invoice")
+		}
+
+		if sessionInvoice.UserID != input.UserId {
+			metrics.RecordError("LSP146", "Error invalid user for session invoice", err)
+			log.Printf("LSP146: Input=%#v", input)
+			return nil, errors.New("error invalid user for session invoice")
+		}
+
+		if sessionInvoice.IsSettled || !sessionInvoice.IsExpired {
+			metrics.RecordError("LSP147", "Error session invoice in progress or settled", err)
+			log.Printf("LSP147: Input=%#v", input)
+
+			return &lsprpc.UpdateSessionInvoiceResponse{
+				Id:             sessionInvoice.ID,
+				UserId:         sessionInvoice.UserID,
+				PaymentRequest: sessionInvoice.PaymentRequest,
+				IsSettled:      sessionInvoice.IsSettled,
+				IsExpired:      sessionInvoice.IsExpired,
+			}, nil
+		}
+
+		session, err := r.SessionRepository.GetSession(ctx, sessionInvoice.SessionID)
+
+		if err != nil {
+			metrics.RecordError("LSP148", "Error retrieving session", err)
+			log.Printf("LSP148: SessionID=%v", session.ID)
+			return nil, errors.New("error retrieving session")
+		}
+
+		tokenAuthorization, err := r.TokenAuthorizationRepository.GetTokenAuthorizationByAuthorizationID(ctx, session.AuthorizationID.String)
+
+		if err != nil {
+			metrics.RecordError("LSP149", "Error retrieving token authorization", err)
+			log.Printf("LSP149: SessionUid=%v, AuthorizationID=%v", session.Uid, session.AuthorizationID.String)
+			return nil, errors.New("error retrieving session token authorization")
+		}
+
+		preimage, err := lightningnetwork.RandomPreimage()
+
+		if err != nil {
+			metrics.RecordError("LSP150", "Error creating preimage", err)
+			log.Printf("LSP150: SessionUid=%v", session.Uid)
+			return nil, errors.New("error creating preimage")
+		}
+
+		invoice, err := r.LightningService.AddInvoice(&lnrpc.Invoice{
+			Memo:      session.Uid,
+			RPreimage: preimage[:],
+			ValueMsat: sessionInvoice.TotalMsat,
+		})
+
+		if err != nil {
+			metrics.RecordError("LSP151", "Error creating lightning invoice", err)
+			log.Printf("LSP151: Preimage=%v, ValueMsat=%v", preimage.String(), sessionInvoice.TotalMsat)
+			return nil, errors.New("error creating lightning invoice")
+		}
+
+		privateKey := secp.PrivKeyFromBytes(tokenAuthorization.SigningKey)
+		hash := sha256.New()
+		hash.Write([]byte(invoice.PaymentRequest))
+		signature := ecdsa.Sign(privateKey, hash.Sum(nil))
+
+		updateSessionInvoiceParams := param.NewUpdateSessionInvoiceParams(sessionInvoice)
+		updateSessionInvoiceParams.PaymentRequest = invoice.PaymentRequest
+		updateSessionInvoiceParams.Signature = signature.Serialize()
+		updateSessionInvoiceParams.IsExpired = false
+
+		sessionInvoice, err = r.SessionRepository.UpdateSessionInvoice(ctx, updateSessionInvoiceParams)
+
+		if err != nil {
+			metrics.RecordError("LSP152", "Error updating invoice request", err)
+			log.Printf("LSP152: Params=%#v", updateSessionInvoiceParams)
+			return nil, errors.New("error updating invoice request")
+		}
+
+		return &lsprpc.UpdateSessionInvoiceResponse{
+			Id: sessionInvoice.ID,
+			UserId: sessionInvoice.UserID,
+			PaymentRequest: sessionInvoice.PaymentRequest,
+			IsSettled: sessionInvoice.IsSettled,
+			IsExpired: sessionInvoice.IsExpired,
+		}, nil
 	}
 
 	return nil, errors.New("missing request")
@@ -114,7 +213,7 @@ waitLoop:
 		}
 	}
 
-	_, err = r.InvoiceRequestResolver.Repository.UpdateInvoiceRequest(ctx, updateInvoiceRequestParams)
+	_, err = r.InvoiceRequestRepository.UpdateInvoiceRequest(ctx, updateInvoiceRequestParams)
 
 	if err != nil {
 		metrics.RecordError("LSP126", "Error updating invoice request", err)
