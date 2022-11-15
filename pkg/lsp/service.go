@@ -11,7 +11,8 @@ import (
 
 type Lsp interface {
 	OpenChannel(ctx context.Context, in *lsprpc.OpenChannelRequest, opts ...grpc.CallOption) (*lsprpc.OpenChannelResponse, error)
-	UpdateInvoice(ctx context.Context, in *lsprpc.UpdateInvoiceRequest, opts ...grpc.CallOption) (*lsprpc.UpdateInvoiceResponse, error)
+	UpdateInvoiceRequest(ctx context.Context, in *lsprpc.UpdateInvoiceRequestRequest, opts ...grpc.CallOption) (*lsprpc.UpdateInvoiceRequestResponse, error)
+	UpdateSessionInvoice(ctx context.Context, in *lsprpc.UpdateSessionInvoiceRequest, opts ...grpc.CallOption) (*lsprpc.UpdateSessionInvoiceResponse, error)
 }
 
 type LspService struct {
