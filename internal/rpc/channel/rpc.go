@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"log"
+	"strconv"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnwire"
@@ -55,6 +56,31 @@ func (r *RpcChannelResolver) OpenChannel(ctx context.Context, input *lsprpc.Open
 			FeeBaseMsat:               baseFeeMsat,
 			FeeProportionalMillionths: feeRatePpm,
 			CltvExpiryDelta:           timeLockDelta,
+		}, nil
+	}
+
+	return nil, errors.New("missing request")
+}
+
+func (r *RpcChannelResolver) ListChannels(ctx context.Context, input *lsprpc.ListChannelsRequest) (*lsprpc.ListChannelsResponse, error) {
+	if input != nil {
+		var channelIds []string
+		listChannels, err := r.LightningService.ListChannels(&lnrpc.ListChannelsRequest{
+			ActiveOnly: true,
+			PublicOnly: true,
+		})
+
+		if err != nil {
+			metrics.RecordError("LSP153", "Error listing channels", err)
+			return nil, errors.New("error retreiving wallet balance")
+		}
+
+		for _, channel := range listChannels.Channels {
+			channelIds = append(channelIds, strconv.FormatUint(channel.ChanId, 10))
+		}
+
+		return &lsprpc.ListChannelsResponse{
+			ChannelIds: channelIds,
 		}, nil
 	}
 
