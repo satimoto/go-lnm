@@ -21,6 +21,7 @@ type MockLightningNetworkService struct {
 	fundPsbtMockData                []*walletrpc.FundPsbtResponse
 	getInfoMockData                 []*lnrpc.GetInfoResponse
 	htlcInterceptorMockData         []routerrpc.Router_HtlcInterceptorClient
+	listChannelsMockData            []*lnrpc.ListChannelsResponse
 	listPeersMockData               []*lnrpc.ListPeersResponse
 	openChannelMockData             []lnrpc.Lightning_OpenChannelClient
 	openChannelSyncMockData         []*lnrpc.ChannelPoint
@@ -34,7 +35,7 @@ type MockLightningNetworkService struct {
 	subscribeCustomMessagesMockData []lnrpc.Lightning_SubscribeCustomMessagesClient
 	subscribeHtlcEventsMockData     []routerrpc.Router_SubscribeHtlcEventsClient
 	subscribeInvoicesMockData       []lnrpc.Lightning_SubscribeInvoicesClient
-	subscribePeerEventsMockData   []lnrpc.Lightning_SubscribePeerEventsClient
+	subscribePeerEventsMockData     []lnrpc.Lightning_SubscribePeerEventsClient
 	subscribeTransactionsMockData   []lnrpc.Lightning_SubscribeTransactionsClient
 	updateChannelPolicyMockData     []*lnrpc.PolicyUpdateResponse
 	walletBalanceMockData           []*lnrpc.WalletBalanceResponse
@@ -181,6 +182,20 @@ func (s *MockLightningNetworkService) NewHtlcInterceptorMockData() (<-chan *rout
 	s.htlcInterceptorMockData = append(s.htlcInterceptorMockData, NewMockHtlcInterceptorClient(sendChan, recvChan))
 
 	return sendChan, recvChan
+}
+
+func (s *MockLightningNetworkService) ListChannels(in *lnrpc.ListChannelsRequest, opts ...grpc.CallOption) (*lnrpc.ListChannelsResponse, error) {
+	if len(s.listChannelsMockData) == 0 {
+		return &lnrpc.ListChannelsResponse{}, errors.New("NotFound")
+	}
+
+	response := s.listChannelsMockData[0]
+	s.listChannelsMockData = s.listChannelsMockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) SetListChannelsMockData(mockData *lnrpc.ListChannelsResponse) {
+	s.listChannelsMockData = append(s.listChannelsMockData, mockData)
 }
 
 func (s *MockLightningNetworkService) ListPeers(in *lnrpc.ListPeersRequest, opts ...grpc.CallOption) (*lnrpc.ListPeersResponse, error) {

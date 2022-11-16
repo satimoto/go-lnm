@@ -26,6 +26,7 @@ type LightningNetwork interface {
 	FundPsbt(in *walletrpc.FundPsbtRequest, opts ...grpc.CallOption) (*walletrpc.FundPsbtResponse, error)
 	GetInfo(in *lnrpc.GetInfoRequest, opts ...grpc.CallOption) (*lnrpc.GetInfoResponse, error)
 	HtlcInterceptor(opts ...grpc.CallOption) (routerrpc.Router_HtlcInterceptorClient, error)
+	ListChannels(in *lnrpc.ListChannelsRequest, opts ...grpc.CallOption) (*lnrpc.ListChannelsResponse, error)
 	ListPeers(in *lnrpc.ListPeersRequest, opts ...grpc.CallOption) (*lnrpc.ListPeersResponse, error)
 	OpenChannel(in *lnrpc.OpenChannelRequest, opts ...grpc.CallOption) (lnrpc.Lightning_OpenChannelClient, error)
 	OpenChannelSync(in *lnrpc.OpenChannelRequest, opts ...grpc.CallOption) (*lnrpc.ChannelPoint, error)
@@ -109,6 +110,10 @@ func (s *LightningNetworkService) GetInfo(in *lnrpc.GetInfoRequest, opts ...grpc
 
 func (s *LightningNetworkService) HtlcInterceptor(opts ...grpc.CallOption) (routerrpc.Router_HtlcInterceptorClient, error) {
 	return s.getRouterClient().HtlcInterceptor(s.macaroonCtx, opts...)
+}
+
+func (s *LightningNetworkService) ListChannels(in *lnrpc.ListChannelsRequest, opts ...grpc.CallOption) (*lnrpc.ListChannelsResponse, error) {
+	return s.getLightningClient().ListChannels(s.macaroonCtx, in, opts...)
 }
 
 func (s *LightningNetworkService) ListPeers(in *lnrpc.ListPeersRequest, opts ...grpc.CallOption) (*lnrpc.ListPeersResponse, error) {
