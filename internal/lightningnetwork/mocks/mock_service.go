@@ -16,6 +16,7 @@ type MockLightningNetworkService struct {
 	addInvoiceMockData              []*lnrpc.Invoice
 	channelAcceptorMockData         []lnrpc.Lightning_ChannelAcceptorClient
 	decodePayReqMockData            []*lnrpc.PayReq
+	estimateFeeMockData             []*walletrpc.EstimateFeeResponse
 	finalizePsbtMockData            []*walletrpc.FinalizePsbtResponse
 	fundingStateStepMockData        []*lnrpc.FundingStateStepResp
 	fundPsbtMockData                []*walletrpc.FundPsbtResponse
@@ -108,6 +109,20 @@ func (s *MockLightningNetworkService) DecodePayReq(in *lnrpc.PayReqString, opts 
 
 func (s *MockLightningNetworkService) SetDecodePayReqMockData(mockData *lnrpc.PayReq) {
 	s.decodePayReqMockData = append(s.decodePayReqMockData, mockData)
+}
+
+func (s *MockLightningNetworkService) EstimateFee(in *walletrpc.EstimateFeeRequest, opts ...grpc.CallOption) (*walletrpc.EstimateFeeResponse, error) {
+	if len(s.estimateFeeMockData) == 0 {
+		return &walletrpc.EstimateFeeResponse{}, errors.New("NotFound")
+	}
+
+	response := s.estimateFeeMockData[0]
+	s.estimateFeeMockData = s.estimateFeeMockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) SetEstimateFeeMockData(mockData *walletrpc.EstimateFeeResponse) {
+	s.estimateFeeMockData = append(s.estimateFeeMockData, mockData)
 }
 
 func (s *MockLightningNetworkService) FinalizePsbt(in *walletrpc.FinalizePsbtRequest, opts ...grpc.CallOption) (*walletrpc.FinalizePsbtResponse, error) {

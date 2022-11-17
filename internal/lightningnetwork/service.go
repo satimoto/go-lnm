@@ -21,6 +21,7 @@ type LightningNetwork interface {
 	AddInvoice(in *lnrpc.Invoice, opts ...grpc.CallOption) (*lnrpc.AddInvoiceResponse, error)
 	ChannelAcceptor(opts ...grpc.CallOption) (lnrpc.Lightning_ChannelAcceptorClient, error)
 	DecodePayReq(in *lnrpc.PayReqString, opts ...grpc.CallOption) (*lnrpc.PayReq, error)
+	EstimateFee(in *walletrpc.EstimateFeeRequest, opts ...grpc.CallOption) (*walletrpc.EstimateFeeResponse, error)
 	FinalizePsbt(in *walletrpc.FinalizePsbtRequest, opts ...grpc.CallOption) (*walletrpc.FinalizePsbtResponse, error)
 	FundingStateStep(in *lnrpc.FundingTransitionMsg, opts ...grpc.CallOption) (*lnrpc.FundingStateStepResp, error)
 	FundPsbt(in *walletrpc.FundPsbtRequest, opts ...grpc.CallOption) (*walletrpc.FundPsbtResponse, error)
@@ -90,6 +91,10 @@ func (s *LightningNetworkService) ChannelAcceptor(opts ...grpc.CallOption) (lnrp
 
 func (s *LightningNetworkService) DecodePayReq(in *lnrpc.PayReqString, opts ...grpc.CallOption) (*lnrpc.PayReq, error) {
 	return s.getLightningClient().DecodePayReq(s.macaroonCtx, in, opts...)
+}
+
+func (s *LightningNetworkService) EstimateFee(in *walletrpc.EstimateFeeRequest, opts ...grpc.CallOption) (*walletrpc.EstimateFeeResponse, error) {
+	return s.getWalletKitClient().EstimateFee(s.macaroonCtx, in, opts...)
 }
 
 func (s *LightningNetworkService) FinalizePsbt(in *walletrpc.FinalizePsbtRequest, opts ...grpc.CallOption) (*walletrpc.FinalizePsbtResponse, error) {

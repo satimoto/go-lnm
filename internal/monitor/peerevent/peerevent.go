@@ -10,7 +10,6 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
-	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/internal/service"
 	"github.com/satimoto/go-lsp/internal/user"
 	"google.golang.org/grpc/codes"
@@ -38,7 +37,6 @@ func (m *PeerEventMonitor) StartMonitor(nodeID int64, shutdownCtx context.Contex
 	m.nodeID = nodeID
 	go m.waitForPeerEvents(shutdownCtx, waitGroup, peerEventChan)
 	go m.subscribePeerEventInterceptions(peerEventChan)
-	go m.updatePeers()
 }
 
 func (m *PeerEventMonitor) handlePeerEvent(peerEvent lnrpc.PeerEvent) {
@@ -56,15 +54,7 @@ func (m *PeerEventMonitor) handlePeerEvent(peerEvent lnrpc.PeerEvent) {
 		LastActiveDate: util.SqlNullTime(time.Now()),
 	}
 
-	_, err := m.UserResolver.Repository.UpdateUserByPubkey(ctx, updateUserByPubkeyParams)
-
-	if err == nil {
-		if peerEvent.Type == lnrpc.PeerEvent_PEER_ONLINE {
-			metricPeersOnlineTotal.Inc()
-		} else {
-			metricPeersOnlineTotal.Dec()
-		}
-	}
+	m.UserResolver.Repository.UpdateUserByPubkey(ctx, updateUserByPubkeyParams)
 }
 
 func (m *PeerEventMonitor) subscribePeerEventInterceptions(peerEventChan chan<- lnrpc.PeerEvent) {
@@ -82,16 +72,6 @@ func (m *PeerEventMonitor) subscribePeerEventInterceptions(peerEventChan chan<- 
 			util.PanicOnError("LSP129", "Error creating PeerEvents client", err)
 		}
 	}
-}
-
-func (m *PeerEventMonitor) updatePeers() {
-	listPeersResponse, err := m.LightningService.ListPeers(&lnrpc.ListPeersRequest{})
-
-	if err != nil {
-		metrics.RecordError("LSP144", "Error requesting peers", err)
-	}
-
-	metricPeersOnlineTotal.Set(float64(len(listPeersResponse.Peers)))
 }
 
 func (m *PeerEventMonitor) waitForPeerEvents(shutdownCtx context.Context, waitGroup *sync.WaitGroup, peerEventChan chan lnrpc.PeerEvent) {
