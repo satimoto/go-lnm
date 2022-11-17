@@ -234,6 +234,21 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 	return true
 }
 
+func (r *SessionResolver) invalidateSession(ctx context.Context, user db.User, session db.Session) {
+	updateSessionByUidParams := param.NewUpdateSessionByUidParams(session)
+		updateSessionByUidParams.Status = db.SessionStatusTypeINVALID
+
+		updatedSession, err := r.Repository.UpdateSessionByUid(ctx, updateSessionByUidParams)
+
+		if err != nil {
+			metrics.RecordError("LSP156", "Error updating session", err)
+			log.Printf("LSP156: Params=%#v", updateSessionByUidParams)
+			return
+		}
+
+		r.SendSessionUpdateNotification(user, updatedSession)
+}
+
 func (r *SessionResolver) waitForSessionTimeout(user db.User, sessionUid string, timeout time.Duration) {
 	time.Sleep(timeout)
 
@@ -247,17 +262,6 @@ func (r *SessionResolver) waitForSessionTimeout(user db.User, sessionUid string,
 	}
 
 	if session.Status == db.SessionStatusTypePENDING {
-		updateSessionByUidParams := param.NewUpdateSessionByUidParams(session)
-		updateSessionByUidParams.Status = db.SessionStatusTypeINVALID
-
-		updatedSession, err := r.Repository.UpdateSessionByUid(ctx, updateSessionByUidParams)
-
-		if err != nil {
-			metrics.RecordError("LSP156", "Error updating session", err)
-			log.Printf("LSP156: Params=%#v", updateSessionByUidParams)
-			return
-		}
-
-		r.SendSessionUpdateNotification(user, updatedSession)
+		r.invalidateSession(ctx, user, session)
 	}
 }
