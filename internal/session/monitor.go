@@ -33,14 +33,14 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 		// There is no AuthorizationID set, flag the session.
 		metrics.RecordError("LSP137", "Error in session", errors.New("authorizationID is nil"))
 		log.Printf("LSP137: SessionUid=%v", session.Uid)
-		
+
 		// Get the last token authorization for the session token
 		tokenAuthorization, err := r.TokenAuthorizationRepository.GetLastTokenAuthorizationByTokenID(ctx, session.TokenID)
 
 		if err != nil {
 			// No last token authorization found
 			metrics.RecordError("LSP136", "Error last token authorization not found", err)
-			log.Printf("LSP136: SessionUid=%v, TokenID=%v", session.Uid, session.TokenID)	
+			log.Printf("LSP136: SessionUid=%v, TokenID=%v", session.Uid, session.TokenID)
 			r.StopSession(ctx, session)
 			return
 		}
@@ -120,7 +120,11 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 
 		taxPercent := r.CountryAccountResolver.GetTaxPercentByCountry(ctx, location.Country, dbUtil.GetEnvFloat64("DEFAULT_TAX_PERCENT", 19))
 		invoiceInterval := calculateInvoiceInterval(connector.Wattage)
-		log.Printf("Monitor session for %s, running every %v seconds", session.Uid, invoiceInterval/time.Second)
+		log.Printf("Monitor session for %s, running every %f seconds", session.Uid, invoiceInterval.Seconds())
+
+		if session.Status == db.SessionStatusTypePENDING {
+			go r.waitForSessionTimeout(user, session.Uid, 90*time.Second)
+		}
 
 	invoiceLoop:
 		for {
@@ -150,6 +154,27 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 			}
 		}
 	}
+}
+
+func (r *SessionResolver) FlagSession(ctx context.Context, session db.Session) {
+	r.Repository.UpdateSessionIsFlaggedByUid(ctx, db.UpdateSessionIsFlaggedByUidParams{
+		Uid:       session.Uid,
+		IsFlagged: true,
+	})
+
+	RecordFlaggedSession()
+}
+
+func (r *SessionResolver) StopSession(ctx context.Context, session db.Session) (*ocpirpc.StopSessionResponse, error) {
+	r.FlagSession(ctx, session)
+
+	if session.AuthMethod == db.AuthMethodTypeAUTHREQUEST {
+		return r.OcpiService.StopSession(ctx, &ocpirpc.StopSessionRequest{
+			SessionUid: session.Uid,
+		})
+	}
+
+	return nil, errors.New("cannot remotely stop this session")
 }
 
 func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User, session db.Session, tokenAuthorization db.TokenAuthorization, timeLocation *time.Location, tariffIto *tariff.TariffIto, connectorWattage int32, taxPercent float64) bool {
@@ -209,23 +234,30 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 	return true
 }
 
-func (r *SessionResolver) FlagSession(ctx context.Context, session db.Session) {
-	r.Repository.UpdateSessionIsFlaggedByUid(ctx, db.UpdateSessionIsFlaggedByUidParams{
-		Uid:       session.Uid,
-		IsFlagged: true,
-	})
+func (r *SessionResolver) waitForSessionTimeout(user db.User, sessionUid string, timeout time.Duration) {
+	time.Sleep(timeout)
 
-	RecordFlaggedSession()
-}
+	ctx := context.Background()
+	session, err := r.Repository.GetSessionByUid(ctx, sessionUid)
 
-func (r *SessionResolver) StopSession(ctx context.Context, session db.Session) (*ocpirpc.StopSessionResponse, error) {
-	r.FlagSession(ctx, session)
-
-	if session.AuthMethod == db.AuthMethodTypeAUTHREQUEST {
-		return r.OcpiService.StopSession(ctx, &ocpirpc.StopSessionRequest{
-			SessionUid: session.Uid,
-		})
+	if err != nil {
+		metrics.RecordError("LSP155", "Error getting session", err)
+		log.Printf("LSP155: SessionUid=%v", sessionUid)
+		return
 	}
 
-	return nil, errors.New("cannot remotely stop this session")
+	if session.Status == db.SessionStatusTypePENDING {
+		updateSessionByUidParams := param.NewUpdateSessionByUidParams(session)
+		updateSessionByUidParams.Status = db.SessionStatusTypeINVALID
+
+		updatedSession, err := r.Repository.UpdateSessionByUid(ctx, updateSessionByUidParams)
+
+		if err != nil {
+			metrics.RecordError("LSP156", "Error updating session", err)
+			log.Printf("LSP156: Params=%#v", updateSessionByUidParams)
+			return
+		}
+
+		r.SendSessionUpdateNotification(user, updatedSession)
+	}
 }
