@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
-	"github.com/lightningnetwork/lnd/lnrpc/walletrpc"
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/node"
 	"github.com/satimoto/go-datastore/pkg/param"
@@ -197,15 +196,6 @@ func (m *Monitor) register() error {
 			channelevent.RecordChannels(uint32(numChannels))
 
 			log.Print("Registered node")
-
-			estimateFeeResponse, err := m.LightningService.EstimateFee(&walletrpc.EstimateFeeRequest{ConfTarget: 6})
-			
-			if err != nil {
-				metrics.RecordError("LSP154", "Error getting fee estimation", err)
-				break
-			}
-
-			log.Printf("Startup fee estimation: %v", estimateFeeResponse.SatPerKw)
 			break
 		}
 

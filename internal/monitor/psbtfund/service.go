@@ -13,10 +13,11 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
 	"github.com/satimoto/go-datastore/pkg/psbtfundingstate"
-	"github.com/satimoto/go-datastore/pkg/util"
+	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/internal/service"
+	"github.com/satimoto/go-lsp/pkg/util"
 )
 
 type PsbtFund interface {
@@ -96,7 +97,7 @@ func (s *PsbtFundService) OpenChannel(ctx context.Context, request *lnrpc.OpenCh
 		}
 
 		if len(psbtFundingState.BasePsbt) == 0 {
-			psbtBatchTimeout := util.GetEnvInt32("PSBT_BATCH_TIMEOUT", 30)
+			psbtBatchTimeout := dbUtil.GetEnvInt32("PSBT_BATCH_TIMEOUT", 30)
 			expiryDate := time.Now().Add(time.Duration(psbtBatchTimeout) * time.Second)
 			createPsbtFundingStateParams := db.CreatePsbtFundingStateParams{
 				NodeID:     s.nodeID,
@@ -159,13 +160,26 @@ func (s *PsbtFundService) fundPsbt(psbtFundingStateID int64) {
 	}
 
 	// Fund the PSBT
-	// TODO: calculate sats/vbyte
+	maxFeeSatPerVByte := uint64(dbUtil.GetEnvInt32("PSBT_MAX_FEE_SAT_VBYTE", 64))
+	satPerVByte := uint64(2)
+
+	if estimateFeeResponse, err := s.LightningService.EstimateFee(&walletrpc.EstimateFeeRequest{ConfTarget: 6}); err == nil {
+		satPerVByte = util.FeePerVByte(estimateFeeResponse.SatPerKw)
+	}
+
+	if satPerVByte > maxFeeSatPerVByte {
+		// Cap the opening fees to the max configured sat/vbyte amount
+		satPerVByte = maxFeeSatPerVByte
+	}
+
+	log.Printf("Funding PSBT at: %v sats/vbyte", satPerVByte)
+
 	fundPsbtRequest := &walletrpc.FundPsbtRequest{
 		Template: &walletrpc.FundPsbtRequest_Psbt{
 			Psbt: psbtFundingState.Psbt,
 		},
 		Fees: &walletrpc.FundPsbtRequest_SatPerVbyte{
-			SatPerVbyte: 2,
+			SatPerVbyte: satPerVByte,
 		},
 		SpendUnconfirmed: true,
 	}

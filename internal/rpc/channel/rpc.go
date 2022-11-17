@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightningnetwork/lnd/lnrpc/walletrpc"
 	"github.com/lightningnetwork/lnd/lnwire"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	metrics "github.com/satimoto/go-lsp/internal/metric"
@@ -17,6 +18,19 @@ import (
 
 func (r *RpcChannelResolver) OpenChannel(ctx context.Context, input *lsprpc.OpenChannelRequest) (*lsprpc.OpenChannelResponse, error) {
 	if input != nil {
+		maxFeeSatPerVByte := uint64(dbUtil.GetEnvInt32("PSBT_MAX_FEE_SAT_VBYTE", 64))
+		satPerVByte := uint64(2)
+
+		if estimateFeeResponse, err := r.LightningService.EstimateFee(&walletrpc.EstimateFeeRequest{ConfTarget: 6}); err == nil {
+			satPerVByte = util.FeePerVByte(estimateFeeResponse.SatPerKw)
+		}
+
+		if satPerVByte > maxFeeSatPerVByte {
+			metrics.RecordError("LSP154", "Error fees too high", errors.New("error fees too high"))
+			log.Printf("LSP154: Sats/VByte=%v", satPerVByte)
+			return nil, errors.New("error fees too high")
+		}
+
 		walletBalance, err := r.LightningService.WalletBalance(&lnrpc.WalletBalanceRequest{})
 
 		if err != nil {
