@@ -196,11 +196,16 @@ func (m *Monitor) register() error {
 
 			channelevent.RecordChannels(uint32(numChannels))
 
-			if estimateFeeResponse, err := m.LightningService.EstimateFee(&walletrpc.EstimateFeeRequest{ConfTarget: 6}); err == nil {
-				log.Printf("Startup fee estimation: %v", estimateFeeResponse.SatPerKw)
+			log.Print("Registered node")
+
+			estimateFeeResponse, err := m.LightningService.EstimateFee(&walletrpc.EstimateFeeRequest{ConfTarget: 6})
+			
+			if err != nil {
+				metrics.RecordError("LSP154", "Error getting fee estimation", err)
+				break
 			}
 
-			log.Print("Registered node")
+			log.Printf("Startup fee estimation: %v", estimateFeeResponse.SatPerKw)
 			break
 		}
 
