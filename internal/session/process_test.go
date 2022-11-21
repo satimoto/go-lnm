@@ -7,12 +7,11 @@ import (
 	dbMocks "github.com/satimoto/go-datastore/pkg/db/mocks"
 	"github.com/satimoto/go-datastore/pkg/util"
 	ferpMocks "github.com/satimoto/go-lsp/internal/ferp/mocks"
+	"github.com/satimoto/go-lsp/internal/ito"
 	lightningnetworkMocks "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
 	notificationMocks "github.com/satimoto/go-lsp/internal/notification/mocks"
 	serviceMocks "github.com/satimoto/go-lsp/internal/service/mocks"
-	"github.com/satimoto/go-lsp/internal/session"
 	sessionsMocks "github.com/satimoto/go-lsp/internal/session/mocks"
-	"github.com/satimoto/go-lsp/internal/tariff"
 	ocpiMocks "github.com/satimoto/go-ocpi/pkg/ocpi/mocks"
 
 	"testing"
@@ -32,10 +31,10 @@ func TestProcessChargingPeriods(t *testing.T) {
 			desc: "No periods - time",
 			session: []byte(`{
 				"start_datetime": "2015-06-29T21:39:09Z",
-				"kwh": 0.00,
 				"currency": "EUR",
-				"charging_periods": [],
 				"total_cost": 0,
+				"total_energy": 0.00,
+				"charging_periods": [],
 				"status": "ACTIVE",
 				"last_updated": "2015-06-29T23:37:32Z"
 			}`),
@@ -56,10 +55,10 @@ func TestProcessChargingPeriods(t *testing.T) {
 			desc: "No periods - time and energy",
 			session: []byte(`{
 				"start_datetime": "2015-06-29T21:39:09Z",
-				"kwh": 0.00,
 				"currency": "EUR",
-				"charging_periods": [],
 				"total_cost": 0,
+				"total_energy": 0.00,
+				"charging_periods": [],
 				"status": "ACTIVE",
 				"last_updated": "2015-06-29T23:37:32Z"
 			}`),
@@ -86,10 +85,10 @@ func TestProcessChargingPeriods(t *testing.T) {
 			desc: "No periods - kWh",
 			session: []byte(`{
 				"start_datetime": "2015-06-29T21:39:00Z",
-				"kwh": 3.00,
 				"currency": "EUR",
-				"charging_periods": [],
 				"total_cost": 0,
+				"total_energy": 3.00,
+				"charging_periods": [],
 				"status": "ACTIVE",
 				"last_updated": "2015-06-29T23:39:00Z"
 			}`),
@@ -116,10 +115,10 @@ func TestProcessChargingPeriods(t *testing.T) {
 			desc: "No periods - kWh + delta",
 			session: []byte(`{
 				"start_datetime": "2015-06-29T21:39:00Z",
-				"kwh": 3.00,
 				"currency": "EUR",
-				"charging_periods": [],
 				"total_cost": 0,
+				"total_energy": 3.00,
+				"charging_periods": [],
 				"status": "ACTIVE",
 				"last_updated": "2015-06-29T23:39:00Z"
 			}`),
@@ -141,15 +140,15 @@ func TestProcessChargingPeriods(t *testing.T) {
 			wattage:  11040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T23:44:00Z",
-			value:    4.9,
+			value:    5.067,
 		}, {
 			desc: "No periods - total cost",
 			session: []byte(`{
 				"start_datetime": "2015-06-29T21:39:00Z",
-				"kwh": 3.00,
 				"currency": "EUR",
-				"charging_periods": [],
 				"total_cost": 5,
+				"total_energy": 3.00,
+				"charging_periods": [],
 				"status": "ACTIVE",
 				"last_updated": "2015-06-29T23:39:00Z"
 			}`),
@@ -171,15 +170,15 @@ func TestProcessChargingPeriods(t *testing.T) {
 			wattage:  11040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T23:37:32Z",
-			value:    5.067,
+			value:    5,
 		}, {
 			desc: "No periods - total cost + delta",
 			session: []byte(`{
 				"start_datetime": "2015-06-29T21:39:00Z",
-				"kwh": 3.00,
 				"currency": "EUR",
-				"charging_periods": [],
 				"total_cost": 5,
+				"total_energy": 3.00,
+				"charging_periods": [],
 				"status": "ACTIVE",
 				"last_updated": "2015-06-29T23:39:00Z"
 			}`),
@@ -206,8 +205,9 @@ func TestProcessChargingPeriods(t *testing.T) {
 			desc: "Simple",
 			session: []byte(`{
 				"start_datetime": "2015-06-29T21:39:09Z",
-				"kwh": 0.00,
 				"currency": "EUR",
+				"total_cost": 4.00,
+				"total_energy": 0.00,
 				"charging_periods": [{
 					"start_date_time": "2015-06-29T21:39:09Z",
 					"dimensions": [{
@@ -215,7 +215,6 @@ func TestProcessChargingPeriods(t *testing.T) {
 						"volume": 1.973
 					}]
 				}],
-				"total_cost": 4.00,
 				"status": "ACTIVE",
 				"last_updated": "2015-06-29T23:37:32Z"
 			}`),
@@ -236,8 +235,9 @@ func TestProcessChargingPeriods(t *testing.T) {
 			desc: "Simple",
 			session: []byte(`{
 				"start_datetime": "2015-06-29T21:39:09Z",
-				"kwh": 0.00,
 				"currency": "EUR",
+				"total_cost": 4.00,
+				"total_energy": 0.00,
 				"charging_periods": [{
 					"start_date_time": "2015-06-29T21:39:09Z",
 					"dimensions": [{
@@ -245,7 +245,6 @@ func TestProcessChargingPeriods(t *testing.T) {
 						"volume": 1.973
 					}]
 				}],
-				"total_cost": 4.00,
 				"status": "ACTIVE",
 				"last_updated": "2015-06-29T23:37:32Z"
 			}`),
@@ -266,8 +265,9 @@ func TestProcessChargingPeriods(t *testing.T) {
 			desc: "Simple Session time",
 			session: []byte(`{
 				"start_datetime": "2015-06-29T21:39:09Z",
-				"kwh": 0.00,
 				"currency": "EUR",
+				"total_cost": 4.00,
+				"total_energy": 0.00,
 				"charging_periods": [{
 					"start_date_time": "2015-06-29T21:39:09Z",
 					"dimensions": [{
@@ -275,7 +275,6 @@ func TestProcessChargingPeriods(t *testing.T) {
 						"volume": 1.973
 					}]
 				}],
-				"total_cost": 4.00,
 				"status": "ACTIVE",
 				"last_updated": "2015-06-29T23:37:32Z"
 			}`),
@@ -297,8 +296,9 @@ func TestProcessChargingPeriods(t *testing.T) {
 			session: []byte(`{
 				"start_datetime": "2015-06-29T22:39:09Z",
 				"end_datetime": "2015-06-29T23:50:16Z",
-				"kwh": 41.00,
 				"currency": "EUR",
+				"total_cost": 8.50,
+				"total_energy": 41.00,
 				"charging_periods": [{
 					"start_date_time": "2015-06-29T22:39:09Z",
 					"dimensions": [{
@@ -324,7 +324,6 @@ func TestProcessChargingPeriods(t *testing.T) {
 						"volume": 0.718
 					}]
 				}],
-				"total_cost": 8.50,
 				"status": "COMPLETED",
 				"last_updated": "2015-06-29T23:09:10Z"
 			}`),
@@ -405,10 +404,10 @@ func TestProcessChargingPeriods(t *testing.T) {
 			mockServices := serviceMocks.NewService(mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
 			sessionResolver := sessionsMocks.NewResolver(mockRepository, mockServices)
 
-			sessionIto := session.SessionIto{}
+			sessionIto := ito.SessionIto{}
 			json.Unmarshal(tc.session, &sessionIto)
 
-			tariffIto := tariff.TariffIto{}
+			tariffIto := ito.TariffIto{}
 			json.Unmarshal(tc.tariff, &tariffIto)
 
 			timeLocation, _ := time.LoadLocation(tc.location)
@@ -461,7 +460,7 @@ func TestProcessChargingPeriods2(t *testing.T) {
 				"last_updated": "2015-06-29T21:00:00Z"
 			}`),
 			tariff:   tariffBytes,
-			wattage: 11040,
+			wattage:  11040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T21:00:00Z",
 			value:    2.5,
@@ -483,7 +482,7 @@ func TestProcessChargingPeriods2(t *testing.T) {
 				"last_updated": "2015-06-29T21:02:00Z"
 			}`),
 			tariff:   tariffBytes,
-			wattage: 11040,
+			wattage:  11040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T21:02:00Z",
 			value:    2.667,
@@ -505,7 +504,7 @@ func TestProcessChargingPeriods2(t *testing.T) {
 				"last_updated": "2015-06-29T21:02:00Z"
 			}`),
 			tariff:   tariffBytes,
-			wattage: 11040,
+			wattage:  11040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T21:03:00Z",
 			value:    2.667,
@@ -527,7 +526,7 @@ func TestProcessChargingPeriods2(t *testing.T) {
 				"last_updated": "2015-06-29T21:02:00Z"
 			}`),
 			tariff:   tariffBytes,
-			wattage: 11040,
+			wattage:  11040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T21:07:00Z",
 			value:    2.833,
@@ -549,7 +548,7 @@ func TestProcessChargingPeriods2(t *testing.T) {
 				"last_updated": "2015-06-29T21:02:00Z"
 			}`),
 			tariff:   tariffBytes,
-			wattage: 11040,
+			wattage:  11040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T22:02:00Z",
 			value:    4.5,
@@ -571,7 +570,7 @@ func TestProcessChargingPeriods2(t *testing.T) {
 				"last_updated": "2015-06-29T22:01:00Z"
 			}`),
 			tariff:   tariffBytes,
-			wattage: 11040,
+			wattage:  11040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T22:02:00Z",
 			value:    4.667,
@@ -588,10 +587,10 @@ func TestProcessChargingPeriods2(t *testing.T) {
 			mockServices := serviceMocks.NewService(mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
 			sessionResolver := sessionsMocks.NewResolver(mockRepository, mockServices)
 
-			sessionIto := session.SessionIto{}
+			sessionIto := ito.SessionIto{}
 			json.Unmarshal(tc.session, &sessionIto)
 
-			tariffIto := tariff.TariffIto{}
+			tariffIto := ito.TariffIto{}
 			json.Unmarshal(tc.tariff, &tariffIto)
 
 			timeLocation, _ := time.LoadLocation(tc.location)

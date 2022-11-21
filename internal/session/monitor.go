@@ -9,8 +9,8 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
+	"github.com/satimoto/go-lsp/internal/ito"
 	metrics "github.com/satimoto/go-lsp/internal/metric"
-	"github.com/satimoto/go-lsp/internal/tariff"
 	"github.com/satimoto/go-lsp/pkg/util"
 	"github.com/satimoto/go-ocpi/ocpirpc"
 )
@@ -122,10 +122,6 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 		invoiceInterval := calculateInvoiceInterval(connector.Wattage)
 		log.Printf("Monitor session for %s, running every %f seconds", session.Uid, invoiceInterval.Seconds())
 
-		if session.Status == db.SessionStatusTypePENDING {
-			go r.waitForSessionTimeout(user, session.Uid, 90*time.Second)
-		}
-
 	invoiceLoop:
 		for {
 			// Wait for invoice interval
@@ -168,16 +164,16 @@ func (r *SessionResolver) FlagSession(ctx context.Context, session db.Session) {
 func (r *SessionResolver) StopSession(ctx context.Context, session db.Session) (*ocpirpc.StopSessionResponse, error) {
 	r.FlagSession(ctx, session)
 
-	if session.AuthMethod == db.AuthMethodTypeAUTHREQUEST {
+	if token, err := r.TokenRepository.GetToken(ctx, session.TokenID); err == nil && token.Type == db.TokenTypeOTHER {
 		return r.OcpiService.StopSession(ctx, &ocpirpc.StopSessionRequest{
-			SessionUid: session.Uid,
+			AuthorizationId: session.AuthorizationID.String,
 		})
 	}
 
 	return nil, errors.New("cannot remotely stop this session")
 }
 
-func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User, session db.Session, tokenAuthorization db.TokenAuthorization, timeLocation *time.Location, tariffIto *tariff.TariffIto, connectorWattage int32, taxPercent float64) bool {
+func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User, session db.Session, tokenAuthorization db.TokenAuthorization, timeLocation *time.Location, tariffIto *ito.TariffIto, connectorWattage int32, taxPercent float64) bool {
 	sessionInvoices, err := r.Repository.ListSessionInvoices(ctx, session.ID)
 
 	if err != nil {
@@ -232,36 +228,4 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 	}
 
 	return true
-}
-
-func (r *SessionResolver) invalidateSession(ctx context.Context, user db.User, session db.Session) {
-	updateSessionByUidParams := param.NewUpdateSessionByUidParams(session)
-		updateSessionByUidParams.Status = db.SessionStatusTypeINVALID
-
-		updatedSession, err := r.Repository.UpdateSessionByUid(ctx, updateSessionByUidParams)
-
-		if err != nil {
-			metrics.RecordError("LSP156", "Error updating session", err)
-			log.Printf("LSP156: Params=%#v", updateSessionByUidParams)
-			return
-		}
-
-		r.SendSessionUpdateNotification(user, updatedSession)
-}
-
-func (r *SessionResolver) waitForSessionTimeout(user db.User, sessionUid string, timeout time.Duration) {
-	time.Sleep(timeout)
-
-	ctx := context.Background()
-	session, err := r.Repository.GetSessionByUid(ctx, sessionUid)
-
-	if err != nil {
-		metrics.RecordError("LSP155", "Error getting session", err)
-		log.Printf("LSP155: SessionUid=%v", sessionUid)
-		return
-	}
-
-	if session.Status == db.SessionStatusTypePENDING {
-		r.invalidateSession(ctx, user, session)
-	}
 }

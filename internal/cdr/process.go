@@ -106,65 +106,98 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 		return errors.New("error retrieving session invoices")
 	}
 
-	priceFiat, _ := session.CalculatePriceInvoiced(sessionInvoices)
-	_, totalMsat := session.CalculateTotalInvoiced(sessionInvoices)
+	priceFiat, priceMsat := session.CalculatePriceInvoiced(sessionInvoices)
 
 	taxPercent := r.SessionResolver.CountryAccountResolver.GetTaxPercentByCountry(ctx, location.Country, dbUtil.GetEnvFloat64("DEFAULT_TAX_PERCENT", 19))
 	cdrTotalFiat := cdr.TotalCost
 
-	switch {
-	case cdrTotalFiat > priceFiat:
-		// Issue final invoice
-		tokenAuthorization, err := r.SessionResolver.TokenAuthorizationRepository.GetTokenAuthorizationByAuthorizationID(ctx, sess.AuthorizationID.String)
+	// The cdr TotalCost might be 0. If so, we should check the TotalEnergy, TotalTime and TotalParkingTime
+	if cdrTotalFiat == 0 {
+		tariffs, err := r.SessionResolver.TariffResolver.Repository.ListTariffsByCdr(ctx, dbUtil.SqlNullInt64(cdr.ID))
 
 		if err != nil {
-			metrics.RecordError("LSP128", "Error retrieving token authorization", err)
-			log.Printf("LSP128: SessionUid=%v, AuthorizationID=%v", sess.Uid, sess.AuthorizationID.String)
-			return errors.New("error retrieving token authorization")
+			metrics.RecordError("LSP157", "Error listing cdr tariffs", err)
+			log.Printf("LSP157: CdrID=%v", cdr.ID)
 		}
 
-		invoicePriceFiat := cdrTotalFiat - priceFiat
-		invoiceTotalFiat, invoiceCommissionFiat, invoiceTaxFiat := session.CalculateCommission(cdrTotalFiat-priceFiat, user.CommissionPercent, taxPercent)
-		sessionInvoice := r.SessionResolver.IssueSessionInvoice(ctx, user, sess, tokenAuthorization, util.InvoiceParams{
-			PriceFiat:      dbUtil.SqlNullFloat64(invoicePriceFiat),
-			CommissionFiat: dbUtil.SqlNullFloat64(invoiceCommissionFiat),
-			TaxFiat:        dbUtil.SqlNullFloat64(invoiceTaxFiat),
-			TotalFiat:      dbUtil.SqlNullFloat64(invoiceTotalFiat),
-		})
+		if len(tariffs) > 0 {
+			tariffIto := r.SessionResolver.TariffResolver.CreateTariffIto(ctx, tariffs[0])
+			sessionIto := r.CreateSessionIto(ctx, cdr)
 
-		if sessionInvoice != nil {
-			sessionInvoices = append(sessionInvoices, *sessionInvoice)
-			_, totalMsat = session.CalculateTotalInvoiced(sessionInvoices)
-		}
-	case cdrTotalFiat <= priceFiat:
-		if cdrTotalFiat < priceFiat {
-			// Issue rebate if overpaid
-			// TODO: This should be launched as a goroutine to force completion/retries
-			rebateTotalFiat := priceFiat - cdrTotalFiat
-			rebatePriceFiat, rebateCommissionFiat, rebateTaxFiat := session.ReverseCommission(rebateTotalFiat, user.CommissionPercent, taxPercent)
+			connector, err := r.SessionResolver.LocationRepository.GetConnector(ctx, sess.ConnectorID)
 
-			invoiceParams := util.InvoiceParams{
-				PriceFiat:      dbUtil.SqlNullFloat64(rebatePriceFiat),
-				CommissionFiat: dbUtil.SqlNullFloat64(rebateCommissionFiat),
-				TaxFiat:        dbUtil.SqlNullFloat64(rebateTaxFiat),
-				TotalFiat:      dbUtil.SqlNullFloat64(rebateTotalFiat),
+			if err != nil {
+				metrics.RecordError("LSP158", "Error getting session connector", err)
+				log.Printf("LSP158: SessionUid=%v, ConnectorID=%v", sess.Uid, sess.ConnectorID)
+				return errors.New("error gettings session connector")
 			}
 
-			if invoiceRequest, err := r.IssueInvoiceRequest(ctx, user.ID, "REBATE", sess.Uid, sess.Currency, invoiceParams); err == nil {
-				updateSessionByUidParams := param.NewUpdateSessionByUidParams(sess)
-				updateSessionByUidParams.InvoiceRequestID = dbUtil.SqlNullInt64(invoiceRequest.ID)
+			timeLocation, err := time.LoadLocation(location.TimeZone.String)
 
-				_, err := r.SessionResolver.Repository.UpdateSessionByUid(ctx, updateSessionByUidParams)
+			if err != nil {
+				metrics.RecordError("LSP159", "Error loading time location", err)
+				log.Printf("LSP159: TimeZone=%v", location.TimeZone.String)
+				timeLocation, err = time.LoadLocation("UTC")
+			}
 
-				if err != nil {
-					metrics.RecordError("LSP117", "Error updating session", err)
-					log.Printf("LSP117: Params=%v", updateSessionByUidParams)
-					return errors.New("error updating session")
+			cdrTotalFiat = r.SessionResolver.ProcessChargingPeriods(sessionIto, tariffIto, connector.Wattage, timeLocation, cdr.LastUpdated)
+		}
+	}
+
+	if cdrTotalFiat > 0 {
+		if cdrTotalFiat > priceFiat {
+			// Issue final invoice
+			tokenAuthorization, err := r.SessionResolver.TokenAuthorizationRepository.GetTokenAuthorizationByAuthorizationID(ctx, sess.AuthorizationID.String)
+
+			if err != nil {
+				metrics.RecordError("LSP128", "Error retrieving token authorization", err)
+				log.Printf("LSP128: SessionUid=%v, AuthorizationID=%v", sess.Uid, sess.AuthorizationID.String)
+				return errors.New("error retrieving token authorization")
+			}
+
+			invoicePriceFiat := cdrTotalFiat - priceFiat
+			invoiceTotalFiat, invoiceCommissionFiat, invoiceTaxFiat := session.CalculateCommission(invoicePriceFiat, user.CommissionPercent, taxPercent)
+			sessionInvoice := r.SessionResolver.IssueSessionInvoice(ctx, user, sess, tokenAuthorization, util.InvoiceParams{
+				PriceFiat:      dbUtil.SqlNullFloat64(invoicePriceFiat),
+				CommissionFiat: dbUtil.SqlNullFloat64(invoiceCommissionFiat),
+				TaxFiat:        dbUtil.SqlNullFloat64(invoiceTaxFiat),
+				TotalFiat:      dbUtil.SqlNullFloat64(invoiceTotalFiat),
+			})
+
+			if sessionInvoice != nil {
+				sessionInvoices = append(sessionInvoices, *sessionInvoice)
+				_, priceMsat = session.CalculatePriceInvoiced(sessionInvoices)
+			}
+		} else if cdrTotalFiat <= priceFiat {
+			if cdrTotalFiat < priceFiat {
+				// Issue rebate if overpaid
+				// TODO: This should be launched as a goroutine to force completion/retries
+				rebateTotalFiat := priceFiat - cdrTotalFiat
+				rebatePriceFiat, rebateCommissionFiat, rebateTaxFiat := session.ReverseCommission(rebateTotalFiat, user.CommissionPercent, taxPercent)
+
+				invoiceParams := util.InvoiceParams{
+					PriceFiat:      dbUtil.SqlNullFloat64(rebatePriceFiat),
+					CommissionFiat: dbUtil.SqlNullFloat64(rebateCommissionFiat),
+					TaxFiat:        dbUtil.SqlNullFloat64(rebateTaxFiat),
+					TotalFiat:      dbUtil.SqlNullFloat64(rebateTotalFiat),
+				}
+
+				if invoiceRequest, err := r.IssueInvoiceRequest(ctx, user.ID, "REBATE", sess.Uid, sess.Currency, invoiceParams); err == nil {
+					updateSessionByUidParams := param.NewUpdateSessionByUidParams(sess)
+					updateSessionByUidParams.InvoiceRequestID = dbUtil.SqlNullInt64(invoiceRequest.ID)
+
+					_, err := r.SessionResolver.Repository.UpdateSessionByUid(ctx, updateSessionByUidParams)
+
+					if err != nil {
+						metrics.RecordError("LSP117", "Error updating session", err)
+						log.Printf("LSP117: Params=%v", updateSessionByUidParams)
+						return errors.New("error updating session")
+					}
 				}
 			}
-		}
 
-		r.SessionResolver.SendSessionUpdateNotification(user, sess)
+			r.SessionResolver.SendSessionUpdateNotification(user, sess)
+		}
 	}
 
 	// Set session as invoiced
@@ -180,7 +213,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 
 	// Issue invoice request to circuit user
 	circuitPercent := dbUtil.GetEnvFloat64("CIRCUIT_PERCENT", 0.5)
-	circuitAmountMsat := int64((float64(totalMsat) / 100.0) * circuitPercent)
+	circuitAmountMsat := int64((float64(priceMsat) / 100.0) * circuitPercent)
 
 	if user.CircuitUserID.Valid && circuitAmountMsat > 0 {
 		// TODO: This should be launched as a goroutine to force completion/retries

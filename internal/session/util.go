@@ -7,7 +7,7 @@ import (
 
 	"github.com/satimoto/go-datastore/pkg/db"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
-	"github.com/satimoto/go-lsp/internal/tariff"
+	"github.com/satimoto/go-lsp/internal/ito"
 	"github.com/satimoto/go-lsp/pkg/util"
 )
 
@@ -47,7 +47,7 @@ func ReverseCommission(total float64, commissionPercent float64, taxPercent floa
 	return amount, commission, tax
 }
 
-func calculateCost(priceComponent *tariff.PriceComponentIto, volume float64, factor float64) float64 {
+func calculateCost(priceComponent *ito.PriceComponentIto, volume float64, factor float64) float64 {
 	stepRound := getPriceComponentRounding(priceComponent.StepRound, db.RoundingGranularityUNIT, db.RoundingRuleROUNDUP)
 	priceRound := getPriceComponentRounding(priceComponent.PriceRound, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
 	pricePerStep := priceComponent.Price / factor * float64(priceComponent.StepSize)
@@ -58,18 +58,18 @@ func calculateCost(priceComponent *tariff.PriceComponentIto, volume float64, fac
 	return calculateRoundedValue(pricePerStep*roundedSteps, priceRound.Granularity, priceRound.Rule)
 }
 
-func getPriceComponentRounding(priceComponentRounding *tariff.PriceComponentRoundingIto, granularity db.RoundingGranularity, rule db.RoundingRule) tariff.PriceComponentRoundingIto {
+func getPriceComponentRounding(priceComponentRounding *ito.PriceComponentRoundingIto, granularity db.RoundingGranularity, rule db.RoundingRule) ito.PriceComponentRoundingIto {
 	if priceComponentRounding != nil {
 		return *priceComponentRounding
 	}
 
-	return tariff.PriceComponentRoundingIto{
+	return ito.PriceComponentRoundingIto{
 		Granularity: granularity,
 		Rule:        rule,
 	}
 }
 
-func getPriceComponentByType(priceComponents []*tariff.PriceComponentIto, tariffDimension db.TariffDimension) *tariff.PriceComponentIto {
+func getPriceComponentByType(priceComponents []*ito.PriceComponentIto, tariffDimension db.TariffDimension) *ito.PriceComponentIto {
 	for _, priceComponent := range priceComponents {
 		if priceComponent.Type == tariffDimension {
 			return priceComponent
@@ -79,8 +79,8 @@ func getPriceComponentByType(priceComponents []*tariff.PriceComponentIto, tariff
 	return nil
 }
 
-func getPriceComponents(elements []*tariff.ElementIto, timeLocation *time.Location, startDatetime time.Time, endDatetime time.Time, energy float64, minPower float64, maxPower float64) []*tariff.PriceComponentIto {
-	list := []*tariff.PriceComponentIto{}
+func getPriceComponents(elements []*ito.ElementIto, timeLocation *time.Location, startDatetime time.Time, endDatetime time.Time, energy float64, minPower float64, maxPower float64) []*ito.PriceComponentIto {
+	list := []*ito.PriceComponentIto{}
 	startDatetimeAtLocation := startDatetime.In(timeLocation)
 	weekday := strings.ToUpper(startDatetimeAtLocation.Weekday().String())
 	duration := int32(endDatetime.Sub(startDatetime).Seconds())
@@ -175,7 +175,7 @@ func calculateRoundedValue(value float64, granularity db.RoundingGranularity, ru
 	return math.Ceil(value*factor) / factor
 }
 
-func getVolumeByType(dimensions []*ChargingPeriodDimensionIto, dimensionType db.ChargingPeriodDimensionType) float64 {
+func getVolumeByType(dimensions []*ito.ChargingPeriodDimensionIto, dimensionType db.ChargingPeriodDimensionType) float64 {
 	for _, dimension := range dimensions {
 		if dimension.Type == dimensionType {
 			return dimension.Volume
