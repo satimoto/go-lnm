@@ -6,18 +6,25 @@ import (
 	"time"
 
 	"github.com/satimoto/go-datastore/pkg/db"
+	"github.com/satimoto/go-lsp/internal/ito"
 	metrics "github.com/satimoto/go-lsp/internal/metric"
-	"github.com/satimoto/go-lsp/internal/tariff"
 )
 
-func (r *SessionResolver) ProcessChargingPeriods(sessionIto *SessionIto, tariffIto *tariff.TariffIto, connectorWattage int32, timeLocation *time.Location, processDatetime time.Time) float64 {
+func (r *SessionResolver) ProcessChargingPeriods(sessionIto *ito.SessionIto, tariffIto *ito.TariffIto, connectorWattage int32, timeLocation *time.Location, processDatetime time.Time) float64 {
 	totalAmount := float64(0)
 	lastDatetime := sessionIto.LastUpdated
 	numChargingPeriods := len(sessionIto.ChargingPeriods)
+	startDatetime := sessionIto.StartDatetime
 
 	if sessionIto.EndDatetime != nil {
 		processDatetime = *sessionIto.EndDatetime
 	}
+
+	totalCost := sessionIto.TotalCost
+	totalEnergy := sessionIto.TotalEnergy
+	totalTime := sessionIto.TotalTime
+	totalParkingTime := sessionIto.TotalParkingTime
+	totalSessionTime := sessionIto.TotalSessionTime
 
 	// Get price components and FLAT price
 	priceComponents := getPriceComponents(tariffIto.Elements, timeLocation, sessionIto.StartDatetime, processDatetime, 0, 0, 0)
@@ -27,11 +34,30 @@ func (r *SessionResolver) ProcessChargingPeriods(sessionIto *SessionIto, tariffI
 		totalAmount += flatPriceComponent.Price
 	}
 
-	// Calculate session duration
-	startDatetime := sessionIto.StartDatetime
-	sessionDuration := processDatetime.Sub(startDatetime)
-	sessionDurationHours := sessionDuration.Hours()
-	sessionTimeVolume := calculateRoundedValue(sessionDurationHours, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
+	// Get the time from sessionIto, else calculate it from the session time period
+	if totalTime == nil {
+		estimatedTime := processDatetime.Sub(startDatetime).Hours()
+		totalTime = &estimatedTime
+	}
+
+	// Get the parking time from sessionIto, else set to 0
+	if totalParkingTime == nil {
+		estimatedParkingTime := 0.0
+		totalParkingTime = &estimatedParkingTime
+	}
+
+	// Get the session time from sessionIto, else calculate it from the session time period
+	if totalSessionTime == nil {
+		estimatedSessionTime := processDatetime.Sub(startDatetime).Hours()
+		totalSessionTime = &estimatedSessionTime
+	}
+
+	// Get the energy from sessionIto, else calculate it from the connector
+	if totalEnergy == 0 {
+		totalEnergy = (*totalTime * float64(connectorWattage)) / 1000
+	}
+
+	sessionTimeVolume := calculateRoundedValue(*totalSessionTime, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
 
 	if sessionTimePriceComponent := getPriceComponentByType(priceComponents, db.TariffDimensionSESSIONTIME); sessionTimePriceComponent != nil {
 		// Time charging or not: defined in hours, step_size multiplier: 1 second
@@ -42,31 +68,29 @@ func (r *SessionResolver) ProcessChargingPeriods(sessionIto *SessionIto, tariffI
 	}
 
 	if numChargingPeriods == 0 {
-		lastUpdatedDurationSeconds := sessionIto.LastUpdated.Sub(startDatetime).Seconds()
-		sessionDurationSeconds := sessionDuration.Seconds()
+		lastUpdatedTime := sessionIto.LastUpdated.Sub(startDatetime).Hours()
 
-		if sessionIto.TotalCost != nil && *sessionIto.TotalCost > 0 {
+		if totalCost != nil && *totalCost > 0 {
 			// Estimation based on total cost
-			totalAmount = *sessionIto.TotalCost
+			totalAmount = *totalCost
 
-			if lastUpdatedDurationSeconds < sessionDurationSeconds {
-				totalAmount = (*sessionIto.TotalCost / lastUpdatedDurationSeconds) * sessionDurationSeconds
+			if lastUpdatedTime < *totalTime {
+				// Calculate delta
+				totalAmount = *totalTime * (*totalCost / lastUpdatedTime)
+				log.Printf("%v: Estimated total cost + delta: %v", sessionIto.Uid, totalAmount)
 			}
-
-			log.Printf("%v: Estimated based on total cost + delta: %v", sessionIto.Uid, totalAmount)
 		} else {
 			// Estimation based on duration and connector wattage
-			estimatedMaxEnergy := sessionIto.Kwh
-
-			if estimatedMaxEnergy == 0 {
-				estimatedMaxEnergy = (float64(connectorWattage) * sessionDurationHours) / 1000
-				log.Printf("%v: Estimated energy based on connector: %v", sessionIto.Uid, estimatedMaxEnergy)
-			} else if lastUpdatedDurationSeconds < sessionDurationSeconds {
-				estimatedMaxEnergy = (estimatedMaxEnergy / lastUpdatedDurationSeconds) * sessionDurationSeconds
-				log.Printf("%v: Estimated energy based on kWh + delta: %v", sessionIto.Uid, estimatedMaxEnergy)
+			if lastUpdatedTime < *totalTime {
+				// Calculate delta
+				estimatedEnergy := *totalTime * (totalEnergy / lastUpdatedTime)
+				totalEnergy = estimatedEnergy
+				log.Printf("%v: Estimated energy based on kWh + delta: %v", sessionIto.Uid, totalEnergy)
 			}
 
-			energyVolume := calculateRoundedValue(estimatedMaxEnergy, db.RoundingGranularityUNIT, db.RoundingRuleROUNDNEAR)
+			energyVolume := calculateRoundedValue(totalEnergy, db.RoundingGranularityUNIT, db.RoundingRuleROUNDNEAR)
+			timeVolume := calculateRoundedValue(*totalTime, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
+			parkingTimeVolume := calculateRoundedValue(*totalTime, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
 
 			// TODO: Simulate the charging periods through the time of the session
 			//       This includes grouping in periods by restrictions
@@ -81,9 +105,17 @@ func (r *SessionResolver) ProcessChargingPeriods(sessionIto *SessionIto, tariffI
 			if timePriceComponent := getPriceComponentByType(priceComponents, db.TariffDimensionTIME); timePriceComponent != nil {
 				// Time charging: defined in hours, step_size multiplier: 1 second
 				priceRound := getPriceComponentRounding(timePriceComponent.PriceRound, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
-				cost := calculateCost(timePriceComponent, sessionTimeVolume, 3600)
+				cost := calculateCost(timePriceComponent, timeVolume, 3600)
 				totalAmount = calculateRoundedValue(totalAmount+cost, priceRound.Granularity, priceRound.Rule)
 				log.Printf("%v: Estimated time cost: %v", sessionIto.Uid, cost)
+			}
+
+			if parkingTimePriceComponent := getPriceComponentByType(priceComponents, db.TariffDimensionPARKINGTIME); parkingTimePriceComponent != nil {
+				// Time not charging: defined in hours, step_size multiplier: 1 second
+				priceRound := getPriceComponentRounding(parkingTimePriceComponent.PriceRound, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
+				cost := calculateCost(parkingTimePriceComponent, parkingTimeVolume, 3600)
+				totalAmount = calculateRoundedValue(totalAmount+cost, priceRound.Granularity, priceRound.Rule)
+				log.Printf("%v: Estimated parking time cost: %v", sessionIto.Uid, cost)
 			}
 		}
 	} else {

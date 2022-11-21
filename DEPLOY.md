@@ -190,7 +190,7 @@ disablewallet=1
 listen=1
 
 # Constrain the mempool to the number of megabytes needed:
-maxmempool=100
+maxmempool=300
 
 # Limit uploading to peers
 maxuploadtarget=1000
