@@ -191,13 +191,10 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 			log.Printf("LSP042: SessionUID=%v, UserID=%v", session.Uid, session.UserID)
 		}
 
-		if session.AuthMethod == db.AuthMethodTypeAUTHREQUEST {
-			// Kill session
-			// TODO: handle expired invoices, reissue invoices on request
-			log.Printf("Session %s has unsettled invoices, stopping the session", session.Uid)
-			r.StopSession(ctx, session)
-
+		if _, err = r.StopSession(ctx, session); err == nil {
 			// End invoice loop, let the cdr settle the session
+			log.Printf("Session %s has unsettled invoices, stopping the session", session.Uid)
+
 			return false
 		}
 	}
