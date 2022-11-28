@@ -174,7 +174,7 @@ func (r *SessionResolver) StopSession(ctx context.Context, session db.Session) (
 }
 
 func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User, session db.Session, tokenAuthorization db.TokenAuthorization, timeLocation *time.Location, tariffIto *ito.TariffIto, connectorWattage int32, taxPercent float64) bool {
-	sessionInvoices, err := r.Repository.ListSessionInvoices(ctx, session.ID)
+	sessionInvoices, err := r.Repository.ListSessionInvoicesBySessionID(ctx, session.ID)
 
 	if err != nil {
 		metrics.RecordError("LSP033", "Error retrieving session invoices", err)
