@@ -95,28 +95,32 @@ func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, pro
 			return nil, errors.New("error creating invoice request")
 		}
 
-		// Send a notification 1 day after release date
-		sendDate := time.Now()
-
 		if invoiceParams.ReleaseDate.Valid {
-			sendDate = invoiceParams.ReleaseDate.Time
-		}
+			// Send a notification 1 day after release date
+			sendDate := time.Now()
 
-		createPendingNotificationParams := db.CreatePendingNotificationParams{
-			UserID:           user.ID,
-			NodeID:           user.NodeID.Int64,
-			InvoiceRequestID: dbUtil.SqlNullInt64(invoiceRequest.ID),
-			DeviceToken:      user.DeviceToken,
-			Type:             notification.INVOICE_REQUEST,
-			SendDate:         sendDate.Add(time.Hour * 24),
-		}
+			if invoiceParams.ReleaseDate.Valid {
+				sendDate = invoiceParams.ReleaseDate.Time
+			}
 
-		_, err := r.PendingNotificationRepository.CreatePendingNotification(ctx, createPendingNotificationParams)
+			createPendingNotificationParams := db.CreatePendingNotificationParams{
+				UserID:           user.ID,
+				NodeID:           user.NodeID.Int64,
+				InvoiceRequestID: dbUtil.SqlNullInt64(invoiceRequest.ID),
+				DeviceToken:      user.DeviceToken,
+				Type:             notification.INVOICE_REQUEST,
+				SendDate:         sendDate.Add(time.Hour * 24),
+			}
 
-		if err != nil {
-			metrics.RecordError("LSP130", "Error creating pending notification", err)
-			log.Printf("LSP130: Params=%#v", createPendingNotificationParams)
-			return nil, errors.New("error creating pending notification")
+			_, err := r.PendingNotificationRepository.CreatePendingNotification(ctx, createPendingNotificationParams)
+
+			if err != nil {
+				metrics.RecordError("LSP130", "Error creating pending notification", err)
+				log.Printf("LSP130: Params=%#v", createPendingNotificationParams)
+				return nil, errors.New("error creating pending notification")
+			}
+		} else {
+			r.SendInvoiceRequestNotification(user, invoiceRequest)
 		}
 
 		metricInvoiceRequestsTotal.Inc()
