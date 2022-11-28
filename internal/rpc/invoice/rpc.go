@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"log"
+	"time"
 
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
@@ -138,6 +139,7 @@ func (r *RpcInvoiceResolver) UpdateSessionInvoice(ctx context.Context, input *ls
 
 		invoice, err := r.LightningService.AddInvoice(&lnrpc.Invoice{
 			Memo:      session.Uid,
+			Expiry:    3600,
 			RPreimage: preimage[:],
 			ValueMsat: sessionInvoice.TotalMsat,
 		})
@@ -166,16 +168,46 @@ func (r *RpcInvoiceResolver) UpdateSessionInvoice(ctx context.Context, input *ls
 			return nil, errors.New("error updating invoice request")
 		}
 
+		go r.waitForInvoiceExpiry(invoice.PaymentRequest)
+
 		return &lsprpc.UpdateSessionInvoiceResponse{
-			Id: sessionInvoice.ID,
-			UserId: sessionInvoice.UserID,
+			Id:             sessionInvoice.ID,
+			UserId:         sessionInvoice.UserID,
 			PaymentRequest: sessionInvoice.PaymentRequest,
-			IsSettled: sessionInvoice.IsSettled,
-			IsExpired: sessionInvoice.IsExpired,
+			IsSettled:      sessionInvoice.IsSettled,
+			IsExpired:      sessionInvoice.IsExpired,
 		}, nil
 	}
 
 	return nil, errors.New("missing request")
+}
+
+func (r *RpcInvoiceResolver) waitForInvoiceExpiry(paymentRequest string) {
+	payReqParams := &lnrpc.PayReqString{PayReq: paymentRequest}
+	expiry := int64(3600)
+
+	if payReqResponse, err := r.LightningService.DecodePayReq(payReqParams); err == nil {
+		expiry = payReqResponse.Expiry
+	}
+
+	ctx := context.Background()
+	timeout := (time.Second * time.Duration(expiry)) + time.Minute
+
+	time.Sleep(timeout)
+
+	if sessionInvoice, err := r.SessionRepository.GetSessionInvoiceByPaymentRequest(ctx, paymentRequest); err == nil {
+		if !sessionInvoice.IsSettled && !sessionInvoice.IsExpired {
+			updateSessionInvoiceParams := param.NewUpdateSessionInvoiceParams(sessionInvoice)
+			updateSessionInvoiceParams.IsExpired = true
+
+			_, err = r.SessionRepository.UpdateSessionInvoice(ctx, updateSessionInvoiceParams)
+
+			if err != nil {
+				metrics.RecordError("LSP161", "Error updating session invoice", err)
+				log.Printf("LSP161: Params=%#v", updateSessionInvoiceParams)
+			}
+		}
+	}
 }
 
 func (r *RpcInvoiceResolver) waitForPayment(invoiceRequest db.InvoiceRequest) {
