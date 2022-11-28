@@ -104,9 +104,6 @@ func (m *InvoiceMonitor) handleInvoice(invoice lnrpc.Invoice) {
 					log.Printf("LSP041: SessionID=%v, UserID=%v", sessionInvoice.SessionID, user.ID)
 				}
 			}
-		} else {
-			// Monitor expiry of invoice
-			go m.waitForInvoiceExpiry(invoice)
 		}
 	}
 }
@@ -144,29 +141,6 @@ func (m *InvoiceMonitor) waitForInvoices(shutdownCtx context.Context, waitGroup 
 	}
 }
 
-func (m *InvoiceMonitor) waitForInvoiceExpiry(invoice lnrpc.Invoice) {
-	ctx := context.Background()
-	expiry := (time.Second * time.Duration(invoice.Expiry)) + time.Minute
-
-	time.Sleep(expiry)
-
-	if sessionInvoice, err := m.SessionResolver.Repository.GetSessionInvoiceByPaymentRequest(ctx, invoice.PaymentRequest); err == nil {
-		if !sessionInvoice.IsSettled && !sessionInvoice.IsExpired {
-			updateSessionInvoiceParams := param.NewUpdateSessionInvoiceParams(sessionInvoice)
-			updateSessionInvoiceParams.IsExpired = true
-
-			_, err = m.SessionResolver.Repository.UpdateSessionInvoice(ctx, updateSessionInvoiceParams)
-
-			if err != nil {
-				metrics.RecordError("LSP036", "Error updating session invoice", err)
-				log.Printf("LSP036: Params=%#v", updateSessionInvoiceParams)
-			}
-
-			// Metrics: Increment number of expired session invoices
-			metricSessionInvoicesExpiredTotal.Inc()
-		}
-	}
-}
 
 func (m *InvoiceMonitor) waitForSubscribeInvoicesClient(initialDelay, retryDelay time.Duration) (lnrpc.Lightning_SubscribeInvoicesClient, error) {
 	for {

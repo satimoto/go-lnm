@@ -14,6 +14,10 @@ var (
 		Name: "lsp_session_monitoring_goroutines",
 		Help: "The total number of session monitoring goroutines",
 	})
+	metricSessionInvoicesExpiredTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "lsp_session_invoices_expired_total",
+		Help: "The total number of session invoices expired",
+	})
 	metricSessionInvoicesTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "lsp_session_invoices_total",
 		Help: "The total number of session invoices",

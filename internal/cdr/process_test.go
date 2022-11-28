@@ -120,7 +120,7 @@ func TestProcessCdrErrors(t *testing.T) {
 				Country: "DEU",
 			}})
 
-			mockRepository.SetListSessionInvoicesMockData(dbMocks.SessionInvoicesMockData{SessionInvoices: []db.SessionInvoice{{
+			mockRepository.SetListSessionInvoicesBySessionIDMockData(dbMocks.SessionInvoicesMockData{SessionInvoices: []db.SessionInvoice{{
 				PriceFiat:      0.3852,
 				CommissionFiat: 0.026964,
 				TaxFiat:        0.07831116,

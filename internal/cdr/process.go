@@ -98,7 +98,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 		return errors.New("error retrieving session location")
 	}
 
-	sessionInvoices, err := r.SessionResolver.Repository.ListSessionInvoices(ctx, sess.ID)
+	sessionInvoices, err := r.SessionResolver.Repository.ListSessionInvoicesBySessionID(ctx, sess.ID)
 
 	if err != nil {
 		metrics.RecordError("LSP046", "Error retrieving session invoices", err)
@@ -182,7 +182,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 					TotalFiat:      dbUtil.SqlNullFloat64(rebateTotalFiat),
 				}
 
-				if invoiceRequest, err := r.IssueInvoiceRequest(ctx, user.ID, "REBATE", sess.Uid, sess.Currency, invoiceParams); err == nil {
+				if invoiceRequest, err := r.IssueInvoiceRequest(ctx, user.ID, "REBATE", sess.Currency, sess.Uid, invoiceParams); err == nil {
 					updateSessionByUidParams := param.NewUpdateSessionByUidParams(sess)
 					updateSessionByUidParams.InvoiceRequestID = dbUtil.SqlNullInt64(invoiceRequest.ID)
 
@@ -223,7 +223,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 			ReleaseDate: dbUtil.SqlNullTime(releaseDate),
 		}
 
-		_, err := r.IssueInvoiceRequest(ctx, user.CircuitUserID.Int64, "CIRCUIT", "Satsback", sess.Currency, invoiceParams)
+		_, err := r.IssueInvoiceRequest(ctx, user.CircuitUserID.Int64, "CIRCUIT", sess.Currency, "Satsback", invoiceParams)
 
 		return err
 	}

@@ -52,11 +52,6 @@ func (r *SessionResolver) ProcessChargingPeriods(sessionIto *ito.SessionIto, tar
 		totalSessionTime = &estimatedSessionTime
 	}
 
-	// Get the energy from sessionIto, else calculate it from the connector
-	if totalEnergy == 0 {
-		totalEnergy = (*totalTime * float64(connectorWattage)) / 1000
-	}
-
 	sessionTimeVolume := calculateRoundedValue(*totalSessionTime, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
 
 	if sessionTimePriceComponent := getPriceComponentByType(priceComponents, db.TariffDimensionSESSIONTIME); sessionTimePriceComponent != nil {
@@ -80,12 +75,25 @@ func (r *SessionResolver) ProcessChargingPeriods(sessionIto *ito.SessionIto, tar
 				log.Printf("%v: Estimated total cost + delta: %v", sessionIto.Uid, totalAmount)
 			}
 		} else {
-			// Estimation based on duration and connector wattage
-			if lastUpdatedTime < *totalTime {
-				// Calculate delta
-				estimatedEnergy := *totalTime * (totalEnergy / lastUpdatedTime)
-				totalEnergy = estimatedEnergy
-				log.Printf("%v: Estimated energy based on kWh + delta: %v", sessionIto.Uid, totalEnergy)
+			if totalEnergy > 0 {
+				if lastUpdatedTime > 0 && lastUpdatedTime < *totalTime {
+					// Estimation based on duration and connector wattage
+					estimatedEnergy := *totalTime * (totalEnergy / lastUpdatedTime)
+					totalEnergy = estimatedEnergy
+					log.Printf("%v: Energy based on kWh + delta: %v", sessionIto.Uid, totalEnergy)
+				}
+			} else {
+				// kWh = hours * (watts / 1000)
+				connectorKiloWattage := (float64(connectorWattage) / 1000)
+				log.Printf("%v: Connector kW: %v", sessionIto.Uid, connectorKiloWattage)
+		
+				if connectorKiloWattage > 100 {
+					connectorKiloWattage = 100
+					log.Printf("%v: Connector capped kW: %v", sessionIto.Uid, connectorKiloWattage)
+				}
+		
+				totalEnergy = *totalTime * connectorKiloWattage
+				log.Printf("%v: Estimated energy based on kWh: %v", sessionIto.Uid, totalEnergy)
 			}
 
 			energyVolume := calculateRoundedValue(totalEnergy, db.RoundingGranularityUNIT, db.RoundingRuleROUNDNEAR)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"log"
+	"time"
 
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
@@ -95,5 +96,38 @@ func (r *SessionResolver) IssueSessionInvoice(ctx context.Context, user db.User,
 	// TODO: handle notification failure
 	r.SendSessionInvoiceNotification(user, session, sessionInvoice)
 
+	go r.waitForInvoiceExpiry(invoice.PaymentRequest)
+
 	return &sessionInvoice
+}
+
+func (r *SessionResolver) waitForInvoiceExpiry(paymentRequest string) {
+	payReqParams := &lnrpc.PayReqString{PayReq: paymentRequest}
+	expiry := int64(3600)
+
+	if payReqResponse, err := r.LightningService.DecodePayReq(payReqParams); err == nil {
+		expiry = payReqResponse.Expiry
+	}
+
+	ctx := context.Background()
+	timeout := (time.Second * time.Duration(expiry)) + time.Minute
+
+	time.Sleep(timeout)
+
+	if sessionInvoice, err := r.Repository.GetSessionInvoiceByPaymentRequest(ctx, paymentRequest); err == nil {
+		if !sessionInvoice.IsSettled && !sessionInvoice.IsExpired {
+			updateSessionInvoiceParams := param.NewUpdateSessionInvoiceParams(sessionInvoice)
+			updateSessionInvoiceParams.IsExpired = true
+
+			_, err = r.Repository.UpdateSessionInvoice(ctx, updateSessionInvoiceParams)
+
+			if err != nil {
+				metrics.RecordError("LSP036", "Error updating session invoice", err)
+				log.Printf("LSP036: Params=%#v", updateSessionInvoiceParams)
+			}
+
+			// Metrics: Increment number of expired session invoices
+			metricSessionInvoicesExpiredTotal.Inc()
+		}
+	}
 }
