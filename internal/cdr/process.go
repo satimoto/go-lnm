@@ -23,6 +23,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 
 	ctx := context.Background()
 	authorizationId := cdr.AuthorizationID
+	cdrIsFlagged := false
 
 	if !authorizationId.Valid {
 		// There is no AuthorizationID set,
@@ -31,12 +32,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 		log.Printf("LSP035: Cdr AuthorizationID is nil")
 		log.Printf("LSP035: CdrUid=%v", cdr.Uid)
 
-		r.Repository.UpdateCdrIsFlaggedByUid(ctx, db.UpdateCdrIsFlaggedByUidParams{
-			Uid:       cdr.Uid,
-			IsFlagged: true,
-		})
-
-		metricCdrsFlaggedTotal.Inc()
+		cdrIsFlagged = true
 
 		sessions, err := r.SessionResolver.Repository.ListInProgressSessionsByUserID(ctx, cdr.UserID)
 
@@ -71,6 +67,25 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 
 			return errors.New("cdr authorization ID is nil")
 		}
+	}
+
+	tariffs, err := r.SessionResolver.TariffResolver.Repository.ListTariffsByCdr(ctx, dbUtil.SqlNullInt64(cdr.ID))
+
+	if err != nil {
+		metrics.RecordError("LSP157", "Error listing cdr tariffs", err)
+		log.Printf("LSP157: CdrID=%v", cdr.ID)
+	}
+
+	// Flag the cdr if the cdr has a cost but no tariffs
+	cdrIsFlagged = cdrIsFlagged || (cdr.TotalCost > 0 && len(tariffs) == 0)
+
+	if cdrIsFlagged {
+		r.Repository.UpdateCdrIsFlaggedByUid(ctx, db.UpdateCdrIsFlaggedByUidParams{
+			Uid:       cdr.Uid,
+			IsFlagged: cdrIsFlagged,
+		})
+
+		metricCdrsFlaggedTotal.Inc()
 	}
 
 	// TODO: How to deal with Sessions and CDRs with no AuthorizationID
@@ -112,36 +127,27 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 	cdrTotalFiat := cdr.TotalCost
 
 	// The cdr TotalCost might be 0. If so, we should check the TotalEnergy, TotalTime and TotalParkingTime
-	if cdrTotalFiat == 0 {
-		tariffs, err := r.SessionResolver.TariffResolver.Repository.ListTariffsByCdr(ctx, dbUtil.SqlNullInt64(cdr.ID))
+	if cdrTotalFiat == 0 && len(tariffs) > 0 {
+		tariffIto := r.SessionResolver.TariffResolver.CreateTariffIto(ctx, tariffs[0])
+		sessionIto := r.CreateSessionIto(ctx, cdr)
+
+		connector, err := r.SessionResolver.LocationRepository.GetConnector(ctx, sess.ConnectorID)
 
 		if err != nil {
-			metrics.RecordError("LSP157", "Error listing cdr tariffs", err)
-			log.Printf("LSP157: CdrID=%v", cdr.ID)
+			metrics.RecordError("LSP158", "Error getting session connector", err)
+			log.Printf("LSP158: SessionUid=%v, ConnectorID=%v", sess.Uid, sess.ConnectorID)
+			return errors.New("error gettings session connector")
 		}
 
-		if len(tariffs) > 0 {
-			tariffIto := r.SessionResolver.TariffResolver.CreateTariffIto(ctx, tariffs[0])
-			sessionIto := r.CreateSessionIto(ctx, cdr)
+		timeLocation, err := time.LoadLocation(location.TimeZone.String)
 
-			connector, err := r.SessionResolver.LocationRepository.GetConnector(ctx, sess.ConnectorID)
-
-			if err != nil {
-				metrics.RecordError("LSP158", "Error getting session connector", err)
-				log.Printf("LSP158: SessionUid=%v, ConnectorID=%v", sess.Uid, sess.ConnectorID)
-				return errors.New("error gettings session connector")
-			}
-
-			timeLocation, err := time.LoadLocation(location.TimeZone.String)
-
-			if err != nil {
-				metrics.RecordError("LSP159", "Error loading time location", err)
-				log.Printf("LSP159: TimeZone=%v", location.TimeZone.String)
-				timeLocation, err = time.LoadLocation("UTC")
-			}
-
-			cdrTotalFiat = r.SessionResolver.ProcessChargingPeriods(sessionIto, tariffIto, connector.Wattage, timeLocation, cdr.LastUpdated)
+		if err != nil {
+			metrics.RecordError("LSP159", "Error loading time location", err)
+			log.Printf("LSP159: TimeZone=%v", location.TimeZone.String)
+			timeLocation, err = time.LoadLocation("UTC")
 		}
+
+		cdrTotalFiat = r.SessionResolver.ProcessChargingPeriods(sessionIto, tariffIto, connector.Wattage, timeLocation, cdr.LastUpdated)
 	}
 
 	if cdrTotalFiat > 0 {
