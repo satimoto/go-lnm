@@ -150,6 +150,14 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 		cdrTotalFiat = r.SessionResolver.ProcessChargingPeriods(sessionIto, tariffIto, connector.Wattage, timeLocation, cdr.LastUpdated)
 	}
 
+	// Set session as invoiced
+	sessionParams := param.NewUpdateSessionByUidParams(sess)
+	sessionParams.Status = db.SessionStatusTypeINVOICED
+
+	if updatedSession, err := r.SessionResolver.Repository.UpdateSessionByUid(ctx, sessionParams); err == nil {
+		sess = updatedSession
+	}
+
 	if cdrTotalFiat > 0 {
 		if cdrTotalFiat > priceFiat {
 			// Issue final invoice
@@ -204,17 +212,6 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 
 			r.SessionResolver.SendSessionUpdateNotification(user, sess)
 		}
-	}
-
-	// Set session as invoiced
-	sessionParams := param.NewUpdateSessionByUidParams(sess)
-	sessionParams.Status = db.SessionStatusTypeINVOICED
-
-	_, err = r.SessionResolver.Repository.UpdateSessionByUid(ctx, sessionParams)
-
-	if err != nil {
-		metrics.RecordError("LSP133", "Error updating session", err)
-		log.Printf("LSP133: Params=%#v", sessionParams)
 	}
 
 	// Issue invoice request to circuit user
