@@ -6,6 +6,13 @@ import (
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 )
 
+type ChargeParams struct {
+	EstimatedEnergy float64
+	EstimatedTime   float64
+	MeteredEnergy   float64
+	MeteredTime     float64
+}
+
 type InvoiceParams struct {
 	PriceFiat      sql.NullFloat64
 	PriceMsat      sql.NullInt64

@@ -20,6 +20,10 @@ func CreateInvoiceRequestNotificationDto(invoiceRequest db.InvoiceRequest) Notif
 func CreateSessionInvoiceNotificationDto(session db.Session, sessionInvoice db.SessionInvoice) NotificationDto {
 	response := map[string]interface{}{
 		"type":             SESSION_INVOICE,
+		"estimatedEnergy":  sessionInvoice.EstimatedEnergy,
+		"estimatedTime":    sessionInvoice.EstimatedTime,
+		"meteredEnergy":    sessionInvoice.MeteredEnergy,
+		"meteredTime":      sessionInvoice.MeteredTime,
 		"paymentRequest":   sessionInvoice.PaymentRequest,
 		"signature":        hex.EncodeToString(sessionInvoice.Signature),
 		"sessionUid":       session.Uid,

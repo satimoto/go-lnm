@@ -208,20 +208,29 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 		log.Printf("%v: TotalCost=%v", session.Uid, session.TotalCost.Float64)
 	}
 
-	priceFiat, _ := CalculatePriceInvoiced(sessionInvoices)
+	invoicedPriceFiat, _ := CalculatePriceInvoiced(sessionInvoices)
 	sessionIto := r.CreateSessionIto(ctx, session)
-	sessionFiat := r.ProcessChargingPeriods(sessionIto, tariffIto, connectorWattage, timeLocation, timeNow)
+	estimatedFiat, estimatedEnergy, estimatedTime := r.ProcessChargingPeriods(sessionIto, tariffIto, connectorWattage, timeLocation, timeNow)
 
-	if sessionFiat > priceFiat {
-		invoicePriceFiat := sessionFiat - priceFiat
-		invoiceTotalFiat, invoiceCommissionFiat, invoiceTaxFiat := CalculateCommission(sessionFiat-priceFiat, user.CommissionPercent, taxPercent)
+	if estimatedFiat > invoicedPriceFiat {
+		priceFiat := estimatedFiat - invoicedPriceFiat
+		totalFiat, commissionFiat, taxFiat := CalculateCommission(estimatedFiat-invoicedPriceFiat, user.CommissionPercent, taxPercent)
 
-		r.IssueSessionInvoice(ctx, user, session, tokenAuthorization, util.InvoiceParams{
-			PriceFiat:      dbUtil.SqlNullFloat64(invoicePriceFiat),
-			CommissionFiat: dbUtil.SqlNullFloat64(invoiceCommissionFiat),
-			TaxFiat:        dbUtil.SqlNullFloat64(invoiceTaxFiat),
-			TotalFiat:      dbUtil.SqlNullFloat64(invoiceTotalFiat),
-		})
+		invoiceParams := util.InvoiceParams{
+			PriceFiat:      dbUtil.SqlNullFloat64(priceFiat),
+			CommissionFiat: dbUtil.SqlNullFloat64(commissionFiat),
+			TaxFiat:        dbUtil.SqlNullFloat64(taxFiat),
+			TotalFiat:      dbUtil.SqlNullFloat64(totalFiat),
+		}
+
+		chargeParams := util.ChargeParams{
+			EstimatedEnergy: estimatedEnergy,
+			EstimatedTime:   estimatedTime,
+			MeteredEnergy:   sessionIto.TotalEnergy,
+			MeteredTime:     timeNow.Sub(sessionIto.StartDatetime).Hours(),
+		}
+
+		r.IssueSessionInvoice(ctx, user, session, tokenAuthorization, invoiceParams, chargeParams)
 	}
 
 	return true

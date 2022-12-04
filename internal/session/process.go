@@ -6,12 +6,12 @@ import (
 	"time"
 
 	"github.com/satimoto/go-datastore/pkg/db"
+	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/ito"
 	metrics "github.com/satimoto/go-lsp/internal/metric"
 )
 
-func (r *SessionResolver) ProcessChargingPeriods(sessionIto *ito.SessionIto, tariffIto *ito.TariffIto, connectorWattage int32, timeLocation *time.Location, processDatetime time.Time) float64 {
-	totalAmount := float64(0)
+func (r *SessionResolver) ProcessChargingPeriods(sessionIto *ito.SessionIto, tariffIto *ito.TariffIto, connectorWattage int32, timeLocation *time.Location, processDatetime time.Time) (totalAmount, totalEnergy, totalTime float64) {
 	lastDatetime := sessionIto.LastUpdated
 	numChargingPeriods := len(sessionIto.ChargingPeriods)
 	startDatetime := sessionIto.StartDatetime
@@ -21,8 +21,8 @@ func (r *SessionResolver) ProcessChargingPeriods(sessionIto *ito.SessionIto, tar
 	}
 
 	totalCost := sessionIto.TotalCost
-	totalEnergy := sessionIto.TotalEnergy
-	totalTime := sessionIto.TotalTime
+	totalEnergy = sessionIto.TotalEnergy
+	totalTime = util.DefaultFloat(sessionIto.TotalTime, 0)
 	totalParkingTime := sessionIto.TotalParkingTime
 	totalSessionTime := sessionIto.TotalSessionTime
 
@@ -35,9 +35,8 @@ func (r *SessionResolver) ProcessChargingPeriods(sessionIto *ito.SessionIto, tar
 	}
 
 	// Get the time from sessionIto, else calculate it from the session time period
-	if totalTime == nil {
-		estimatedTime := processDatetime.Sub(startDatetime).Hours()
-		totalTime = &estimatedTime
+	if sessionIto.TotalTime == nil {
+		totalTime = processDatetime.Sub(startDatetime).Hours()
 	}
 
 	// Get the parking time from sessionIto, else set to 0
@@ -69,16 +68,16 @@ func (r *SessionResolver) ProcessChargingPeriods(sessionIto *ito.SessionIto, tar
 			// Estimation based on total cost
 			totalAmount = *totalCost
 
-			if lastUpdatedTime < *totalTime {
+			if lastUpdatedTime < totalTime {
 				// Calculate delta
-				totalAmount = *totalTime * (*totalCost / lastUpdatedTime)
+				totalAmount = totalTime * (*totalCost / lastUpdatedTime)
 				log.Printf("%v: Estimated total cost + delta: %v", sessionIto.Uid, totalAmount)
 			}
 		} else {
 			if totalEnergy > 0 {
-				if lastUpdatedTime > 0 && lastUpdatedTime < *totalTime {
+				if lastUpdatedTime > 0 && lastUpdatedTime < totalTime {
 					// Estimation based on duration and connector wattage
-					estimatedEnergy := *totalTime * (totalEnergy / lastUpdatedTime)
+					estimatedEnergy := totalTime * (totalEnergy / lastUpdatedTime)
 					totalEnergy = estimatedEnergy
 					log.Printf("%v: Energy based on kWh + delta: %v", sessionIto.Uid, totalEnergy)
 				}
@@ -92,13 +91,13 @@ func (r *SessionResolver) ProcessChargingPeriods(sessionIto *ito.SessionIto, tar
 					log.Printf("%v: Connector capped kW: %v", sessionIto.Uid, connectorKiloWattage)
 				}
 		
-				totalEnergy = *totalTime * connectorKiloWattage
+				totalEnergy = totalTime * connectorKiloWattage
 				log.Printf("%v: Estimated energy based on kWh: %v", sessionIto.Uid, totalEnergy)
 			}
 
 			energyVolume := calculateRoundedValue(totalEnergy, db.RoundingGranularityUNIT, db.RoundingRuleROUNDNEAR)
-			timeVolume := calculateRoundedValue(*totalTime, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
-			parkingTimeVolume := calculateRoundedValue(*totalTime, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
+			timeVolume := calculateRoundedValue(totalTime, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
+			parkingTimeVolume := calculateRoundedValue(totalTime, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
 
 			// TODO: Simulate the charging periods through the time of the session
 			//       This includes grouping in periods by restrictions
@@ -195,7 +194,7 @@ func (r *SessionResolver) ProcessChargingPeriods(sessionIto *ito.SessionIto, tar
 
 	log.Printf("%v: Estimated total cost: %v", sessionIto.Uid, totalAmount)
 
-	return totalAmount
+	return totalAmount, totalEnergy, totalTime
 }
 
 func (r *SessionResolver) UpdateSession(session db.Session) {
