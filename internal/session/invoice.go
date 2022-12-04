@@ -16,7 +16,7 @@ import (
 	"github.com/satimoto/go-lsp/pkg/util"
 )
 
-func (r *SessionResolver) IssueSessionInvoice(ctx context.Context, user db.User, session db.Session, tokenAuthorization db.TokenAuthorization, invoiceParams util.InvoiceParams) *db.SessionInvoice {
+func (r *SessionResolver) IssueSessionInvoice(ctx context.Context, user db.User, session db.Session, tokenAuthorization db.TokenAuthorization, invoiceParams util.InvoiceParams, chargeParams util.ChargeParams) *db.SessionInvoice {
 	currencyRate, err := r.FerpService.GetRate(session.Currency)
 
 	if err != nil {
@@ -64,6 +64,10 @@ func (r *SessionResolver) IssueSessionInvoice(ctx context.Context, user db.User,
 	sessionInvoiceParams.UserID = user.ID
 	sessionInvoiceParams.CurrencyRate = currencyRate.Rate
 	sessionInvoiceParams.CurrencyRateMsat = currencyRate.RateMsat
+	sessionInvoiceParams.EstimatedEnergy = chargeParams.EstimatedEnergy
+	sessionInvoiceParams.EstimatedTime = chargeParams.EstimatedTime
+	sessionInvoiceParams.MeteredEnergy = chargeParams.MeteredEnergy
+	sessionInvoiceParams.MeteredTime = chargeParams.MeteredTime
 	sessionInvoiceParams.PriceFiat = invoiceParams.PriceFiat.Float64
 	sessionInvoiceParams.PriceMsat = invoiceParams.PriceMsat.Int64
 	sessionInvoiceParams.CommissionFiat = invoiceParams.CommissionFiat.Float64

@@ -125,6 +125,8 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 
 	taxPercent := r.SessionResolver.CountryAccountResolver.GetTaxPercentByCountry(ctx, location.Country, dbUtil.GetEnvFloat64("DEFAULT_TAX_PERCENT", 19))
 	cdrTotalFiat := cdr.TotalCost
+	cdrTotalEnergy := cdr.TotalEnergy
+	cdrTotalTime := cdr.TotalTime
 
 	// The cdr TotalCost might be 0. If so, we should check the TotalEnergy, TotalTime and TotalParkingTime
 	if cdrTotalFiat == 0 && len(tariffs) > 0 {
@@ -147,7 +149,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 			timeLocation, err = time.LoadLocation("UTC")
 		}
 
-		cdrTotalFiat = r.SessionResolver.ProcessChargingPeriods(sessionIto, tariffIto, connector.Wattage, timeLocation, cdr.LastUpdated)
+		cdrTotalFiat, cdrTotalEnergy, cdrTotalTime = r.SessionResolver.ProcessChargingPeriods(sessionIto, tariffIto, connector.Wattage, timeLocation, cdr.LastUpdated)
 	}
 
 	// Set session as invoiced
@@ -171,12 +173,22 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 
 			invoicePriceFiat := cdrTotalFiat - priceFiat
 			invoiceTotalFiat, invoiceCommissionFiat, invoiceTaxFiat := session.CalculateCommission(invoicePriceFiat, user.CommissionPercent, taxPercent)
-			sessionInvoice := r.SessionResolver.IssueSessionInvoice(ctx, user, sess, tokenAuthorization, util.InvoiceParams{
+
+			invoiceParams := util.InvoiceParams{
 				PriceFiat:      dbUtil.SqlNullFloat64(invoicePriceFiat),
 				CommissionFiat: dbUtil.SqlNullFloat64(invoiceCommissionFiat),
 				TaxFiat:        dbUtil.SqlNullFloat64(invoiceTaxFiat),
 				TotalFiat:      dbUtil.SqlNullFloat64(invoiceTotalFiat),
-			})
+			}
+
+			chargeParams := util.ChargeParams{
+				EstimatedEnergy: cdrTotalEnergy,
+				EstimatedTime:   cdrTotalTime,
+				MeteredEnergy:   cdrTotalEnergy,
+				MeteredTime:     cdrTotalTime,
+			}
+
+			sessionInvoice := r.SessionResolver.IssueSessionInvoice(ctx, user, sess, tokenAuthorization, invoiceParams, chargeParams)
 
 			if sessionInvoice != nil {
 				sessionInvoices = append(sessionInvoices, *sessionInvoice)

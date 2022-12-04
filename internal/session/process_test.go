@@ -413,7 +413,7 @@ func TestProcessChargingPeriods(t *testing.T) {
 			timeLocation, _ := time.LoadLocation(tc.location)
 
 			processTime := util.ParseTime(tc.date, nil)
-			value := sessionResolver.ProcessChargingPeriods(&sessionIto, &tariffIto, tc.wattage, timeLocation, *processTime)
+			value, _, _ := sessionResolver.ProcessChargingPeriods(&sessionIto, &tariffIto, tc.wattage, timeLocation, *processTime)
 
 			if value != tc.value {
 				t.Errorf("Value mismatch: %v expecting %v", value, tc.value)
@@ -596,7 +596,7 @@ func TestProcessChargingPeriods2(t *testing.T) {
 			timeLocation, _ := time.LoadLocation(tc.location)
 
 			processTime := util.ParseTime(tc.date, nil)
-			value := sessionResolver.ProcessChargingPeriods(&sessionIto, &tariffIto, tc.wattage, timeLocation, *processTime)
+			value, _, _ := sessionResolver.ProcessChargingPeriods(&sessionIto, &tariffIto, tc.wattage, timeLocation, *processTime)
 
 			if value != tc.value {
 				t.Errorf("Value mismatch: %v expecting %v", value, tc.value)
