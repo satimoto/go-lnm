@@ -41,7 +41,6 @@ type PriceComponentRoundingIto struct {
 type TariffIto struct {
 	Elements                 []*ElementIto         `json:"elements"`
 	Restriction              *TariffRestrictionIto `json:"restriction,omitempty"`
-	IsIntermediateCdrCapable bool                  `json:"isIntermediateCdrCapable"`
 }
 
 type TariffRestrictionIto struct {

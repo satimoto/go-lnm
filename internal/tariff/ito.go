@@ -72,9 +72,7 @@ func (r *TariffResolver) CreatePriceComponentRoundingIto(ctx context.Context, pr
 }
 
 func (r *TariffResolver) CreateTariffIto(ctx context.Context, tariff db.Tariff) *ito.TariffIto {
-	tariffIto := &ito.TariffIto{
-		IsIntermediateCdrCapable: tariff.IsIntermediateCdrCapable,
-	}
+	tariffIto := &ito.TariffIto{}
 
 	if elements, err := r.Repository.ListElements(ctx, tariff.ID); err == nil {
 		tariffIto.Elements = r.CreateElementListIto(ctx, elements)
