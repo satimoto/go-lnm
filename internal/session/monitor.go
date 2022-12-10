@@ -128,7 +128,7 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 			time.Sleep(invoiceInterval)
 
 			// Get latest session
-			session, err = r.Repository.GetSessionByUid(ctx, session.Uid)
+			session, err = r.Repository.GetSession(ctx, session.ID)
 
 			if err != nil {
 				metrics.RecordError("LSP032", "Error retrieving session", err)
