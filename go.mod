@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/joho/godotenv v1.4.0
-	github.com/lightningnetwork/lnd v0.15.4-beta
+	github.com/lightningnetwork/lnd v0.15.5-beta
 	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
 	github.com/satimoto/go-datastore v0.3.1-0.20221207124238-2ae95d5797d4
 	google.golang.org/grpc v1.47.0
@@ -16,9 +16,9 @@ require (
 	github.com/aead/siphash v1.0.1 // indirect
 	github.com/andybalholm/brotli v1.0.3 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/btcsuite/btcd v0.23.3 // indirect
+	github.com/btcsuite/btcd v0.23.4 // indirect
 	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
-	github.com/btcsuite/btcwallet v0.16.1 // indirect
+	github.com/btcsuite/btcwallet v0.16.5 // indirect
 	github.com/btcsuite/btcwallet/wallet/txauthor v1.3.2 // indirect
 	github.com/btcsuite/btcwallet/wallet/txrules v1.2.0 // indirect
 	github.com/btcsuite/btcwallet/wallet/txsizes v1.2.3 // indirect
@@ -90,7 +90,7 @@ require (
 	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/testify v1.7.1 // indirect
+	github.com/stretchr/testify v1.8.0 // indirect
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20201229170055-e5319fda7802 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/vektah/gqlparser/v2 v2.4.0 // indirect
@@ -130,7 +130,7 @@ require (
 	gopkg.in/macaroon.v2 v2.0.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
 
@@ -147,8 +147,8 @@ require (
 
 require (
 	github.com/aws/aws-sdk-go v1.44.42
-	github.com/btcsuite/btcd/btcec/v2 v2.2.1 // indirect
-	github.com/btcsuite/btcd/btcutil v1.1.2 // indirect
+	github.com/btcsuite/btcd/btcec/v2 v2.2.2 // indirect
+	github.com/btcsuite/btcd/btcutil v1.1.3 // indirect
 	github.com/btcsuite/btcd/btcutil/psbt v1.1.5 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 // indirect
 	github.com/btcsuite/winsvc v1.0.0 // indirect
@@ -178,7 +178,7 @@ require (
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/lightningnetwork/lnd/cert v1.1.1 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
-	github.com/stretchr/objx v0.2.0 // indirect
+	github.com/stretchr/objx v0.4.0 // indirect
 	github.com/tv42/zbase32 v0.0.0-20160707012821-501572607d02 // indirect
 	gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec // indirect
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
