@@ -184,6 +184,6 @@ require (
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
 )
 
-replace github.com/lightningnetwork/lnd => github.com/satimoto/lnd v0.15.4-beta.0.20221101125829-64752303da12
+replace github.com/lightningnetwork/lnd => github.com/satimoto/lnd v0.15.5-beta.rc2.0.20221215075412-8e1fcac60e7b
 
 replace git.schwanenlied.me/yawning/bsaes.git => github.com/Yawning/bsaes v0.0.0-20180720073208-c0276d75487e
