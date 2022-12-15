@@ -702,6 +702,8 @@ github.com/satimoto/lnd v0.15.4-beta h1:PWl1BDhpZL81/frFIFv5Njqsodk0T220HSgEg7zq
 github.com/satimoto/lnd v0.15.4-beta/go.mod h1:6aoOkifcI9tuk8UV5l2rVZSq0681obuP4zvfK+2ZrT0=
 github.com/satimoto/lnd v0.15.4-beta.0.20221101125829-64752303da12 h1:VZnYT82c8s5Y6G9r07W7wkwhqHM+Eg0u6fwgsw7tsAM=
 github.com/satimoto/lnd v0.15.4-beta.0.20221101125829-64752303da12/go.mod h1:6aoOkifcI9tuk8UV5l2rVZSq0681obuP4zvfK+2ZrT0=
+github.com/satimoto/lnd v0.15.5-beta.rc2.0.20221215075412-8e1fcac60e7b h1:1WrjvFT0ch/qjBXKHAA1rJfgTYr6wd8MpRVWA34Wxok=
+github.com/satimoto/lnd v0.15.5-beta.rc2.0.20221215075412-8e1fcac60e7b/go.mod h1:/UKsaOll/pYJltXIC0VKRGHR0Jqhl9bBX/fUiINSwF4=
 github.com/satori/go.uuid v1.2.0/go.mod h1:dA0hQrYB0VpLJoorglMZABFdXlWrHn1NEOzdhQKdks0=
 github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529/go.mod h1:DxrIzT+xaE7yg65j358z/aeFdxmN0P9QXhEzd20vsDc=
 github.com/sergi/go-diff v1.1.0 h1:we8PVUC3FE2uYfodKH/nBHMSetSfHDR6scGdBi+erh0=
