@@ -16,6 +16,7 @@ func NewCdrSessionIto(cdr db.Cdr) *SessionIto {
 		TotalParkingTime: util.NilFloat64(cdr.TotalParkingTime),
 		TotalSessionTime: util.NilFloat64(util.DefaultFloat(cdr.TotalTime, 0) + util.DefaultFloat(cdr.TotalParkingTime, 0)),
 		TotalEnergy:      cdr.TotalEnergy,
+		IsCdr:            true,
 		LastUpdated:      util.DefaultTime(cdr.StopDateTime, cdr.LastUpdated),
 	}
 }

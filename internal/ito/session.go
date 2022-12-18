@@ -28,6 +28,7 @@ type SessionIto struct {
 	TotalSessionTime *float64             `json:"total_session_time,omitempty"`
 	TotalEnergy      float64              `json:"total_energy"`
 	ChargingPeriods  []*ChargingPeriodIto `json:"charging_periods"`
+	IsCdr            bool                 `json:"is_cdr"`
 	LastUpdated      time.Time            `json:"last_updated"`
 }
 
@@ -52,6 +53,7 @@ func NewSessionIto(session db.Session) *SessionIto {
 		Currency:      session.Currency,
 		TotalCost:     util.NilFloat64(session.TotalCost.Float64),
 		TotalEnergy:   session.Kwh,
+		IsCdr:         false,
 		LastUpdated:   session.LastUpdated,
 	}
 }

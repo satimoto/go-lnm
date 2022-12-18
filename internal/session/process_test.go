@@ -80,7 +80,7 @@ func TestProcessChargingPeriods(t *testing.T) {
 			wattage:  11040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T23:37:32Z",
-			value:    10.6,
+			value:    5.2,
 		}, {
 			desc: "No periods - kWh",
 			session: []byte(`{
@@ -290,9 +290,9 @@ func TestProcessChargingPeriods(t *testing.T) {
 			wattage:  11040,
 			location: "Europe/Berlin",
 			date:     "2015-06-30T00:07:32Z",
-			value:    5,
+			value:    5.013656201604957,
 		}, {
-			desc: "Simple",
+			desc: "Complete - with total cost",
 			session: []byte(`{
 				"start_datetime": "2015-06-29T22:39:09Z",
 				"end_datetime": "2015-06-29T23:50:16Z",
@@ -390,7 +390,178 @@ func TestProcessChargingPeriods(t *testing.T) {
 			wattage:  11040,
 			location: "Europe/Berlin",
 			date:     "2015-06-30T00:07:32Z",
+			value:    8.5,
+		}, {
+			desc: "Complete - No total cost",
+			session: []byte(`{
+				"start_datetime": "2015-06-29T22:39:09Z",
+				"end_datetime": "2015-06-29T23:50:16Z",
+				"currency": "EUR",
+				"total_cost": 0,
+				"total_energy": 41.00,
+				"charging_periods": [{
+					"start_date_time": "2015-06-29T22:39:09Z",
+					"dimensions": [{
+						"type": "ENERGY",
+						"volume": 12
+					}, {
+						"type": "MAX_CURRENT",
+						"volume": 30
+					}]
+				}, {
+					"start_date_time": "2015-06-29T22:40:54Z",
+					"dimensions": [{
+						"type": "ENERGY",
+						"volume": 29
+					}, {
+						"type": "MIN_CURRENT",
+						"volume": 34
+					}]
+				}, {
+					"start_date_time": "2015-06-29T23:07:09Z",
+					"dimensions": [{
+						"type": "PARKING_TIME",
+						"volume": 0.718
+					}]
+				}],
+				"status": "COMPLETED",
+				"last_updated": "2015-06-29T23:09:10Z"
+			}`),
+			tariff: []byte(`{
+				"elements": [{
+					"price_components": [{
+						"type": "FLAT",
+						"price": 2.50,
+						"step_size": 1
+					}]
+				}, {
+					"price_components": [{
+						"type": "ENERGY",
+						"price": 0.30,
+						"step_size": 1
+					}],
+					"restrictions": {
+						"max_power": 32.00
+					}
+				}, {
+					"price_components": [{
+						"type": "ENERGY",
+						"price": 0.28,
+						"step_size": 1
+					}],
+					"restrictions": {
+						"min_power": 32.00,
+						"day_of_week": ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
+					}
+				}, {
+					"price_components": [{
+						"type": "ENERGY",
+						"price": 0.26,
+						"step_size": 1
+					}],
+					"restrictions": {
+						"min_power": 32.00,
+						"day_of_week": ["SATURDAY", "SUNDAY"]
+					}
+				}, {
+					"price_components": [{
+						"type": "PARKING_TIME",
+						"price": 5.00,
+						"step_size": 300
+					}],
+					"restrictions": {
+						"start_time": "09:00",
+						"end_time": "18:00",
+						"day_of_week": ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
+					}
+				}, {
+					"price_components": [{
+						"type": "PARKING_TIME",
+						"price": 6.00,
+						"step_size": 300
+					}],
+					"restrictions": {
+						"start_time": "10:00",
+						"end_time": "17:00",
+						"day_of_week": ["SATURDAY"]
+					}
+				}]
+			}`),
+			wattage:  11040,
+			location: "Europe/Berlin",
+			date:     "2015-06-30T00:07:32Z",
 			value:    14.22,
+		}, {
+			desc: "Complete - No total cost, incomplete charging periods",
+			session: []byte(`{
+				"start_datetime": "2015-06-29T22:39:09Z",
+				"end_datetime": "2015-06-29T23:50:16Z",
+				"currency": "EUR",
+				"total_cost": 0,
+				"total_energy": 41.00,
+				"charging_periods": [{
+					"start_date_time": "2015-06-29T23:07:09Z",
+					"dimensions": [{
+						"type": "PARKING_TIME",
+						"volume": 0.718
+					}]
+				}],
+				"status": "COMPLETED",
+				"last_updated": "2015-06-29T23:09:10Z"
+			}`),
+			tariff: []byte(`{
+				"elements": [{
+					"price_components": [{
+						"type": "FLAT",
+						"price": 2.50,
+						"step_size": 1
+					}]
+				}, {
+					"price_components": [{
+						"type": "ENERGY",
+						"price": 0.30,
+						"step_size": 1
+					}],
+					"restrictions": {
+						"day_of_week": ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
+					}
+				}, {
+					"price_components": [{
+						"type": "ENERGY",
+						"price": 0.28,
+						"step_size": 1
+					}],
+					"restrictions": {
+						"day_of_week": ["SATURDAY", "SUNDAY"]
+					}
+				}, {
+					"price_components": [{
+						"type": "PARKING_TIME",
+						"price": 5.00,
+						"step_size": 300
+					}],
+					"restrictions": {
+						"start_time": "09:00",
+						"end_time": "18:00",
+						"day_of_week": ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
+					}
+				}, {
+					"price_components": [{
+						"type": "PARKING_TIME",
+						"price": 6.00,
+						"step_size": 300
+					}],
+					"restrictions": {
+						"start_time": "10:00",
+						"end_time": "17:00",
+						"day_of_week": ["SATURDAY"]
+					}
+				}]
+			}`),
+			wattage:  11040,
+			location: "Europe/Berlin",
+			date:     "2015-06-30T00:07:32Z",
+			value:    14.8,
 		},
 	}
 
@@ -468,6 +639,29 @@ func TestProcessChargingPeriods2(t *testing.T) {
 			desc: "Simple",
 			session: []byte(`{
 				"start_datetime": "2015-06-29T21:00:00Z",
+				"kwh": 0.00,
+				"currency": "EUR",
+				"charging_periods": [{
+					"start_date_time": "2015-06-29T21:01:00Z",
+					"dimensions": [{
+						"type": "TIME",
+						"volume": 0.016
+					}]
+				}],
+				"total_cost": 0.00,
+				"status": "ACTIVE",
+				"last_updated": "2015-06-29T21:02:00Z"
+			}`),
+			tariff:   tariffBytes,
+			wattage:  11040,
+			location: "Europe/Berlin",
+			date:     "2015-06-29T21:02:00Z",
+			value:    2.667,
+		}, {
+			desc: "Simple",
+			session: []byte(`{
+				"start_datetime": "2015-06-29T21:00:00Z",
+				"end_datetime": "0001-01-01 00:00:00",
 				"kwh": 0.00,
 				"currency": "EUR",
 				"charging_periods": [{
