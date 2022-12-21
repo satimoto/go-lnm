@@ -19,6 +19,7 @@ func (r *InvoiceRequestResolver) sendNotification(user db.User, data notificatio
 	message := &fcm.Message{
 		To:               user.DeviceToken.String,
 		ContentAvailable: true,
+		Priority:         "high",
 		Data:             data,
 	}
 
