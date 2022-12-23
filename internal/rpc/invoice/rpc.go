@@ -163,9 +163,9 @@ func (r *RpcInvoiceResolver) UpdateSessionInvoice(ctx context.Context, input *ls
 		sessionInvoice, err = r.SessionRepository.UpdateSessionInvoice(ctx, updateSessionInvoiceParams)
 
 		if err != nil {
-			metrics.RecordError("LSP152", "Error updating invoice request", err)
+			metrics.RecordError("LSP152", "Error updating session invoice", err)
 			log.Printf("LSP152: Params=%#v", updateSessionInvoiceParams)
-			return nil, errors.New("error updating invoice request")
+			return nil, errors.New("error updating session invoice")
 		}
 
 		go r.waitForInvoiceExpiry(invoice.PaymentRequest)
