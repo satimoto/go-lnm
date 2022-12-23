@@ -159,7 +159,7 @@ require (
 	github.com/jessevdk/go-flags v1.4.0 // indirect
 	github.com/lightningnetwork/lnd/tlv v1.0.3 // indirect
 	github.com/lightningnetwork/lnd/tor v1.0.1 // indirect
-	github.com/satimoto/go-ocpi v0.2.1-0.20221121150618-6100911bf86b
+	github.com/satimoto/go-ocpi v0.2.1-0.20221223204513-df5cc88e8f50
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 )
 
