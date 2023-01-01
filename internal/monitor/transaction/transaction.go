@@ -11,6 +11,8 @@ import (
 	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/channelrequest"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
+	"github.com/satimoto/go-lsp/internal/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -22,20 +24,21 @@ type TransactionMonitor struct {
 	nodeID                 int64
 }
 
-func NewTransactionMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) *TransactionMonitor {
+func NewTransactionMonitor(repositoryService *db.RepositoryService, services *service.ServiceResolver) *TransactionMonitor {
 	return &TransactionMonitor{
-		LightningService:       lightningService,
+		LightningService:       services.LightningService,
 		ChannelRequestResolver: channelrequest.NewResolver(repositoryService),
 	}
 }
 
-func (m *TransactionMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup *sync.WaitGroup) {
+func (m *TransactionMonitor) StartMonitor(nodeID int64, shutdownCtx context.Context, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting up Transactions")
 	transactionChan := make(chan lnrpc.Transaction)
 
 	m.nodeID = nodeID
-	go m.waitForTransactions(ctx, waitGroup, transactionChan)
+	go m.waitForTransactions(shutdownCtx, waitGroup, transactionChan)
 	go m.subscribeTransactionInterceptions(transactionChan)
+	go m.updateWalletBalance()
 }
 
 func (m *TransactionMonitor) handleTransaction(transaction lnrpc.Transaction) {
@@ -54,15 +57,15 @@ func (m *TransactionMonitor) handleTransaction(transaction lnrpc.Transaction) {
 }
 
 func (m *TransactionMonitor) subscribeTransactionInterceptions(transactionChan chan<- lnrpc.Transaction) {
-	htlcEventsClient, err := m.waitForSubscribeTransactionsClient(0, 1000)
+	transactionsClient, err := m.waitForSubscribeTransactionsClient(0, 1000)
 	util.PanicOnError("LSP022", "Error creating Transactions client", err)
-	m.TransactionsClient = htlcEventsClient
+	m.TransactionsClient = transactionsClient
 
 	for {
-		htlcInterceptRequest, err := m.TransactionsClient.Recv()
+		transaction, err := m.TransactionsClient.Recv()
 
 		if err == nil {
-			transactionChan <- *htlcInterceptRequest
+			transactionChan <- *transaction
 		} else {
 			m.TransactionsClient, err = m.waitForSubscribeTransactionsClient(100, 1000)
 			util.PanicOnError("LSP023", "Error creating Transactions client", err)
@@ -74,27 +77,33 @@ func (m *TransactionMonitor) updateWalletBalance() {
 	walletBalance, err := m.LightningService.WalletBalance(&lnrpc.WalletBalanceRequest{})
 
 	if err != nil {
-		util.LogOnError("LSP080", "Error requesting wallet balance", err)
+		metrics.RecordError("LSP080", "Error requesting wallet balance", err)
 	}
 
 	log.Printf("TotalBalance: %v", walletBalance.TotalBalance)
 	log.Printf("ConfirmedBalance: %v", walletBalance.ConfirmedBalance)
 	log.Printf("UnconfirmedBalance: %v", walletBalance.UnconfirmedBalance)
 	log.Printf("LockedBalance: %v", walletBalance.LockedBalance)
+
+	metricWalletTotalBalanceSatoshis.Set(float64(walletBalance.TotalBalance))
+	metricWalletConfirmedBalanceSatoshis.Set(float64(walletBalance.ConfirmedBalance))
+	metricWalletUnconfirmedBalanceSatoshis.Set(float64(walletBalance.UnconfirmedBalance))
+	metricWalletLockedBalanceSatoshis.Set(float64(walletBalance.LockedBalance))
+	metricWalletReservedBalanceSatoshis.Set(float64(walletBalance.ReservedBalanceAnchorChan))
 }
 
-func (m *TransactionMonitor) waitForTransactions(ctx context.Context, waitGroup *sync.WaitGroup, transactionChan chan lnrpc.Transaction) {
+func (m *TransactionMonitor) waitForTransactions(shutdownCtx context.Context, waitGroup *sync.WaitGroup, transactionChan chan lnrpc.Transaction) {
 	waitGroup.Add(1)
 	defer close(transactionChan)
 	defer waitGroup.Done()
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-shutdownCtx.Done():
 			log.Printf("Shutting down Transactions")
 			return
-		case htlcInterceptRequest := <-transactionChan:
-			m.handleTransaction(htlcInterceptRequest)
+		case transaction := <-transactionChan:
+			m.handleTransaction(transaction)
 		}
 	}
 }

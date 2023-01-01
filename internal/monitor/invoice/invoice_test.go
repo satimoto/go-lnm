@@ -5,6 +5,7 @@ import (
 
 	"context"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
@@ -14,9 +15,8 @@ import (
 	lightningnetworkMocks "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
 	invoiceMocks "github.com/satimoto/go-lsp/internal/monitor/invoice/mocks"
 	notificationMocks "github.com/satimoto/go-lsp/internal/notification/mocks"
+	serviceMocks "github.com/satimoto/go-lsp/internal/service/mocks"
 	ocpiMocks "github.com/satimoto/go-ocpi/pkg/ocpi/mocks"
-
-	"testing"
 )
 
 func TestInvoice(t *testing.T) {
@@ -30,7 +30,9 @@ func TestInvoice(t *testing.T) {
 		mockLightningService := lightningnetworkMocks.NewService()
 		mockNotificationService := notificationMocks.NewService()
 		mockOcpiService := ocpiMocks.NewService()
-		invoiceMonitor := invoiceMocks.NewInvoiceMonitor(mockRepository, mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
+		mockServices := serviceMocks.NewService(mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
+
+		invoiceMonitor := invoiceMocks.NewInvoiceMonitor(mockRepository, mockServices)
 		recvChan := mockLightningService.NewSubscribeInvoicesMockData()
 
 		invoiceMonitor.StartMonitor(1, shutdownCtx, waitGroup)
@@ -55,7 +57,9 @@ func TestInvoice(t *testing.T) {
 		mockLightningService := lightningnetworkMocks.NewService()
 		mockOcpiService := ocpiMocks.NewService()
 		mockNotificationService := notificationMocks.NewService()
-		invoiceMonitor := invoiceMocks.NewInvoiceMonitor(mockRepository, mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
+		mockServices := serviceMocks.NewService(mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
+
+		invoiceMonitor := invoiceMocks.NewInvoiceMonitor(mockRepository, mockServices)
 		recvChan := mockLightningService.NewSubscribeInvoicesMockData()
 
 		invoiceMonitor.StartMonitor(1, shutdownCtx, waitGroup)

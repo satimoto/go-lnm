@@ -13,8 +13,11 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
 	"github.com/satimoto/go-datastore/pkg/psbtfundingstate"
-	"github.com/satimoto/go-datastore/pkg/util"
+	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
+	"github.com/satimoto/go-lsp/internal/service"
+	"github.com/satimoto/go-lsp/pkg/util"
 )
 
 type PsbtFund interface {
@@ -32,9 +35,9 @@ type PsbtFundService struct {
 	nodeID                     int64
 }
 
-func NewService(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) PsbtFund {
+func NewService(repositoryService *db.RepositoryService, services *service.ServiceResolver) PsbtFund {
 	return &PsbtFundService{
-		LightningService:           lightningService,
+		LightningService:           services.LightningService,
 		ChannelRequestRepository:   channelrequest.NewRepository(repositoryService),
 		PsbtFundingStateRepository: psbtfundingstate.NewRepository(repositoryService),
 		mutex:                      &sync.Mutex{},
@@ -73,7 +76,7 @@ func (s *PsbtFundService) OpenChannel(ctx context.Context, request *lnrpc.OpenCh
 		openChannelClient, err := s.LightningService.OpenChannel(request)
 
 		if err != nil {
-			util.LogOnError("LSP085", "Error opening channel", err)
+			metrics.RecordError("LSP085", "Error opening channel", err)
 			log.Printf("LSP085: Request=%#v", request)
 			return errors.New("Error opening channel")
 		}
@@ -81,20 +84,20 @@ func (s *PsbtFundService) OpenChannel(ctx context.Context, request *lnrpc.OpenCh
 		openStatusUpdate, err := s.waitForOpenStatusUpdate(ctx, openChannelClient)
 
 		if err != nil {
-			util.LogOnError("LSP086", "Error receiving open status update", err)
+			metrics.RecordError("LSP086", "Error receiving open status update", err)
 			return errors.New("Error receiving open status update")
 		}
 
 		update, ok := openStatusUpdate.Update.(*lnrpc.OpenStatusUpdate_PsbtFund)
 
 		if !ok {
-			util.LogOnError("LSP087", "Error expecting PsbtFund", err)
+			metrics.RecordError("LSP087", "Error expecting PsbtFund", err)
 			log.Printf("LSP087: openStatusUpdate=%#v", openStatusUpdate)
 			return errors.New("Error expecting PSBT funding update")
 		}
 
 		if len(psbtFundingState.BasePsbt) == 0 {
-			psbtBatchTimeout := util.GetEnvInt32("PSBT_BATCH_TIMEOUT", 30)
+			psbtBatchTimeout := dbUtil.GetEnvInt32("PSBT_BATCH_TIMEOUT", 30)
 			expiryDate := time.Now().Add(time.Duration(psbtBatchTimeout) * time.Second)
 			createPsbtFundingStateParams := db.CreatePsbtFundingStateParams{
 				NodeID:     s.nodeID,
@@ -106,7 +109,7 @@ func (s *PsbtFundService) OpenChannel(ctx context.Context, request *lnrpc.OpenCh
 			createdPsbtFundingState, err := s.PsbtFundingStateRepository.CreatePsbtFundingState(ctx, createPsbtFundingStateParams)
 
 			if err != nil {
-				util.LogOnError("LSP087", "Error creating PSBT funding state", err)
+				metrics.RecordError("LSP087", "Error creating PSBT funding state", err)
 				log.Printf("LSP087: Params=%#v", createPsbtFundingStateParams)
 				return errors.New("Error creating PSBT funding state")
 			}
@@ -119,7 +122,7 @@ func (s *PsbtFundService) OpenChannel(ctx context.Context, request *lnrpc.OpenCh
 			updatedPsbtFundingState, err := s.PsbtFundingStateRepository.UpdatePsbtFundingState(ctx, updatePsbtFundingStateParams)
 
 			if err != nil {
-				util.LogOnError("LSP088", "Error updating PSBT funding state", err)
+				metrics.RecordError("LSP088", "Error updating PSBT funding state", err)
 				log.Printf("LSP088: Params=%#v", updatePsbtFundingStateParams)
 				return errors.New("Error updating PSBT funding state")
 			}
@@ -151,19 +154,32 @@ func (s *PsbtFundService) fundPsbt(psbtFundingStateID int64) {
 	psbtFundingState, err := s.PsbtFundingStateRepository.GetPsbtFundingState(ctx, psbtFundingStateID)
 
 	if err != nil {
-		util.LogOnError("LSP089", "Error retrieving PSBT funding state", err)
+		metrics.RecordError("LSP089", "Error retrieving PSBT funding state", err)
 		log.Printf("LSP089: PsbtFundingStateID=%v", psbtFundingStateID)
 		return
 	}
 
 	// Fund the PSBT
-	// TODO: calculate sats/vbyte
+	maxFeeSatPerVByte := uint64(dbUtil.GetEnvInt32("PSBT_MAX_FEE_SAT_VBYTE", 64))
+	satPerVByte := uint64(2)
+
+	if estimateFeeResponse, err := s.LightningService.EstimateFee(&walletrpc.EstimateFeeRequest{ConfTarget: 6}); err == nil {
+		satPerVByte = util.FeePerVByte(estimateFeeResponse.SatPerKw)
+	}
+
+	if satPerVByte > maxFeeSatPerVByte {
+		// Cap the opening fees to the max configured sat/vbyte amount
+		satPerVByte = maxFeeSatPerVByte
+	}
+
+	log.Printf("Funding PSBT at: %v sats/vbyte", satPerVByte)
+
 	fundPsbtRequest := &walletrpc.FundPsbtRequest{
 		Template: &walletrpc.FundPsbtRequest_Psbt{
 			Psbt: psbtFundingState.Psbt,
 		},
 		Fees: &walletrpc.FundPsbtRequest_SatPerVbyte{
-			SatPerVbyte: 2,
+			SatPerVbyte: satPerVByte,
 		},
 		SpendUnconfirmed: true,
 	}
@@ -171,7 +187,7 @@ func (s *PsbtFundService) fundPsbt(psbtFundingStateID int64) {
 	fundPsbtResponse, err := s.LightningService.FundPsbt(fundPsbtRequest)
 
 	if err != nil {
-		util.LogOnError("LSP090", "Error funding PSBT", err)
+		metrics.RecordError("LSP090", "Error funding PSBT", err)
 		log.Printf("LSP090: FundPsbtRequest=%#v", fundPsbtRequest)
 		return
 	}
@@ -180,7 +196,7 @@ func (s *PsbtFundService) fundPsbt(psbtFundingStateID int64) {
 	channelRequests, err := s.PsbtFundingStateRepository.ListPsbtFundingStateChannelRequests(ctx, psbtFundingStateID)
 
 	if err != nil {
-		util.LogOnError("LSP091", "Error listing PSBT channel requests", err)
+		metrics.RecordError("LSP091", "Error listing PSBT channel requests", err)
 		log.Printf("LSP091: PsbtFundingStateID=%v", psbtFundingStateID)
 		return
 	}
@@ -198,7 +214,7 @@ func (s *PsbtFundService) fundPsbt(psbtFundingStateID int64) {
 		_, err := s.LightningService.FundingStateStep(fundingTransitionMsg)
 
 		if err != nil {
-			util.LogOnError("LSP092", "Error funding PSBT", err)
+			metrics.RecordError("LSP092", "Error funding PSBT", err)
 			log.Printf("LSP092: FundingTransitionMsg=%#v", fundingTransitionMsg)
 		}
 	}
@@ -211,7 +227,7 @@ func (s *PsbtFundService) fundPsbt(psbtFundingStateID int64) {
 	finalizePsbtResponse, err := s.LightningService.FinalizePsbt(finalizePsbtRequest)
 
 	if err != nil {
-		util.LogOnError("LSP093", "Error funding PSBT", err)
+		metrics.RecordError("LSP093", "Error funding PSBT", err)
 		log.Printf("LSP093: FundPsbtRequest=%#v", fundPsbtRequest)
 		return
 	}
@@ -230,7 +246,7 @@ func (s *PsbtFundService) fundPsbt(psbtFundingStateID int64) {
 		_, err := s.LightningService.FundingStateStep(fundingTransitionMsg)
 
 		if err != nil {
-			util.LogOnError("LSP094", "Error funding PSBT", err)
+			metrics.RecordError("LSP094", "Error funding PSBT", err)
 			log.Printf("LSP094: FundingTransitionMsg=%#v", fundingTransitionMsg)
 		}
 	}
@@ -243,7 +259,7 @@ func (s *PsbtFundService) fundPsbt(psbtFundingStateID int64) {
 	publishTransactionResponse, err := s.LightningService.PublishTransaction(transaction)
 
 	if err != nil {
-		util.LogOnError("LSP098", "Error publishing transaction", err)
+		metrics.RecordError("LSP098", "Error publishing transaction", err)
 		log.Printf("LSP098: Transaction=%#v", transaction)
 		return
 	}
@@ -259,7 +275,7 @@ func (s *PsbtFundService) fundPsbt(psbtFundingStateID int64) {
 	_, err = s.PsbtFundingStateRepository.UpdatePsbtFundingState(ctx, updatePsbtFundingStateParams)
 
 	if err != nil {
-		util.LogOnError("LSP095", "Error updating PSBT funding state", err)
+		metrics.RecordError("LSP095", "Error updating PSBT funding state", err)
 		log.Printf("LSP095: Params=%#v", updatePsbtFundingStateParams)
 	}
 }
@@ -275,7 +291,7 @@ func (s *PsbtFundService) handleUnfundedPsbtFundingStates() {
 	psbtFundingStates, err := s.PsbtFundingStateRepository.ListUnfundedPsbtFundingStates(ctx, s.nodeID)
 
 	if err != nil {
-		util.LogOnError("LSP100", "Error listing unfunded PSBT funding states", err)
+		metrics.RecordError("LSP100", "Error listing unfunded PSBT funding states", err)
 		log.Printf("LSP100: NodeID=%v", s.nodeID)
 		return
 	}
@@ -284,7 +300,7 @@ func (s *PsbtFundService) handleUnfundedPsbtFundingStates() {
 		channelRequests, err := s.PsbtFundingStateRepository.ListPsbtFundingStateChannelRequests(ctx, psbtFundingState.ID)
 
 		if err != nil {
-			util.LogOnError("LSP101", "Error listing PSBT funding state channel requests", err)
+			metrics.RecordError("LSP101", "Error listing PSBT funding state channel requests", err)
 			log.Printf("LSP101: PsbtFundingStateID=%v", psbtFundingState.ID)
 			continue
 		}
@@ -293,7 +309,7 @@ func (s *PsbtFundService) handleUnfundedPsbtFundingStates() {
 			channelRequestHtlcs, err := s.ChannelRequestRepository.ListChannelRequestHtlcs(ctx, channelRequest.ID)
 
 			if err != nil {
-				util.LogOnError("LSP102", "Error listing channel request HTLCs", err)
+				metrics.RecordError("LSP102", "Error listing channel request HTLCs", err)
 				log.Printf("LSP102: ChannelRequestID=%v", channelRequest.ID)
 				continue
 			}
@@ -314,7 +330,7 @@ func (s *PsbtFundService) handleUnfundedPsbtFundingStates() {
 		_, err = s.PsbtFundingStateRepository.UpdatePsbtFundingState(ctx, updatePsbtFundingStateParams)
 
 		if err != nil {
-			util.LogOnError("LSP103", "Error updating psbt funding state", err)
+			metrics.RecordError("LSP103", "Error updating psbt funding state", err)
 			log.Printf("LSP103: Params=%#v", updatePsbtFundingStateParams)
 		}
 	}

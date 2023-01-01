@@ -1,18 +1,31 @@
-package session
+package notification
 
 import (
+	"encoding/hex"
 	"time"
 
 	"github.com/satimoto/go-datastore/pkg/db"
-	"github.com/satimoto/go-lsp/internal/notification"
 )
 
 type NotificationDto map[string]interface{}
 
+func CreateInvoiceRequestNotificationDto(invoiceRequest db.InvoiceRequest) NotificationDto {
+	response := map[string]interface{}{
+		"type": INVOICE_REQUEST,
+	}
+
+	return response
+}
+
 func CreateSessionInvoiceNotificationDto(session db.Session, sessionInvoice db.SessionInvoice) NotificationDto {
 	response := map[string]interface{}{
-		"type":             notification.SESSION_INVOICE,
+		"type":             SESSION_INVOICE,
+		"estimatedEnergy":  sessionInvoice.EstimatedEnergy,
+		"estimatedTime":    sessionInvoice.EstimatedTime,
+		"meteredEnergy":    sessionInvoice.MeteredEnergy,
+		"meteredTime":      sessionInvoice.MeteredTime,
 		"paymentRequest":   sessionInvoice.PaymentRequest,
+		"signature":        hex.EncodeToString(sessionInvoice.Signature),
 		"sessionUid":       session.Uid,
 		"sessionInvoiceId": sessionInvoice.ID,
 		"status":           session.Status,
@@ -28,7 +41,7 @@ func CreateSessionInvoiceNotificationDto(session db.Session, sessionInvoice db.S
 
 func CreateSessionUpdateNotificationDto(session db.Session) NotificationDto {
 	response := map[string]interface{}{
-		"type":       notification.SESSION_UPDATE,
+		"type":       SESSION_UPDATE,
 		"sessionUid": session.Uid,
 		"status":     session.Status,
 	}

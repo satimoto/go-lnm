@@ -116,6 +116,7 @@ Allow ports
 ```bash
 sudo ufw allow OpenSSH
 sudo ufw allow 9002
+sudo ufw allow 9102
 sudo ufw allow 9735
 sudo ufw allow 10009
 sudo ufw allow 50000
@@ -189,7 +190,7 @@ disablewallet=1
 listen=1
 
 # Constrain the mempool to the number of megabytes needed:
-maxmempool=100
+maxmempool=300
 
 # Limit uploading to peers
 maxuploadtarget=1000
@@ -563,6 +564,7 @@ BACKUP_AWS_ACCESS_KEY_ID=
 BACKUP_AWS_SECRET_ACCESS_KEY=
 BACKUP_S3_BUCKET=satimoto-lspX-testnet-channel-backup
 BACKUP_FILE_PATH=/home/ubuntu/.lsp/backups
+CIRCUIT_PERCENT=0.5
 DB_USER=satimoto
 DB_PASS=
 DB_HOST=satimoto.cluster-csvwlfckqqfq.eu-central-1.rds.amazonaws.com
@@ -575,6 +577,10 @@ LND_MACAROON=
 OCPI_RPC_ADDRESS=ocpi.satimoto.service:50000
 PSBT_BATCH_TIMEOUT=30
 PBST_HTLC_RESUME_TIMEOUT=20
+BASE_FEE_MSAT=0
+FEE_RATE_PPM=10
+TIME_LOCK_DELTA=100
+METRIC_PORT=9102
 REST_PORT=9002
 RPC_PORT=50000
 SHUTDOWN_TIMEOUT=20

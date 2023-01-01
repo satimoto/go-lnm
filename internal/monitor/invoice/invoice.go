@@ -10,8 +10,9 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
 	"github.com/satimoto/go-datastore/pkg/util"
-	"github.com/satimoto/go-lsp/internal/ferp"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
+	"github.com/satimoto/go-lsp/internal/service"
 	"github.com/satimoto/go-lsp/internal/session"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -24,26 +25,28 @@ type InvoiceMonitor struct {
 	nodeID           int64
 }
 
-func NewInvoiceMonitor(repositoryService *db.RepositoryService, ferpService ferp.Ferp, lightningService lightningnetwork.LightningNetwork) *InvoiceMonitor {
+func NewInvoiceMonitor(repositoryService *db.RepositoryService, services *service.ServiceResolver) *InvoiceMonitor {
 	return &InvoiceMonitor{
-		LightningService: lightningService,
-		SessionResolver:  session.NewResolverWithFerpService(repositoryService, ferpService),
+		LightningService: services.LightningService,
+		SessionResolver:  session.NewResolver(repositoryService, services),
 	}
 }
 
-func (m *InvoiceMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup *sync.WaitGroup) {
+func (m *InvoiceMonitor) StartMonitor(nodeID int64, shutdownCtx context.Context, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting up Invoices")
 	invoiceChan := make(chan lnrpc.Invoice)
 
 	m.nodeID = nodeID
-	go m.waitForInvoices(ctx, waitGroup, invoiceChan)
+	go m.waitForInvoices(shutdownCtx, waitGroup, invoiceChan)
 	go m.subscribeInvoiceInterceptions(invoiceChan)
 }
 
 func (m *InvoiceMonitor) handleInvoice(invoice lnrpc.Invoice) {
+	settled := invoice.State == lnrpc.Invoice_SETTLED
+
 	log.Print("Invoice")
 	log.Printf("PaymentRequest: %v", invoice.PaymentRequest)
-	log.Printf("Settled: %v", invoice.Settled)
+	log.Printf("Settled: %v", settled)
 
 	/** Invoice received.
 	 *  Check that the invoice is settled.
@@ -54,33 +57,40 @@ func (m *InvoiceMonitor) handleInvoice(invoice lnrpc.Invoice) {
 	ctx := context.Background()
 
 	if sessionInvoice, err := m.SessionResolver.Repository.GetSessionInvoiceByPaymentRequest(ctx, invoice.PaymentRequest); err == nil {
-		if invoice.Settled {
+		if settled {
 			// Settle session invoice
 			updateSessionInvoiceParams := param.NewUpdateSessionInvoiceParams(sessionInvoice)
-			updateSessionInvoiceParams.IsSettled = invoice.Settled
+			updateSessionInvoiceParams.IsSettled = true
 
 			_, err = m.SessionResolver.Repository.UpdateSessionInvoice(ctx, updateSessionInvoiceParams)
 
 			if err != nil {
-				util.LogOnError("LSP027", "Error updating session invoice", err)
+				metrics.RecordError("LSP027", "Error updating session invoice", err)
 				log.Printf("LSP027: Params=%#v", updateSessionInvoiceParams)
 				return
 			}
+
+			// Metrics: Increment number of settled session invoices
+			metricSessionInvoicesSettledTotal.Inc()
 
 			// Get the user from the session ID
 			user, err := m.SessionResolver.UserResolver.Repository.GetUserBySessionID(ctx, sessionInvoice.SessionID)
 
 			if err != nil {
-				util.LogOnError("LSP039", "Error retrieving session user", err)
+				metrics.RecordError("LSP039", "Error retrieving session user", err)
 				log.Printf("LSP039: SessionID=%v", sessionInvoice.SessionID)
 				return
 			}
 
 			// List users unsettled session invoices
-			sessionInvoices, err := m.SessionResolver.Repository.ListUnsettledSessionInvoicesByUserID(ctx, user.ID)
+			sessionInvoices, err := m.SessionResolver.Repository.ListSessionInvoicesByUserID(ctx, db.ListSessionInvoicesByUserIDParams{
+				ID: user.ID,
+				IsSettled: false,
+				IsExpired: false,
+			})
 
 			if err != nil {
-				util.LogOnError("LSP040", "Error retrieving user unsettled session invoices", err)
+				metrics.RecordError("LSP040", "Error retrieving user unsettled session invoices", err)
 				log.Printf("LSP040: SessionID=%v, UserID=%v", sessionInvoice.SessionID, user.ID)
 				return
 			}
@@ -90,13 +100,10 @@ func (m *InvoiceMonitor) handleInvoice(invoice lnrpc.Invoice) {
 				err = m.SessionResolver.UserResolver.UnrestrictUser(ctx, user)
 
 				if err != nil {
-					util.LogOnError("LSP041", "Error unrestricting user", err)
+					metrics.RecordError("LSP041", "Error unrestricting user", err)
 					log.Printf("LSP041: SessionID=%v, UserID=%v", sessionInvoice.SessionID, user.ID)
 				}
 			}
-		} else {
-			// Monitor expiry of invoice
-			go m.waitForInvoiceExpiry(ctx, invoice)
 		}
 	}
 }
@@ -118,14 +125,14 @@ func (m *InvoiceMonitor) subscribeInvoiceInterceptions(invoiceChan chan<- lnrpc.
 	}
 }
 
-func (m *InvoiceMonitor) waitForInvoices(ctx context.Context, waitGroup *sync.WaitGroup, invoiceChan chan lnrpc.Invoice) {
+func (m *InvoiceMonitor) waitForInvoices(shutdownCtx context.Context, waitGroup *sync.WaitGroup, invoiceChan chan lnrpc.Invoice) {
 	waitGroup.Add(1)
 	defer close(invoiceChan)
 	defer waitGroup.Done()
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-shutdownCtx.Done():
 			log.Printf("Shutting down Invoices")
 			return
 		case invoice := <-invoiceChan:
@@ -134,25 +141,6 @@ func (m *InvoiceMonitor) waitForInvoices(ctx context.Context, waitGroup *sync.Wa
 	}
 }
 
-func (m *InvoiceMonitor) waitForInvoiceExpiry(ctx context.Context, invoice lnrpc.Invoice) {
-	expiry := (time.Second * time.Duration(invoice.Expiry)) + time.Minute
-
-	time.Sleep(expiry)
-
-	if sessionInvoice, err := m.SessionResolver.Repository.GetSessionInvoiceByPaymentRequest(ctx, invoice.PaymentRequest); err == nil {
-		if !sessionInvoice.IsSettled && !sessionInvoice.IsExpired {
-			updateSessionInvoiceParams := param.NewUpdateSessionInvoiceParams(sessionInvoice)
-			updateSessionInvoiceParams.IsExpired = true
-
-			_, err = m.SessionResolver.Repository.UpdateSessionInvoice(ctx, updateSessionInvoiceParams)
-
-			if err != nil {
-				util.LogOnError("LSP036", "Error updating session invoice", err)
-				log.Printf("LSP036: Params=%#v", updateSessionInvoiceParams)
-			}
-		}
-	}
-}
 
 func (m *InvoiceMonitor) waitForSubscribeInvoicesClient(initialDelay, retryDelay time.Duration) (lnrpc.Lightning_SubscribeInvoicesClient, error) {
 	for {

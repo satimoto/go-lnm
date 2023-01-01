@@ -11,6 +11,7 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	"github.com/satimoto/go-lsp/internal/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -21,18 +22,18 @@ type BlockEpochMonitor struct {
 	nodeID            int64
 }
 
-func NewBlockEpochMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) *BlockEpochMonitor {
+func NewBlockEpochMonitor(repositoryService *db.RepositoryService, services *service.ServiceResolver) *BlockEpochMonitor {
 	return &BlockEpochMonitor{
-		LightningService: lightningService,
+		LightningService: services.LightningService,
 	}
 }
 
-func (m *BlockEpochMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup *sync.WaitGroup) {
+func (m *BlockEpochMonitor) StartMonitor(nodeID int64, shutdownCtx context.Context, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting up Block Epochs")
 	blockEpochChan := make(chan chainrpc.BlockEpoch)
 
 	m.nodeID = nodeID
-	go m.waitForBlockEpochs(ctx, waitGroup, blockEpochChan)
+	go m.waitForBlockEpochs(shutdownCtx, waitGroup, blockEpochChan)
 	go m.subscribeBlockEpochNotifications(blockEpochChan)
 }
 
@@ -62,14 +63,14 @@ func (m *BlockEpochMonitor) subscribeBlockEpochNotifications(blockEpochChan chan
 	}
 }
 
-func (m *BlockEpochMonitor) waitForBlockEpochs(ctx context.Context, waitGroup *sync.WaitGroup, blockEpochChan chan chainrpc.BlockEpoch) {
+func (m *BlockEpochMonitor) waitForBlockEpochs(shutdownCtx context.Context, waitGroup *sync.WaitGroup, blockEpochChan chan chainrpc.BlockEpoch) {
 	waitGroup.Add(1)
 	defer close(blockEpochChan)
 	defer waitGroup.Done()
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-shutdownCtx.Done():
 			log.Printf("Shutting down Block Epochs")
 			return
 		case blockEpoch := <-blockEpochChan:

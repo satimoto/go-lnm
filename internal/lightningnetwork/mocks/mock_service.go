@@ -15,22 +15,28 @@ type MockLightningNetworkService struct {
 	allocateAliasMockData           []*lnrpc.AllocateAliasResponse
 	addInvoiceMockData              []*lnrpc.Invoice
 	channelAcceptorMockData         []lnrpc.Lightning_ChannelAcceptorClient
+	decodePayReqMockData            []*lnrpc.PayReq
+	estimateFeeMockData             []*walletrpc.EstimateFeeResponse
 	finalizePsbtMockData            []*walletrpc.FinalizePsbtResponse
 	fundingStateStepMockData        []*lnrpc.FundingStateStepResp
 	fundPsbtMockData                []*walletrpc.FundPsbtResponse
 	getInfoMockData                 []*lnrpc.GetInfoResponse
 	htlcInterceptorMockData         []routerrpc.Router_HtlcInterceptorClient
+	listChannelsMockData            []*lnrpc.ListChannelsResponse
+	listPeersMockData               []*lnrpc.ListPeersResponse
 	openChannelMockData             []lnrpc.Lightning_OpenChannelClient
 	openChannelSyncMockData         []*lnrpc.ChannelPoint
 	publishTransactionMockData      []*walletrpc.PublishResponse
 	registerBlockEpochNtfnMockData  []chainrpc.ChainNotifier_RegisterBlockEpochNtfnClient
 	sendCustomMessageMockData       []*lnrpc.SendCustomMessageResponse
+	sendPaymentV2MockData           []routerrpc.Router_SendPaymentV2Client
 	subscribeChannelBackupsMockData []lnrpc.Lightning_SubscribeChannelBackupsClient
 	subscribeChannelEventsMockData  []lnrpc.Lightning_SubscribeChannelEventsClient
 	subscribeChannelGraphMockData   []lnrpc.Lightning_SubscribeChannelGraphClient
 	subscribeCustomMessagesMockData []lnrpc.Lightning_SubscribeCustomMessagesClient
 	subscribeHtlcEventsMockData     []routerrpc.Router_SubscribeHtlcEventsClient
 	subscribeInvoicesMockData       []lnrpc.Lightning_SubscribeInvoicesClient
+	subscribePeerEventsMockData     []lnrpc.Lightning_SubscribePeerEventsClient
 	subscribeTransactionsMockData   []lnrpc.Lightning_SubscribeTransactionsClient
 	updateChannelPolicyMockData     []*lnrpc.PolicyUpdateResponse
 	walletBalanceMockData           []*lnrpc.WalletBalanceResponse
@@ -89,6 +95,34 @@ func (s *MockLightningNetworkService) GetAddInvoiceMockData() (*lnrpc.Invoice, e
 	response := s.addInvoiceMockData[0]
 	s.addInvoiceMockData = s.addInvoiceMockData[1:]
 	return response, nil
+}
+
+func (s *MockLightningNetworkService) DecodePayReq(in *lnrpc.PayReqString, opts ...grpc.CallOption) (*lnrpc.PayReq, error) {
+	if len(s.decodePayReqMockData) == 0 {
+		return &lnrpc.PayReq{}, errors.New("NotFound")
+	}
+
+	response := s.decodePayReqMockData[0]
+	s.decodePayReqMockData = s.decodePayReqMockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) SetDecodePayReqMockData(mockData *lnrpc.PayReq) {
+	s.decodePayReqMockData = append(s.decodePayReqMockData, mockData)
+}
+
+func (s *MockLightningNetworkService) EstimateFee(in *walletrpc.EstimateFeeRequest, opts ...grpc.CallOption) (*walletrpc.EstimateFeeResponse, error) {
+	if len(s.estimateFeeMockData) == 0 {
+		return &walletrpc.EstimateFeeResponse{}, errors.New("NotFound")
+	}
+
+	response := s.estimateFeeMockData[0]
+	s.estimateFeeMockData = s.estimateFeeMockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) SetEstimateFeeMockData(mockData *walletrpc.EstimateFeeResponse) {
+	s.estimateFeeMockData = append(s.estimateFeeMockData, mockData)
 }
 
 func (s *MockLightningNetworkService) FinalizePsbt(in *walletrpc.FinalizePsbtRequest, opts ...grpc.CallOption) (*walletrpc.FinalizePsbtResponse, error) {
@@ -165,6 +199,34 @@ func (s *MockLightningNetworkService) NewHtlcInterceptorMockData() (<-chan *rout
 	return sendChan, recvChan
 }
 
+func (s *MockLightningNetworkService) ListChannels(in *lnrpc.ListChannelsRequest, opts ...grpc.CallOption) (*lnrpc.ListChannelsResponse, error) {
+	if len(s.listChannelsMockData) == 0 {
+		return &lnrpc.ListChannelsResponse{}, errors.New("NotFound")
+	}
+
+	response := s.listChannelsMockData[0]
+	s.listChannelsMockData = s.listChannelsMockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) SetListChannelsMockData(mockData *lnrpc.ListChannelsResponse) {
+	s.listChannelsMockData = append(s.listChannelsMockData, mockData)
+}
+
+func (s *MockLightningNetworkService) ListPeers(in *lnrpc.ListPeersRequest, opts ...grpc.CallOption) (*lnrpc.ListPeersResponse, error) {
+	if len(s.listPeersMockData) == 0 {
+		return &lnrpc.ListPeersResponse{}, errors.New("NotFound")
+	}
+
+	response := s.listPeersMockData[0]
+	s.listPeersMockData = s.listPeersMockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) SetListPeersMockData(mockData *lnrpc.ListPeersResponse) {
+	s.listPeersMockData = append(s.listPeersMockData, mockData)
+}
+
 func (s *MockLightningNetworkService) OpenChannel(in *lnrpc.OpenChannelRequest, opts ...grpc.CallOption) (lnrpc.Lightning_OpenChannelClient, error) {
 	if len(s.openChannelMockData) == 0 {
 		return nil, errors.New("NotFound")
@@ -239,6 +301,23 @@ func (s *MockLightningNetworkService) SendCustomMessage(in *lnrpc.SendCustomMess
 
 func (s *MockLightningNetworkService) SetSendCustomMessageMockData(mockData *lnrpc.SendCustomMessageResponse) {
 	s.sendCustomMessageMockData = append(s.sendCustomMessageMockData, mockData)
+}
+
+func (s *MockLightningNetworkService) SendPaymentV2(in *routerrpc.SendPaymentRequest, opts ...grpc.CallOption) (routerrpc.Router_SendPaymentV2Client, error) {
+	if len(s.sendPaymentV2MockData) == 0 {
+		return nil, errors.New("NotFound")
+	}
+
+	response := s.sendPaymentV2MockData[0]
+	s.sendPaymentV2MockData = s.sendPaymentV2MockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) NewSendPaymentV2MockData() chan<- *lnrpc.Payment {
+	recvChan := make(chan *lnrpc.Payment)
+	s.sendPaymentV2MockData = append(s.sendPaymentV2MockData, NewMockSendPaymentV2Client(recvChan))
+
+	return recvChan
 }
 
 func (s *MockLightningNetworkService) SubscribeChannelBackups(in *lnrpc.ChannelBackupSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeChannelBackupsClient, error) {
@@ -339,6 +418,23 @@ func (s *MockLightningNetworkService) SubscribeInvoices(in *lnrpc.InvoiceSubscri
 func (s *MockLightningNetworkService) NewSubscribeInvoicesMockData() chan<- *lnrpc.Invoice {
 	recvChan := make(chan *lnrpc.Invoice)
 	s.subscribeInvoicesMockData = append(s.subscribeInvoicesMockData, NewMockSubscribeInvoicesClient(recvChan))
+
+	return recvChan
+}
+
+func (s *MockLightningNetworkService) SubscribePeerEvents(in *lnrpc.PeerEventSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribePeerEventsClient, error) {
+	if len(s.subscribePeerEventsMockData) == 0 {
+		return nil, errors.New("NotFound")
+	}
+
+	response := s.subscribePeerEventsMockData[0]
+	s.subscribePeerEventsMockData = s.subscribePeerEventsMockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) NewSubscribePeerEventsMockData() chan<- *lnrpc.PeerEvent {
+	recvChan := make(chan *lnrpc.PeerEvent)
+	s.subscribePeerEventsMockData = append(s.subscribePeerEventsMockData, NewMockSubscribePeerEventsClient(recvChan))
 
 	return recvChan
 }

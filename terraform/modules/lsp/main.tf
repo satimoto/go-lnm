@@ -43,6 +43,16 @@ resource "aws_security_group_rule" "lsp_any_lnd_p2p_ingress_rule" {
   description       = "LND-P2P from Any to ${var.instance_name}"
 }
 
+resource "aws_security_group_rule" "lsp_private_metric_ingress_rule" {
+  type              = "ingress"
+  from_port         = var.metric_port
+  to_port           = var.metric_port
+  protocol          = "tcp"
+  cidr_blocks       = var.private_subnet_cidrs
+  security_group_id = aws_security_group.lsp_security_group.id
+  description       = "METRIC from Private to ${var.instance_name}"
+}
+
 resource "aws_security_group_rule" "lsp_nlb_rest_ingress_rule" {
   type              = "ingress"
   from_port         = var.rest_port

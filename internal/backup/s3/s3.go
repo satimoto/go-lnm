@@ -11,11 +11,12 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/satimoto/go-datastore/pkg/util"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
 )
 
 type S3Backup interface {
 	BackupChannels(name string, data []byte) error
-	BackupChannelsWithRetry(name string, data []byte, retries int)  error
+	BackupChannelsWithRetry(name string, data []byte, retries int) error
 }
 
 type S3BackupHandler struct {
@@ -32,7 +33,7 @@ func NewHandler(region, accessKeyID, secretAccessKey, bucketName string) S3Backu
 	util.PanicOnError("LSP064", "Invalid AWS session", err)
 
 	return &S3BackupHandler{
-		session: session,
+		session:    session,
 		bucketName: bucketName,
 	}
 }
@@ -50,7 +51,7 @@ func (h *S3BackupHandler) BackupChannelsWithRetry(name string, data []byte, retr
 		}
 
 		if i == retries {
-			util.LogOnError("LSP069", "Error in S3 backup", err)
+			metrics.RecordError("LSP069", "Error in S3 backup", err)
 			log.Printf("LSP069: Name=%v, Retries=%v", name, retries)
 			return err
 		}
@@ -66,12 +67,12 @@ func (h *S3BackupHandler) processBackupChannels(name string, data []byte) error 
 
 	_, err := uploader.Upload(&s3manager.UploadInput{
 		Bucket: aws.String(h.bucketName),
-		Key: aws.String(name),
-		Body: bytes.NewBuffer(data),
+		Key:    aws.String(name),
+		Body:   bytes.NewBuffer(data),
 	})
 
 	if err != nil {
-		util.LogOnError("LSP070", "Error uploading to S3", err)
+		metrics.RecordError("LSP070", "Error uploading to S3", err)
 		log.Printf("LSP070: Name=%v", name)
 		return errors.New("error uploading to S3")
 	}

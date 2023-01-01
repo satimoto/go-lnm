@@ -6,6 +6,7 @@ import (
 
 type MockLspService struct {
 	openChannelMockData []*lsprpc.OpenChannelResponse
+	listChannelsMockData []*lsprpc.ListChannelsResponse
 }
 
 func NewService() *MockLspService {

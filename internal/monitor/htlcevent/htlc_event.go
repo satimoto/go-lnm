@@ -13,6 +13,8 @@ import (
 	"github.com/satimoto/go-lsp/internal/channelrequest"
 	"github.com/satimoto/go-lsp/internal/ferp"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
+	"github.com/satimoto/go-lsp/internal/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -27,10 +29,10 @@ type HtlcEventMonitor struct {
 	nodeID                 int64
 }
 
-func NewHtlcEventMonitor(repositoryService *db.RepositoryService, ferpService ferp.Ferp, lightningService lightningnetwork.LightningNetwork) *HtlcEventMonitor {
+func NewHtlcEventMonitor(repositoryService *db.RepositoryService, services *service.ServiceResolver) *HtlcEventMonitor {
 	return &HtlcEventMonitor{
-		FerpService:            ferpService,
-		LightningService:       lightningService,
+		FerpService:            services.FerpService,
+		LightningService:       services.LightningService,
 		ChannelRequestResolver: channelrequest.NewResolver(repositoryService),
 		RoutingEventRepository: routingevent.NewRepository(repositoryService),
 	}
@@ -81,7 +83,7 @@ func (m *HtlcEventMonitor) handleForwardHtlcEvent(ctx context.Context, htlcEvent
 	currencyRate, err := m.FerpService.GetRate(m.accountingCurrency)
 
 	if err != nil {
-		util.LogOnError("LSP071", "Error getting FERP rate", err)
+		metrics.RecordError("LSP071", "Error getting FERP rate", err)
 		log.Printf("LSP071: Currency=%v", m.accountingCurrency)
 		return
 	}
@@ -110,7 +112,7 @@ func (m *HtlcEventMonitor) handleForwardHtlcEvent(ctx context.Context, htlcEvent
 	_, err = m.RoutingEventRepository.CreateRoutingEvent(ctx, createRoutingEventParams)
 
 	if err != nil {
-		util.LogOnError("LSP072", "Error creating routing event", err)
+		metrics.RecordError("LSP072", "Error creating routing event", err)
 		log.Printf("LSP072: Params=%#v", createRoutingEventParams)
 	}
 }
@@ -139,11 +141,21 @@ func (m *HtlcEventMonitor) handleForwardFailHtlcEvent(ctx context.Context, htlcE
 		LastUpdated:    time.Unix(0, int64(htlcEvent.TimestampNs)),
 	}
 
-	_, err := m.RoutingEventRepository.UpdateRoutingEvent(ctx, updateRoutingEventParams)
+	routingEvent, err := m.RoutingEventRepository.UpdateRoutingEvent(ctx, updateRoutingEventParams)
 
 	if err != nil {
-		util.LogOnError("LSP081", "Error updating routing event", err)
+		metrics.RecordError("LSP081", "Error updating routing event", err)
 		log.Printf("LSP081: Params=%#v", updateRoutingEventParams)
+	}
+
+	// Metrics: Increment number of failed routing events
+	metricRoutingEventsFailed.Inc()
+
+	if err == nil {
+		metricRoutingEventsFailedFeeFiat.WithLabelValues(routingEvent.Currency).Add(routingEvent.FeeFiat)
+		metricRoutingEventsFailedFeeSatoshis.Add(float64(routingEvent.FeeMsat / 1000))
+		metricRoutingEventsFailedTotalFiat.WithLabelValues(routingEvent.Currency).Add(routingEvent.OutgoingFiat)
+		metricRoutingEventsFailedTotalSatoshis.Add(float64(routingEvent.OutgoingMsat / 1000))
 	}
 }
 
@@ -179,7 +191,9 @@ func (m *HtlcEventMonitor) handleLinkFailHtlcEvent(ctx context.Context, htlcEven
 		LastUpdated:    time.Unix(0, int64(htlcEvent.TimestampNs)),
 	}
 
-	if _, err := m.RoutingEventRepository.UpdateRoutingEvent(ctx, updateRoutingEventParams); err != nil {
+	routingEvent, err := m.RoutingEventRepository.UpdateRoutingEvent(ctx, updateRoutingEventParams)
+
+	if err != nil {
 		createRoutingEventParams := db.CreateRoutingEventParams{
 			NodeID:           m.nodeID,
 			EventType:        db.RoutingEventTypeFORWARD,
@@ -203,12 +217,22 @@ func (m *HtlcEventMonitor) handleLinkFailHtlcEvent(ctx context.Context, htlcEven
 			LastUpdated:      time.Unix(0, int64(htlcEvent.TimestampNs)),
 		}
 
-		_, err = m.RoutingEventRepository.CreateRoutingEvent(ctx, createRoutingEventParams)
+		routingEvent, err = m.RoutingEventRepository.CreateRoutingEvent(ctx, createRoutingEventParams)
 
 		if err != nil {
-			util.LogOnError("LSP082", "Error creating routing event", err)
+			metrics.RecordError("LSP082", "Error creating routing event", err)
 			log.Printf("LSP082: Params=%#v", createRoutingEventParams)
 		}
+	}
+
+	// Metrics: Increment number of failed routing events
+	metricRoutingEventsFailed.Inc()
+
+	if err == nil {
+		metricRoutingEventsFailedFeeFiat.WithLabelValues(routingEvent.Currency).Add(routingEvent.FeeFiat)
+		metricRoutingEventsFailedFeeSatoshis.Add(float64(routingEvent.FeeMsat / 1000))
+		metricRoutingEventsFailedTotalFiat.WithLabelValues(routingEvent.Currency).Add(routingEvent.OutgoingFiat)
+		metricRoutingEventsFailedTotalSatoshis.Add(float64(routingEvent.OutgoingMsat / 1000))
 	}
 }
 
@@ -235,11 +259,21 @@ func (m *HtlcEventMonitor) handleSettleHtlcEvent(ctx context.Context, htlcEvent 
 		LastUpdated:    time.Unix(0, int64(htlcEvent.TimestampNs)),
 	}
 
-	_, err := m.RoutingEventRepository.UpdateRoutingEvent(ctx, updateRoutingEventParams)
+	routingEvent, err := m.RoutingEventRepository.UpdateRoutingEvent(ctx, updateRoutingEventParams)
 
 	if err != nil {
-		util.LogOnError("LSP083", "Error updating routing event", err)
+		metrics.RecordError("LSP083", "Error updating routing event", err)
 		log.Printf("LSP083: Params=%#v", updateRoutingEventParams)
+	}
+
+	// Metrics: Increment number of settled routing events
+	metricRoutingEventsSettled.Inc()
+
+	if err == nil {
+		metricRoutingEventsSettledFeeFiat.WithLabelValues(routingEvent.Currency).Add(routingEvent.FeeFiat)
+		metricRoutingEventsSettledFeeSatoshis.Add(float64(routingEvent.FeeMsat / 1000))
+		metricRoutingEventsSettledTotalFiat.WithLabelValues(routingEvent.Currency).Add(routingEvent.OutgoingFiat)
+		metricRoutingEventsSettledTotalSatoshis.Add(float64(routingEvent.OutgoingMsat / 1000))
 	}
 }
 
@@ -260,14 +294,14 @@ func (m *HtlcEventMonitor) subscribeHtlcEventInterceptions(htlcEventChan chan<- 
 	}
 }
 
-func (m *HtlcEventMonitor) waitForHtlcEvents(ctx context.Context, waitGroup *sync.WaitGroup, htlcEventChan chan routerrpc.HtlcEvent) {
+func (m *HtlcEventMonitor) waitForHtlcEvents(shutdownCtx context.Context, waitGroup *sync.WaitGroup, htlcEventChan chan routerrpc.HtlcEvent) {
 	waitGroup.Add(1)
 	defer close(htlcEventChan)
 	defer waitGroup.Done()
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-shutdownCtx.Done():
 			log.Printf("Shutting down Htlc Events")
 			return
 		case htlcInterceptRequest := <-htlcEventChan:

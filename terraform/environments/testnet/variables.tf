@@ -30,8 +30,13 @@ variable "ec2_instance_type" {
   description = "The instance type to use for the EC2 instance"
 }
 
+variable "metric_port" {
+  description = "The port to access metrics"
+  default     = 9102
+}
+
 variable "rest_port" {
-  description = "The port to access metrics and health"
+  description = "The port to access health"
   default     = 9002
 }
 

@@ -11,6 +11,10 @@ func (s *LspService) OpenChannel(ctx context.Context, in *lsprpc.OpenChannelRequ
 	return s.getChannelClient().OpenChannel(ctx, in, opts...)
 }
 
+func (s *LspService) ListChannels(ctx context.Context, in *lsprpc.ListChannelsRequest, opts ...grpc.CallOption) (*lsprpc.ListChannelsResponse, error) {
+	return s.getChannelClient().ListChannels(ctx, in, opts...)
+}
+
 func (s *LspService) getChannelClient() lsprpc.ChannelServiceClient {
 	if s.channelClient == nil {
 		client := lsprpc.NewChannelServiceClient(s.clientConn)

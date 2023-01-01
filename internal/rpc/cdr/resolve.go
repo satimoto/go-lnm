@@ -4,6 +4,7 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-lsp/internal/cdr"
 	"github.com/satimoto/go-lsp/internal/ferp"
+	"github.com/satimoto/go-lsp/internal/service"
 )
 
 type RpcCdrResolver struct {
@@ -11,9 +12,9 @@ type RpcCdrResolver struct {
 	FerpService ferp.Ferp
 }
 
-func NewResolver(repositoryService *db.RepositoryService, ferpService ferp.Ferp) *RpcCdrResolver {
+func NewResolver(repositoryService *db.RepositoryService, services *service.ServiceResolver) *RpcCdrResolver {
 	return &RpcCdrResolver{
-		CdrResolver: cdr.NewResolverWithFerpService(repositoryService, ferpService),
-		FerpService: ferpService,
+		CdrResolver: cdr.NewResolver(repositoryService, services),
+		FerpService: services.FerpService,
 	}
 }

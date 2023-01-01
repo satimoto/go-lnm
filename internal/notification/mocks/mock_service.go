@@ -4,10 +4,12 @@ import (
 	"errors"
 
 	"github.com/appleboy/go-fcm"
+	"github.com/satimoto/go-datastore/pkg/db"
+	"github.com/satimoto/go-lsp/internal/notification"
 )
 
-type MockNotificationService struct{
-	sendNotificationMessageMockData []*fcm.Message
+type MockNotificationService struct {
+	sendNotificationMessageMockData  []*fcm.Message
 	sendNotificationResponseMockData []*fcm.Response
 }
 
@@ -41,4 +43,7 @@ func (s *MockNotificationService) SendNotificationWithRetry(message *fcm.Message
 
 func (s *MockNotificationService) SetSendNotificationMockData(message *fcm.Response) {
 	s.sendNotificationResponseMockData = append(s.sendNotificationResponseMockData, message)
+}
+
+func (s *MockNotificationService) SendUserNotification(user db.User, data notification.NotificationDto, notificationType string) {
 }
