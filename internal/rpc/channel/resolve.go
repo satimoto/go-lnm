@@ -4,6 +4,7 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-lsp/internal/channelrequest"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	"github.com/satimoto/go-lsp/internal/service"
 )
 
 type RpcChannelResolver struct {
@@ -11,15 +12,9 @@ type RpcChannelResolver struct {
 	ChannelRequestResolver *channelrequest.ChannelRequestResolver
 }
 
-func NewResolver(repositoryService *db.RepositoryService) *RpcChannelResolver {
-	lightningService := lightningnetwork.NewService()
-
-	return NewResolverWithServices(repositoryService, lightningService)
-}
-
-func NewResolverWithServices(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork) *RpcChannelResolver {
+func NewResolver(repositoryService *db.RepositoryService, services *service.ServiceResolver) *RpcChannelResolver {
 	return &RpcChannelResolver{
-		LightningService:       lightningService,
+		LightningService:       services.LightningService,
 		ChannelRequestResolver: channelrequest.NewResolver(repositoryService),
 	}
 }

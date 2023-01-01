@@ -5,21 +5,22 @@ import (
 	"errors"
 	"log"
 
-	"github.com/satimoto/go-datastore/pkg/util"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-ocpi/ocpirpc"
 )
 
 func (r *RpcSessionResolver) SessionCreated(ctx context.Context, input *ocpirpc.SessionCreatedRequest) (*ocpirpc.SessionCreatedResponse, error) {
 	if input != nil {
+		// TODO: This RPC call should be handled asynchronously
 		session, err := r.SessionResolver.Repository.GetSessionByUid(ctx, input.SessionUid)
 
 		if err != nil {
-			util.LogOnError("LSP058", "Error retrieving session", err)
+			metrics.RecordError("LSP058", "Error retrieving session", err)
 			log.Printf("LSP058: SessionUid=%v", input.SessionUid)
 			return nil, errors.New("session not found")
 		}
 
-		go r.SessionResolver.StartSessionMonitor(ctx, session)
+		go r.SessionResolver.StartSessionMonitor(session)
 
 		return &ocpirpc.SessionCreatedResponse{}, nil
 	}
@@ -29,15 +30,16 @@ func (r *RpcSessionResolver) SessionCreated(ctx context.Context, input *ocpirpc.
 
 func (r *RpcSessionResolver) SessionUpdated(ctx context.Context, input *ocpirpc.SessionUpdatedRequest) (*ocpirpc.SessionUpdatedResponse, error) {
 	if input != nil {
+		// TODO: This RPC call should be handled asynchronously
 		session, err := r.SessionResolver.Repository.GetSessionByUid(ctx, input.SessionUid)
 
 		if err != nil {
-			util.LogOnError("LSP050", "Error retrieving session", err)
+			metrics.RecordError("LSP050", "Error retrieving session", err)
 			log.Printf("LSP050: SessionUid=%v", input.SessionUid)
 			return nil, errors.New("session not found")
 		}
 
-		go r.SessionResolver.UpdateSession(ctx, session)
+		go r.SessionResolver.UpdateSession(session)
 
 		return &ocpirpc.SessionUpdatedResponse{}, nil
 	}

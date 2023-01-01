@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package invoice;
+
+option go_package = "github.com/satimoto/go-lsp/lsprpc";
+
+service InvoiceService {
+  rpc UpdateInvoiceRequest(UpdateInvoiceRequestRequest) returns (UpdateInvoiceRequestResponse);
+  rpc UpdateSessionInvoice(UpdateSessionInvoiceRequest) returns (UpdateSessionInvoiceResponse);
+};
+
+message UpdateInvoiceRequestRequest {
+  int64 id = 1;
+  int64 user_id = 2;
+  string payment_request = 3;
+};
+
+message UpdateInvoiceRequestResponse {
+  int64 id = 1;
+  int64 user_id = 2;
+  string payment_request = 3;
+  bool is_settled = 4;
+};
+
+message UpdateSessionInvoiceRequest {
+  int64 id = 1;
+  int64 user_id = 2;
+};
+
+message UpdateSessionInvoiceResponse {
+  int64 id = 1;
+  int64 user_id = 2;
+  string payment_request = 3;
+  bool is_settled = 4;
+  bool is_expired = 5;
+};

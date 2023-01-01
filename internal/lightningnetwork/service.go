@@ -20,22 +20,28 @@ type LightningNetwork interface {
 	AllocateAlias(in *lnrpc.AllocateAliasRequest, opts ...grpc.CallOption) (*lnrpc.AllocateAliasResponse, error)
 	AddInvoice(in *lnrpc.Invoice, opts ...grpc.CallOption) (*lnrpc.AddInvoiceResponse, error)
 	ChannelAcceptor(opts ...grpc.CallOption) (lnrpc.Lightning_ChannelAcceptorClient, error)
+	DecodePayReq(in *lnrpc.PayReqString, opts ...grpc.CallOption) (*lnrpc.PayReq, error)
+	EstimateFee(in *walletrpc.EstimateFeeRequest, opts ...grpc.CallOption) (*walletrpc.EstimateFeeResponse, error)
 	FinalizePsbt(in *walletrpc.FinalizePsbtRequest, opts ...grpc.CallOption) (*walletrpc.FinalizePsbtResponse, error)
 	FundingStateStep(in *lnrpc.FundingTransitionMsg, opts ...grpc.CallOption) (*lnrpc.FundingStateStepResp, error)
 	FundPsbt(in *walletrpc.FundPsbtRequest, opts ...grpc.CallOption) (*walletrpc.FundPsbtResponse, error)
 	GetInfo(in *lnrpc.GetInfoRequest, opts ...grpc.CallOption) (*lnrpc.GetInfoResponse, error)
 	HtlcInterceptor(opts ...grpc.CallOption) (routerrpc.Router_HtlcInterceptorClient, error)
+	ListChannels(in *lnrpc.ListChannelsRequest, opts ...grpc.CallOption) (*lnrpc.ListChannelsResponse, error)
+	ListPeers(in *lnrpc.ListPeersRequest, opts ...grpc.CallOption) (*lnrpc.ListPeersResponse, error)
 	OpenChannel(in *lnrpc.OpenChannelRequest, opts ...grpc.CallOption) (lnrpc.Lightning_OpenChannelClient, error)
 	OpenChannelSync(in *lnrpc.OpenChannelRequest, opts ...grpc.CallOption) (*lnrpc.ChannelPoint, error)
 	PublishTransaction(in *walletrpc.Transaction, opts ...grpc.CallOption) (*walletrpc.PublishResponse, error)
 	RegisterBlockEpochNtfn(in *chainrpc.BlockEpoch, opts ...grpc.CallOption) (chainrpc.ChainNotifier_RegisterBlockEpochNtfnClient, error)
 	SendCustomMessage(in *lnrpc.SendCustomMessageRequest, opts ...grpc.CallOption) (*lnrpc.SendCustomMessageResponse, error)
+	SendPaymentV2(in *routerrpc.SendPaymentRequest, opts ...grpc.CallOption) (routerrpc.Router_SendPaymentV2Client, error)
 	SubscribeChannelBackups(in *lnrpc.ChannelBackupSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeChannelBackupsClient, error)
 	SubscribeChannelEvents(in *lnrpc.ChannelEventSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeChannelEventsClient, error)
 	SubscribeChannelGraph(in *lnrpc.GraphTopologySubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeChannelGraphClient, error)
 	SubscribeCustomMessages(in *lnrpc.SubscribeCustomMessagesRequest, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeCustomMessagesClient, error)
 	SubscribeHtlcEvents(in *routerrpc.SubscribeHtlcEventsRequest, opts ...grpc.CallOption) (routerrpc.Router_SubscribeHtlcEventsClient, error)
 	SubscribeInvoices(in *lnrpc.InvoiceSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeInvoicesClient, error)
+	SubscribePeerEvents(in *lnrpc.PeerEventSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribePeerEventsClient, error)
 	SubscribeTransactions(in *lnrpc.GetTransactionsRequest, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeTransactionsClient, error)
 	UpdateChannelPolicy(in *lnrpc.PolicyUpdateRequest, opts ...grpc.CallOption) (*lnrpc.PolicyUpdateResponse, error)
 	WalletBalance(in *lnrpc.WalletBalanceRequest, opts ...grpc.CallOption) (*lnrpc.WalletBalanceResponse, error)
@@ -83,6 +89,14 @@ func (s *LightningNetworkService) ChannelAcceptor(opts ...grpc.CallOption) (lnrp
 	return s.getLightningClient().ChannelAcceptor(s.macaroonCtx, opts...)
 }
 
+func (s *LightningNetworkService) DecodePayReq(in *lnrpc.PayReqString, opts ...grpc.CallOption) (*lnrpc.PayReq, error) {
+	return s.getLightningClient().DecodePayReq(s.macaroonCtx, in, opts...)
+}
+
+func (s *LightningNetworkService) EstimateFee(in *walletrpc.EstimateFeeRequest, opts ...grpc.CallOption) (*walletrpc.EstimateFeeResponse, error) {
+	return s.getWalletKitClient().EstimateFee(s.macaroonCtx, in, opts...)
+}
+
 func (s *LightningNetworkService) FinalizePsbt(in *walletrpc.FinalizePsbtRequest, opts ...grpc.CallOption) (*walletrpc.FinalizePsbtResponse, error) {
 	return s.getWalletKitClient().FinalizePsbt(s.macaroonCtx, in, opts...)
 }
@@ -103,6 +117,14 @@ func (s *LightningNetworkService) HtlcInterceptor(opts ...grpc.CallOption) (rout
 	return s.getRouterClient().HtlcInterceptor(s.macaroonCtx, opts...)
 }
 
+func (s *LightningNetworkService) ListChannels(in *lnrpc.ListChannelsRequest, opts ...grpc.CallOption) (*lnrpc.ListChannelsResponse, error) {
+	return s.getLightningClient().ListChannels(s.macaroonCtx, in, opts...)
+}
+
+func (s *LightningNetworkService) ListPeers(in *lnrpc.ListPeersRequest, opts ...grpc.CallOption) (*lnrpc.ListPeersResponse, error) {
+	return s.getLightningClient().ListPeers(s.macaroonCtx, in, opts...)
+}
+
 func (s *LightningNetworkService) OpenChannel(in *lnrpc.OpenChannelRequest, opts ...grpc.CallOption) (lnrpc.Lightning_OpenChannelClient, error) {
 	return s.getLightningClient().OpenChannel(s.macaroonCtx, in, opts...)
 }
@@ -121,6 +143,10 @@ func (s *LightningNetworkService) RegisterBlockEpochNtfn(in *chainrpc.BlockEpoch
 
 func (s *LightningNetworkService) SendCustomMessage(in *lnrpc.SendCustomMessageRequest, opts ...grpc.CallOption) (*lnrpc.SendCustomMessageResponse, error) {
 	return s.getLightningClient().SendCustomMessage(s.macaroonCtx, in, opts...)
+}
+
+func (s *LightningNetworkService) SendPaymentV2(in *routerrpc.SendPaymentRequest, opts ...grpc.CallOption) (routerrpc.Router_SendPaymentV2Client, error) {
+	return s.getRouterClient().SendPaymentV2(s.macaroonCtx, in, opts...)
 }
 
 func (s *LightningNetworkService) SubscribeChannelBackups(in *lnrpc.ChannelBackupSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeChannelBackupsClient, error) {
@@ -145,6 +171,10 @@ func (s *LightningNetworkService) SubscribeHtlcEvents(in *routerrpc.SubscribeHtl
 
 func (s *LightningNetworkService) SubscribeInvoices(in *lnrpc.InvoiceSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeInvoicesClient, error) {
 	return s.getLightningClient().SubscribeInvoices(s.macaroonCtx, in, opts...)
+}
+
+func (s *LightningNetworkService) SubscribePeerEvents(in *lnrpc.PeerEventSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribePeerEventsClient, error) {
+	return s.getLightningClient().SubscribePeerEvents(s.macaroonCtx, in, opts...)
 }
 
 func (s *LightningNetworkService) SubscribeTransactions(in *lnrpc.GetTransactionsRequest, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeTransactionsClient, error) {

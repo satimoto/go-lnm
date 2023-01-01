@@ -14,7 +14,9 @@ import (
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lsp/internal/channelrequest"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/internal/monitor/psbtfund"
+	"github.com/satimoto/go-lsp/internal/service"
 	"github.com/satimoto/go-lsp/pkg/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -32,25 +34,25 @@ type HtlcMonitor struct {
 	nodeID                 int64
 }
 
-func NewHtlcMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork, psbtFundService psbtfund.PsbtFund) *HtlcMonitor {
+func NewHtlcMonitor(repositoryService *db.RepositoryService, services *service.ServiceResolver, psbtFundService psbtfund.PsbtFund) *HtlcMonitor {
 	return &HtlcMonitor{
-		LightningService:       lightningService,
+		LightningService:       services.LightningService,
 		PsbtFundService:        psbtFundService,
 		ChannelRequestResolver: channelrequest.NewResolver(repositoryService),
 		channelRequestLock:     make(map[int64]db.ChannelRequest),
 	}
 }
 
-func (m *HtlcMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup *sync.WaitGroup) {
+func (m *HtlcMonitor) StartMonitor(nodeID int64, shutdownCtx context.Context, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting up Htlcs")
 	htlcInterceptChan := make(chan routerrpc.ForwardHtlcInterceptRequest)
 
 	m.baseFeeMsat = int64(dbUtil.GetEnvInt32("BASE_FEE_MSAT", 0))
-	m.feeRatePpm = uint32(dbUtil.GetEnvInt32("FEE_RATE_PPM", 10))
+	m.feeRatePpm = uint32(dbUtil.GetEnvInt32("FEE_RATE_PPM", 0))
 	m.timeLockDelta = uint32(dbUtil.GetEnvInt32("TIME_LOCK_DELTA", 100))
 	m.nodeID = nodeID
 
-	go m.waitForHtlcs(ctx, waitGroup, htlcInterceptChan)
+	go m.waitForHtlcs(shutdownCtx, waitGroup, htlcInterceptChan)
 	go m.subscribeHtlcInterceptions(htlcInterceptChan)
 }
 
@@ -80,7 +82,7 @@ func (m *HtlcMonitor) ResumeChannelRequestHtlcs(channelRequest db.ChannelRequest
 		_, err := m.LightningService.UpdateChannelPolicy(policyUpdateRequest)
 
 		if err != nil {
-			dbUtil.LogOnError("LSP106", "Error updating channel policy", err)
+			metrics.RecordError("LSP106", "Error updating channel policy", err)
 			log.Printf("LSP106: Params=%#v", policyUpdateRequest)
 			return
 		}
@@ -92,7 +94,7 @@ func (m *HtlcMonitor) ResumeChannelRequestHtlcs(channelRequest db.ChannelRequest
 		channelRequestHtlcs, err := m.ChannelRequestResolver.Repository.ListChannelRequestHtlcs(ctx, channelRequest.ID)
 
 		if err != nil {
-			dbUtil.LogOnError("LSP097", "Error listing channel request HTLCs", err)
+			metrics.RecordError("LSP097", "Error listing channel request HTLCs", err)
 			log.Printf("LSP097: ChannelRequestID=%v", channelRequest.ID)
 			return
 		}
@@ -118,9 +120,11 @@ func (m *HtlcMonitor) ResumeChannelRequestHtlcs(channelRequest db.ChannelRequest
 		_, err = m.ChannelRequestResolver.Repository.UpdateChannelRequest(ctx, updateChannelRequestParams)
 
 		if err != nil {
-			dbUtil.LogOnError("LSP099", "Error updating channel request", err)
+			metrics.RecordError("LSP099", "Error updating channel request", err)
 			log.Printf("LSP099: Params=%#v", updateChannelRequestParams)
 		}
+
+		metricInterceptedChannelRequestsSettled.Inc()
 	}
 }
 
@@ -175,10 +179,13 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 			}
 
 			if _, err := m.ChannelRequestResolver.Repository.CreateChannelRequestHtlc(ctx, channelRequestHtlcParams); err != nil {
-				dbUtil.LogOnError("LSP024", "Error creating channel request HTLC", err)
+				metrics.RecordError("LSP024", "Error creating channel request HTLC", err)
 				m.sendToHtlcInterceptor(htlcInterceptRequest.IncomingCircuitKey, routerrpc.ResolveHoldForwardAction_FAIL)
 				return
 			}
+
+			// Metrics: Increment number of intercepted channel requests
+			metricInterceptedChannelRequestsTotal.Inc()
 
 			startPaymentMonitor := channelRequest.Status == db.ChannelRequestStatusREQUESTED
 
@@ -191,7 +198,7 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 				pubkeyBytes, err := hex.DecodeString(channelRequest.Pubkey)
 
 				if err != nil {
-					dbUtil.LogOnError("LSP052", "Error decoding pubkey", err)
+					metrics.RecordError("LSP052", "Error decoding pubkey", err)
 					log.Printf("LSP052: ChannelRequestID=%#v", channelRequest.ID)
 					m.sendToHtlcInterceptor(htlcInterceptRequest.IncomingCircuitKey, routerrpc.ResolveHoldForwardAction_FAIL)
 					return
@@ -214,7 +221,8 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 				err = m.PsbtFundService.OpenChannel(ctx, openChannelRequest, channelRequest)
 
 				if err != nil {
-					dbUtil.LogOnError("LSP053", "Error opening channel", err)
+					metricInterceptedChannelRequestsFailed.Inc()
+					metrics.RecordError("LSP053", "Error opening channel", err)
 					log.Printf("LSP053: OpenChannelRequest=%#v", openChannelRequest)
 					m.sendToHtlcInterceptor(htlcInterceptRequest.IncomingCircuitKey, routerrpc.ResolveHoldForwardAction_FAIL)
 					return
@@ -227,7 +235,8 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 			_, err := m.ChannelRequestResolver.Repository.UpdateChannelRequest(ctx, updateChannelRequestParams)
 
 			if err != nil {
-				dbUtil.LogOnError("LSP096", "Error updating channel request", err)
+				metricInterceptedChannelRequestsFailed.Inc()
+				metrics.RecordError("LSP096", "Error updating channel request", err)
 				log.Printf("LSP096: Params=%#v", updateChannelRequestParams)
 				m.sendToHtlcInterceptor(htlcInterceptRequest.IncomingCircuitKey, routerrpc.ResolveHoldForwardAction_FAIL)
 				return
@@ -236,7 +245,7 @@ func (m *HtlcMonitor) handleHtlc(htlcInterceptRequest routerrpc.ForwardHtlcInter
 			// Start payment timeout to cleanup failures
 			if startPaymentMonitor {
 				// TODO: Add monitoring task to worker group, this should prevent shutdown while awaiting payments
-				go m.waitForPaymentTimeout(ctx, channelRequest.PaymentHash, 30)
+				go m.waitForPaymentTimeout(channelRequest.PaymentHash, 30)
 			}
 		} else {
 			log.Printf("LSP025: Invalid channel request state")
@@ -272,14 +281,14 @@ func (m *HtlcMonitor) subscribeHtlcInterceptions(htlcInterceptChan chan<- router
 	}
 }
 
-func (m *HtlcMonitor) waitForHtlcs(ctx context.Context, waitGroup *sync.WaitGroup, htlcInterceptChan chan routerrpc.ForwardHtlcInterceptRequest) {
+func (m *HtlcMonitor) waitForHtlcs(shutdownCtx context.Context, waitGroup *sync.WaitGroup, htlcInterceptChan chan routerrpc.ForwardHtlcInterceptRequest) {
 	waitGroup.Add(1)
 	defer close(htlcInterceptChan)
 	defer waitGroup.Done()
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-shutdownCtx.Done():
 			log.Printf("Shutting down Htlcs")
 			return
 		case htlcInterceptRequest := <-htlcInterceptChan:
@@ -307,7 +316,8 @@ func (m *HtlcMonitor) waitForHtlcInterceptorClient(initialDelay, retryDelay time
 	}
 }
 
-func (m *HtlcMonitor) waitForPaymentTimeout(ctx context.Context, paymentHash []byte, timeoutSeconds int) {
+func (m *HtlcMonitor) waitForPaymentTimeout(paymentHash []byte, timeoutSeconds int) {
+	ctx := context.Background()
 	deadline := time.Now().Add(time.Duration(timeoutSeconds) * time.Second)
 	paymentHashString := hex.EncodeToString(paymentHash)
 	log.Printf("Payment timeout set for %v seconds: %v", timeoutSeconds, paymentHashString)
@@ -316,7 +326,7 @@ func (m *HtlcMonitor) waitForPaymentTimeout(ctx context.Context, paymentHash []b
 		channelRequest, err := m.ChannelRequestResolver.Repository.GetChannelRequestByPaymentHash(ctx, paymentHash)
 
 		if err != nil {
-			dbUtil.LogOnError("LSP026", "Error getting channel request", err)
+			metrics.RecordError("LSP026", "Error getting channel request", err)
 			break
 		}
 
@@ -346,6 +356,9 @@ func (m *HtlcMonitor) waitForPaymentTimeout(ctx context.Context, paymentHash []b
 					Action: routerrpc.ResolveHoldForwardAction_FAIL,
 				})
 			}
+
+			// Metrics: Increment number of failed channel requests
+			metricInterceptedChannelRequestsFailed.Inc()
 
 			break
 		}

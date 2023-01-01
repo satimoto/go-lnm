@@ -2,10 +2,10 @@ package cdr_test
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"time"
 
+	"github.com/appleboy/go-fcm"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/satimoto/go-datastore/pkg/db"
 	dbMocks "github.com/satimoto/go-datastore/pkg/db/mocks"
@@ -16,16 +16,16 @@ import (
 	lightningnetworkMocks "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
 	invoiceMocks "github.com/satimoto/go-lsp/internal/monitor/invoice/mocks"
 	notificationMocks "github.com/satimoto/go-lsp/internal/notification/mocks"
+	serviceMocks "github.com/satimoto/go-lsp/internal/service/mocks"
 	ocpiMocks "github.com/satimoto/go-ocpi/pkg/ocpi/mocks"
 
 	"testing"
 )
 
 func TestProcessCdrErrors(t *testing.T) {
-	ctx := context.Background()
 	cases := []struct {
 		desc   string
-		before func(*dbMocks.MockRepositoryService, *ferpMocks.MockFerpService, *lightningnetworkMocks.MockLightningNetworkService, *ocpiMocks.MockOcpiService)
+		before func(mockRepository *dbMocks.MockRepositoryService, mockFerpService *ferpMocks.MockFerpService, mockLightningService *lightningnetworkMocks.MockLightningNetworkService, mockNotificationService *notificationMocks.MockNotificationService, mockOcpiService *ocpiMocks.MockOcpiService)
 		cdr    db.Cdr
 		after  func(*testing.T, *dbMocks.MockRepositoryService, *lightningnetworkMocks.MockLightningNetworkService, *ocpiMocks.MockOcpiService)
 		err    *string
@@ -34,7 +34,7 @@ func TestProcessCdrErrors(t *testing.T) {
 		cdr: db.Cdr{
 			Uid: "CDR0001",
 		},
-		err: util.NilString("cdr AuthorizationID is nil"),
+		err: util.NilString("cdr authorization ID is nil"),
 	}, {
 		desc: "Missing CDR session",
 		cdr: db.Cdr{
@@ -43,77 +43,13 @@ func TestProcessCdrErrors(t *testing.T) {
 		},
 		err: util.NilString("error retrieving cdr session"),
 	}, {
-		desc: "Missing session invoices",
-		before: func(mockRepository *dbMocks.MockRepositoryService, mockFerpService *ferpMocks.MockFerpService, mockLightningService *lightningnetworkMocks.MockLightningNetworkService, mockOcpiService *ocpiMocks.MockOcpiService) {
-			mockRepository.SetGetSessionByAuthorizationIDMockData(dbMocks.SessionMockData{Session: db.Session{
-				ID:              1,
-				Uid:             "SESSION0001",
-				AuthorizationID: util.SqlNullString("AUTH0001"),
-			}})
-
-			mockRepository.SetListSessionInvoicesMockData(dbMocks.SessionInvoicesMockData{Error: errors.New("Database error")})
-		},
-		cdr: db.Cdr{
-			ID:              1,
-			Uid:             "CDR0001",
-			AuthorizationID: util.SqlNullString("AUTH0001"),
-		},
-		err: util.NilString("error retrieving session invoices"),
-	}, {
-		desc: "Missing session location",
-		before: func(mockRepository *dbMocks.MockRepositoryService, mockFerpService *ferpMocks.MockFerpService, mockLightningService *lightningnetworkMocks.MockLightningNetworkService, mockOcpiService *ocpiMocks.MockOcpiService) {
-			mockRepository.SetGetSessionByAuthorizationIDMockData(dbMocks.SessionMockData{Session: db.Session{
-				ID:              1,
-				Uid:             "SESSION0001",
-				AuthorizationID: util.SqlNullString("AUTH0001"),
-			}})
-
-			mockRepository.SetListSessionInvoicesMockData(dbMocks.SessionInvoicesMockData{SessionInvoices: []db.SessionInvoice{{
-				AmountFiat:     0.3852,
-				CommissionFiat: 0.021,
-				TaxFiat:        0.0642,
-				Currency:       "EUR",
-			}}})
-
-			mockFerpService.SetGetRateMockData(&rate.CurrencyRate{
-				Rate: 4500,
-				RateMsat: 4500000,
-				LastUpdated: *util.ParseTime("2015-03-16T10:10:02Z", nil),
-			})
-		},
-		cdr: db.Cdr{
-			ID:              1,
-			Uid:             "CDR0001",
-			AuthorizationID: util.SqlNullString("AUTH0001"),
-		},
-		err: util.NilString("error retrieving session location"),
-	}, {
 		desc: "Missing session user",
-		before: func(mockRepository *dbMocks.MockRepositoryService, mockFerpService *ferpMocks.MockFerpService, mockLightningService *lightningnetworkMocks.MockLightningNetworkService, mockOcpiService *ocpiMocks.MockOcpiService) {
+		before: func(mockRepository *dbMocks.MockRepositoryService, mockFerpService *ferpMocks.MockFerpService, mockLightningService *lightningnetworkMocks.MockLightningNetworkService, mockNotificationService *notificationMocks.MockNotificationService, mockOcpiService *ocpiMocks.MockOcpiService) {
 			mockRepository.SetGetSessionByAuthorizationIDMockData(dbMocks.SessionMockData{Session: db.Session{
 				ID:              1,
 				Uid:             "SESSION0001",
 				AuthorizationID: util.SqlNullString("AUTH0001"),
-				LocationID:      2,
 			}})
-
-			mockRepository.SetListSessionInvoicesMockData(dbMocks.SessionInvoicesMockData{SessionInvoices: []db.SessionInvoice{{
-				AmountFiat:     0.3852,
-				CommissionFiat: 0.021,
-				TaxFiat:        0.0642,
-				Currency:       "EUR",
-			}}})
-
-			mockRepository.SetGetLocationMockData(dbMocks.LocationMockData{Location: db.Location{
-				ID:      2,
-				Country: "DEU",
-			}})
-
-			mockFerpService.SetGetRateMockData(&rate.CurrencyRate{
-				Rate: 4500,
-				RateMsat: 4500000,
-				LastUpdated: *util.ParseTime("2015-03-16T10:10:02Z", nil),
-			})
 		},
 		cdr: db.Cdr{
 			ID:              1,
@@ -122,8 +58,51 @@ func TestProcessCdrErrors(t *testing.T) {
 		},
 		err: util.NilString("error retrieving session user"),
 	}, {
-		desc: "Missing session user",
-		before: func(mockRepository *dbMocks.MockRepositoryService, mockFerpService *ferpMocks.MockFerpService, mockLightningService *lightningnetworkMocks.MockLightningNetworkService, mockOcpiService *ocpiMocks.MockOcpiService) {
+		desc: "Missing session location",
+		before: func(mockRepository *dbMocks.MockRepositoryService, mockFerpService *ferpMocks.MockFerpService, mockLightningService *lightningnetworkMocks.MockLightningNetworkService, mockNotificationService *notificationMocks.MockNotificationService, mockOcpiService *ocpiMocks.MockOcpiService) {
+			mockRepository.SetGetSessionByAuthorizationIDMockData(dbMocks.SessionMockData{Session: db.Session{
+				ID:              1,
+				Uid:             "SESSION0001",
+				AuthorizationID: util.SqlNullString("AUTH0001"),
+			}})
+
+			mockRepository.SetGetUserMockData(dbMocks.UserMockData{User: db.User{
+				CommissionPercent: 7,
+			}})
+		},
+		cdr: db.Cdr{
+			ID:              1,
+			Uid:             "CDR0001",
+			AuthorizationID: util.SqlNullString("AUTH0001"),
+		},
+		err: util.NilString("error retrieving session location"),
+	}, {
+		desc: "Missing session token authorization",
+		before: func(mockRepository *dbMocks.MockRepositoryService, mockFerpService *ferpMocks.MockFerpService, mockLightningService *lightningnetworkMocks.MockLightningNetworkService, mockNotificationService *notificationMocks.MockNotificationService, mockOcpiService *ocpiMocks.MockOcpiService) {
+			mockRepository.SetGetSessionByAuthorizationIDMockData(dbMocks.SessionMockData{Session: db.Session{
+				ID:              1,
+				Uid:             "SESSION0001",
+				AuthorizationID: util.SqlNullString("AUTH0001"),
+			}})
+
+			mockRepository.SetGetUserMockData(dbMocks.UserMockData{User: db.User{
+				CommissionPercent: 7,
+			}})
+
+			mockRepository.SetGetLocationMockData(dbMocks.LocationMockData{Location: db.Location{
+				ID:      2,
+				Country: "DEU",
+			}})
+		},
+		cdr: db.Cdr{
+			ID:              1,
+			Uid:             "CDR0001",
+			AuthorizationID: util.SqlNullString("AUTH0001"),
+		},
+		err: nil,
+	}, {
+		desc: "Success",
+		before: func(mockRepository *dbMocks.MockRepositoryService, mockFerpService *ferpMocks.MockFerpService, mockLightningService *lightningnetworkMocks.MockLightningNetworkService, mockNotificationService *notificationMocks.MockNotificationService, mockOcpiService *ocpiMocks.MockOcpiService) {
 			mockRepository.SetGetSessionByAuthorizationIDMockData(dbMocks.SessionMockData{Session: db.Session{
 				ID:              1,
 				Uid:             "SESSION0001",
@@ -132,27 +111,32 @@ func TestProcessCdrErrors(t *testing.T) {
 				LocationID:      2,
 			}})
 
-			mockRepository.SetListSessionInvoicesMockData(dbMocks.SessionInvoicesMockData{SessionInvoices: []db.SessionInvoice{{
-				AmountFiat:     0.3852,
-				CommissionFiat: 0.021,
-				TaxFiat:        0.0642,
-				Currency:       "EUR",
-			}}})
+			mockRepository.SetGetUserMockData(dbMocks.UserMockData{User: db.User{
+				CommissionPercent: 7,
+			}})
 
 			mockRepository.SetGetLocationMockData(dbMocks.LocationMockData{Location: db.Location{
 				ID:      2,
 				Country: "DEU",
 			}})
 
-			mockRepository.SetGetUserMockData(dbMocks.UserMockData{User: db.User{
-				CommissionPercent: 7,
-			}})
+			mockRepository.SetListSessionInvoicesBySessionIDMockData(dbMocks.SessionInvoicesMockData{SessionInvoices: []db.SessionInvoice{{
+				PriceFiat:      0.3852,
+				CommissionFiat: 0.026964,
+				TaxFiat:        0.07831116,
+				TotalFiat:      0.49047516,
+				Currency:       "EUR",
+			}}})
 
 			mockFerpService.SetGetRateMockData(&rate.CurrencyRate{
-				Rate: 4500,
-				RateMsat: 4500000,
+				Rate:        4500,
+				RateMsat:    4500000,
 				LastUpdated: *util.ParseTime("2015-03-16T10:10:02Z", nil),
 			})
+
+			mockRepository.SetGetTokenAuthorizationByAuthorizationIDMockData(dbMocks.TokenAuthorizationMockData{TokenAuthorization: db.TokenAuthorization{}})
+
+			mockNotificationService.SetSendNotificationMockData(&fcm.Response{})
 		},
 		cdr: db.Cdr{
 			ID:              1,
@@ -167,16 +151,20 @@ func TestProcessCdrErrors(t *testing.T) {
 				t.Errorf("Unexpected error: %v", err)
 			}
 
-			if sessionInvoice.AmountFiat != 1.1540592 {
-				t.Errorf("Error mismatch: %v expecting %v", sessionInvoice.AmountFiat, 1.1540592)
+			if sessionInvoice.PriceFiat != 0.6148 {
+				t.Errorf("Error price mismatch: %v expecting %v", sessionInvoice.PriceFiat, 0.6148)
 			}
 
-			if sessionInvoice.CommissionFiat != 0.06291600000000001 {
-				t.Errorf("Error mismatch: %v expecting %v", sessionInvoice.CommissionFiat, 0.06291600000000001)
+			if sessionInvoice.CommissionFiat != 0.043036 {
+				t.Errorf("Error commission mismatch: %v expecting %v", sessionInvoice.CommissionFiat, 0.043036)
 			}
 
-			if sessionInvoice.TaxFiat != 0.1923432 {
-				t.Errorf("Error mismatch: %v expecting %v", sessionInvoice.TaxFiat, 0.1923432)
+			if sessionInvoice.TaxFiat != 0.12498884 {
+				t.Errorf("Error tax mismatch: %v expecting %v", sessionInvoice.TaxFiat, 0.12498884)
+			}
+
+			if sessionInvoice.TotalFiat != 0.78282484 {
+				t.Errorf("Error total mismatch: %v expecting %v", sessionInvoice.TotalFiat, 0.78282484)
 			}
 		},
 		err: nil,
@@ -187,14 +175,16 @@ func TestProcessCdrErrors(t *testing.T) {
 			mockRepository := dbMocks.NewMockRepositoryService()
 			mockFerpService := ferpMocks.NewService()
 			mockLightningService := lightningnetworkMocks.NewService()
+			mockNotificationService := notificationMocks.NewService()
 			mockOcpiService := ocpiMocks.NewService()
-			cdrResolver := cdrMocks.NewResolver(mockRepository, mockFerpService, mockLightningService, mockOcpiService)
+			mockServices := serviceMocks.NewService(mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
+			cdrResolver := cdrMocks.NewResolver(mockRepository, mockServices)
 
 			if tc.before != nil {
-				tc.before(mockRepository, mockFerpService, mockLightningService, mockOcpiService)
+				tc.before(mockRepository, mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
 			}
 
-			err := cdrResolver.ProcessCdr(ctx, tc.cdr)
+			err := cdrResolver.ProcessCdr(tc.cdr)
 
 			if tc.after != nil {
 				tc.after(t, mockRepository, mockLightningService, mockOcpiService)
@@ -208,20 +198,20 @@ func TestProcessCdrErrors(t *testing.T) {
 }
 
 func TestProcessCdr(t *testing.T) {
-	ctx := context.Background()
-
 	t.Run("No session invoice", func(t *testing.T) {
 		mockRepository := dbMocks.NewMockRepositoryService()
 		mockFerpService := ferpMocks.NewService()
 		mockLightningService := lightningnetworkMocks.NewService()
+		mockNotificationService := notificationMocks.NewService()
 		mockOcpiService := ocpiMocks.NewService()
-		cdrResolver := cdrMocks.NewResolver(mockRepository, mockFerpService, mockLightningService, mockOcpiService)
+		mockServices := serviceMocks.NewService(mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
+		cdrResolver := cdrMocks.NewResolver(mockRepository, mockServices)
 
 		cdr := db.Cdr{
 			Uid: "CDR0001",
 		}
 
-		err := cdrResolver.ProcessCdr(ctx, cdr)
+		err := cdrResolver.ProcessCdr(cdr)
 
 		if err.Error() == "Cdr AuthorizationID is nil" {
 			t.Errorf("Error mismatch: %v expecting %v", err.Error(), "Cdr AuthorizationID is nil")
@@ -238,7 +228,8 @@ func TestProcessCdr(t *testing.T) {
 		mockLightningService := lightningnetworkMocks.NewService()
 		mockOcpiService := ocpiMocks.NewService()
 		mockNotificationService := notificationMocks.NewService()
-		invoiceMonitor := invoiceMocks.NewInvoiceMonitor(mockRepository, mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
+		mockServices := serviceMocks.NewService(mockFerpService, mockLightningService, mockNotificationService, mockOcpiService)
+		invoiceMonitor := invoiceMocks.NewInvoiceMonitor(mockRepository, mockServices)
 		recvChan := mockLightningService.NewSubscribeInvoicesMockData()
 
 		invoiceMonitor.StartMonitor(1, shutdownCtx, waitGroup)

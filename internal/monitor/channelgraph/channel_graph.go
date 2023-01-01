@@ -15,6 +15,7 @@ import (
 	"github.com/satimoto/go-lsp/internal/channelrequest"
 	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	"github.com/satimoto/go-lsp/internal/monitor/htlc"
+	"github.com/satimoto/go-lsp/internal/service"
 	"github.com/satimoto/go-lsp/internal/user"
 	"github.com/satimoto/go-lsp/pkg/util"
 	"google.golang.org/grpc/codes"
@@ -31,22 +32,22 @@ type ChannelGraphMonitor struct {
 	nodeID                 int64
 }
 
-func NewChannelGraphMonitor(repositoryService *db.RepositoryService, lightningService lightningnetwork.LightningNetwork, htlcMonitor *htlc.HtlcMonitor) *ChannelGraphMonitor {
+func NewChannelGraphMonitor(repositoryService *db.RepositoryService, services *service.ServiceResolver, htlcMonitor *htlc.HtlcMonitor) *ChannelGraphMonitor {
 	return &ChannelGraphMonitor{
-		LightningService:       lightningService,
+		LightningService:       services.LightningService,
 		HtlcMonitor:            htlcMonitor,
 		ChannelRequestResolver: channelrequest.NewResolver(repositoryService),
 		NodeRepository:         node.NewRepository(repositoryService),
-		UserResolver:           user.NewResolver(repositoryService),
+		UserResolver:           user.NewResolver(repositoryService, services),
 	}
 }
 
-func (m *ChannelGraphMonitor) StartMonitor(nodeID int64, ctx context.Context, waitGroup *sync.WaitGroup) {
+func (m *ChannelGraphMonitor) StartMonitor(nodeID int64, shutdownCtx context.Context, waitGroup *sync.WaitGroup) {
 	log.Printf("Starting up Channel Graph")
 	channelGraphChan := make(chan lnrpc.GraphTopologyUpdate)
 
 	m.nodeID = nodeID
-	go m.waitForChannelGraphs(ctx, waitGroup, channelGraphChan)
+	go m.waitForChannelGraphs(shutdownCtx, waitGroup, channelGraphChan)
 	go m.subscribeChannelGraphs(channelGraphChan)
 }
 
@@ -102,14 +103,14 @@ func (m *ChannelGraphMonitor) subscribeChannelGraphs(channelGraphChan chan<- lnr
 	}
 }
 
-func (m *ChannelGraphMonitor) waitForChannelGraphs(ctx context.Context, waitGroup *sync.WaitGroup, channelGraphChan chan lnrpc.GraphTopologyUpdate) {
+func (m *ChannelGraphMonitor) waitForChannelGraphs(shutdownCtx context.Context, waitGroup *sync.WaitGroup, channelGraphChan chan lnrpc.GraphTopologyUpdate) {
 	waitGroup.Add(1)
 	defer close(channelGraphChan)
 	defer waitGroup.Done()
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-shutdownCtx.Done():
 			log.Printf("Shutting down Channel Graph")
 			return
 		case channelGraph := <-channelGraphChan:

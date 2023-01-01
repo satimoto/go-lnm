@@ -6,6 +6,7 @@ option go_package = "github.com/satimoto/go-lsp/lsprpc";
 
 service ChannelService {
   rpc OpenChannel(OpenChannelRequest) returns (OpenChannelResponse);
+  rpc ListChannels(ListChannelsRequest) returns (ListChannelsResponse);
 };
 
 message OpenChannelRequest {
@@ -20,4 +21,11 @@ message OpenChannelResponse {
   int64 fee_base_msat = 3;
   uint32 fee_proportional_millionths = 4;
   uint32 cltv_expiry_delta = 5;
+};
+
+message ListChannelsRequest {
+};
+
+message ListChannelsResponse {
+  repeated string channel_ids = 1;
 };

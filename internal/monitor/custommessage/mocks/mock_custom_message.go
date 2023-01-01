@@ -2,13 +2,13 @@ package mocks
 
 import (
 	mocks "github.com/satimoto/go-datastore/pkg/db/mocks"
-	lightningnetwork "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
 	"github.com/satimoto/go-lsp/internal/monitor/custommessage"
+	"github.com/satimoto/go-lsp/internal/service"
 )
 
-func NewCustomMessageMonitor(repositoryService *mocks.MockRepositoryService, lightningService *lightningnetwork.MockLightningNetworkService) *custommessage.CustomMessageMonitor {
+func NewCustomMessageMonitor(repositoryService *mocks.MockRepositoryService, services *service.ServiceResolver) *custommessage.CustomMessageMonitor {
 	return &custommessage.CustomMessageMonitor{
-		LightningService:      lightningService,
+		LightningService:      services.LightningService,
 		CustomMessageHandlers: make(map[string]custommessage.CustomMessageHandler),
 	}
 }

@@ -18,6 +18,7 @@ import (
 type Ferp interface {
 	Start(shutdownCtx context.Context, waitGroup *sync.WaitGroup)
 	GetRate(currency string) (*rate.CurrencyRate, error)
+	ConvertRate(currency string, amount float64) (*int64, error)
 }
 
 type FerpService struct {
@@ -44,6 +45,17 @@ func (s *FerpService) Start(shutdownCtx context.Context, waitGroup *sync.WaitGro
 func (s *FerpService) GetRate(currency string) (*rate.CurrencyRate, error) {
 	if currencyRate, ok := s.currencyRates[currency]; ok {
 		return &currencyRate, nil
+	}
+
+	return nil, errors.New("no currency rate available")
+}
+
+func (s *FerpService) ConvertRate(currency string, amount float64) (*int64, error)  {
+	if currencyRate, ok := s.currencyRates[currency]; ok {
+		rateMsat := float64(currencyRate.RateMsat)
+		amountMsat := int64(amount * rateMsat)
+
+		return &amountMsat, nil
 	}
 
 	return nil, errors.New("no currency rate available")

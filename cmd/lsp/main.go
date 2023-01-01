@@ -13,11 +13,11 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
-	"github.com/satimoto/go-lsp/internal/ferp"
-	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	"github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/internal/monitor"
 	"github.com/satimoto/go-lsp/internal/rest"
 	"github.com/satimoto/go-lsp/internal/rpc"
+	"github.com/satimoto/go-lsp/internal/service"
 	"github.com/spf13/cobra"
 )
 
@@ -71,18 +71,19 @@ func startLsp(cmd *cobra.Command, args []string) {
 	shutdownCtx, cancelFunc := context.WithCancel(context.Background())
 	waitGroup := &sync.WaitGroup{}	
 
-	ferpService := ferp.NewService(os.Getenv("FERP_RPC_ADDRESS"))
-	ferpService.Start(shutdownCtx, waitGroup)
+	services := service.NewService()
+	services.FerpService.Start(shutdownCtx, waitGroup)
 
-	lightningService := lightningnetwork.NewService()
+	metricsService := metrics.NewMetrics()
+	metricsService.StartMetrics(shutdownCtx, waitGroup)
 
 	restService := rest.NewRest(database)
 	restService.StartRest(shutdownCtx, waitGroup)
 
-	rpcService := rpc.NewRpc(shutdownCtx, database, ferpService, lightningService)
+	rpcService := rpc.NewRpc(shutdownCtx, database, services)
 	rpcService.StartRpc(waitGroup)
 
-	monitor := monitor.NewMonitorWithServices(shutdownCtx, repositoryService, ferpService, lightningService)
+	monitor := monitor.NewMonitor(shutdownCtx, repositoryService, services)
 	monitor.StartMonitor(waitGroup)
 
 	sigtermChan := make(chan os.Signal, 1)

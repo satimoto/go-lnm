@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/satimoto/go-datastore/pkg/util"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
 )
 
 type FileBackup interface {
@@ -41,7 +41,7 @@ func (h *FileBackupHandler) BackupChannelsWithRetry(name string, data []byte, re
 		}
 
 		if i == retries {
-			util.LogOnError("LSP065", "Error in file backup", err)
+			metrics.RecordError("LSP065", "Error in file backup", err)
 			log.Printf("LSP065: FileName=%v, Retries=%v", fileName, retries)
 			return err
 		}
@@ -56,7 +56,7 @@ func (h *FileBackupHandler) processBackupChannels(fileName string, data []byte) 
 	file, err := os.Create(fileName)
 
 	if err != nil {
-		util.LogOnError("LSP066", "Error creating file", err)
+		metrics.RecordError("LSP066", "Error creating file", err)
 		log.Printf("LSP066: FileName=%v", fileName)
 		return errors.New("error creating file")
 	}
@@ -65,14 +65,14 @@ func (h *FileBackupHandler) processBackupChannels(fileName string, data []byte) 
 	_, err = writer.Write(data)
 
 	if err != nil {
-		util.LogOnError("LSP067", "Error writing to file", err)
+		metrics.RecordError("LSP067", "Error writing to file", err)
 		return errors.New("error writing to file")
 	}
 
 	err = writer.Flush()
 
 	if err != nil {
-		util.LogOnError("LSP068", "Error flushing writer", err)
+		metrics.RecordError("LSP068", "Error flushing writer", err)
 		return errors.New("error flushing writer")
 	}
 

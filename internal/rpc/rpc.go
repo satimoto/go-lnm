@@ -11,12 +11,13 @@ import (
 
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
-	"github.com/satimoto/go-lsp/internal/ferp"
-	"github.com/satimoto/go-lsp/internal/lightningnetwork"
+	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/internal/rpc/cdr"
 	"github.com/satimoto/go-lsp/internal/rpc/channel"
+	"github.com/satimoto/go-lsp/internal/rpc/invoice"
 	"github.com/satimoto/go-lsp/internal/rpc/rpc"
 	"github.com/satimoto/go-lsp/internal/rpc/session"
+	"github.com/satimoto/go-lsp/internal/service"
 	"github.com/satimoto/go-lsp/lsprpc"
 	"github.com/satimoto/go-ocpi/ocpirpc"
 	"google.golang.org/grpc"
@@ -31,21 +32,23 @@ type RpcService struct {
 	Server             *grpc.Server
 	RpcCdrResolver     *cdr.RpcCdrResolver
 	RpcChannelResolver *channel.RpcChannelResolver
+	RpcInvoiceResolver *invoice.RpcInvoiceResolver
 	RpcResolver        *rpc.RpcResolver
 	RpcSessionResolver *session.RpcSessionResolver
 	ShutdownCtx        context.Context
 }
 
-func NewRpc(shutdownCtx context.Context, d *sql.DB, ferpService ferp.Ferp, lightningService lightningnetwork.LightningNetwork) Rpc {
+func NewRpc(shutdownCtx context.Context, d *sql.DB, services *service.ServiceResolver) Rpc {
 	repositoryService := db.NewRepositoryService(d)
 
 	return &RpcService{
 		RepositoryService:  repositoryService,
 		Server:             grpc.NewServer(),
-		RpcCdrResolver:     cdr.NewResolver(repositoryService, ferpService),
-		RpcChannelResolver: channel.NewResolverWithServices(repositoryService, lightningService),
-		RpcResolver:        rpc.NewResolver(repositoryService),
-		RpcSessionResolver: session.NewResolver(repositoryService, ferpService),
+		RpcCdrResolver:     cdr.NewResolver(repositoryService, services),
+		RpcChannelResolver: channel.NewResolver(repositoryService, services),
+		RpcInvoiceResolver: invoice.NewResolver(repositoryService, services),
+		RpcResolver:        rpc.NewResolver(repositoryService, services),
+		RpcSessionResolver: session.NewResolver(repositoryService, services),
 		ShutdownCtx:        shutdownCtx,
 	}
 }
@@ -72,12 +75,13 @@ func (rs *RpcService) listenAndServe() {
 	util.PanicOnError("LSP028", "Error creating network address", err)
 
 	lsprpc.RegisterChannelServiceServer(rs.Server, rs.RpcChannelResolver)
+	lsprpc.RegisterInvoiceServiceServer(rs.Server, rs.RpcInvoiceResolver)
 	ocpirpc.RegisterCdrServiceServer(rs.Server, rs.RpcCdrResolver)
 	ocpirpc.RegisterRpcServiceServer(rs.Server, rs.RpcResolver)
 	ocpirpc.RegisterSessionServiceServer(rs.Server, rs.RpcSessionResolver)
 
 	err = rs.Server.Serve(listener)
-	util.LogOnError("LSP029", "Error in Rpc service", err)
+	metrics.RecordError("LSP029", "Error in Rpc service", err)
 }
 
 func (rs *RpcService) shutdown() {
