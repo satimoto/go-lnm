@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
+	"log"
 	"os"
+	"time"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/chainrpc"
@@ -78,115 +80,283 @@ func NewService() LightningNetwork {
 }
 
 func (s *LightningNetworkService) AllocateAlias(in *lnrpc.AllocateAliasRequest, opts ...grpc.CallOption) (*lnrpc.AllocateAliasResponse, error) {
-	return s.getLightningClient().AllocateAlias(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getLightningClient().AllocateAlias(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("AllocateAlias responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) AddInvoice(in *lnrpc.Invoice, opts ...grpc.CallOption) (*lnrpc.AddInvoiceResponse, error) {
-	return s.getLightningClient().AddInvoice(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getLightningClient().AddInvoice(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("AddInvoice responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) ChannelAcceptor(opts ...grpc.CallOption) (lnrpc.Lightning_ChannelAcceptorClient, error) {
-	return s.getLightningClient().ChannelAcceptor(s.macaroonCtx, opts...)
+	timerStart := time.Now()
+	response, err := s.getLightningClient().ChannelAcceptor(s.macaroonCtx, opts...)
+	timerStop := time.Now()
+
+	log.Printf("ChannelAcceptor responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) DecodePayReq(in *lnrpc.PayReqString, opts ...grpc.CallOption) (*lnrpc.PayReq, error) {
-	return s.getLightningClient().DecodePayReq(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getLightningClient().DecodePayReq(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("DecodePayReq responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) EstimateFee(in *walletrpc.EstimateFeeRequest, opts ...grpc.CallOption) (*walletrpc.EstimateFeeResponse, error) {
-	return s.getWalletKitClient().EstimateFee(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getWalletKitClient().EstimateFee(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("EstimateFee responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) FinalizePsbt(in *walletrpc.FinalizePsbtRequest, opts ...grpc.CallOption) (*walletrpc.FinalizePsbtResponse, error) {
-	return s.getWalletKitClient().FinalizePsbt(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getWalletKitClient().FinalizePsbt(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("FinalizePsbt responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) FundingStateStep(in *lnrpc.FundingTransitionMsg, opts ...grpc.CallOption) (*lnrpc.FundingStateStepResp, error) {
-	return s.getLightningClient().FundingStateStep(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getLightningClient().FundingStateStep(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("FundingStateStep responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) FundPsbt(in *walletrpc.FundPsbtRequest, opts ...grpc.CallOption) (*walletrpc.FundPsbtResponse, error) {
-	return s.getWalletKitClient().FundPsbt(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getWalletKitClient().FundPsbt(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("FundPsbt responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) GetInfo(in *lnrpc.GetInfoRequest, opts ...grpc.CallOption) (*lnrpc.GetInfoResponse, error) {
-	return s.getLightningClient().GetInfo(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getLightningClient().GetInfo(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("GetInfo responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) HtlcInterceptor(opts ...grpc.CallOption) (routerrpc.Router_HtlcInterceptorClient, error) {
-	return s.getRouterClient().HtlcInterceptor(s.macaroonCtx, opts...)
+	timerStart := time.Now()
+	response, err := s.getRouterClient().HtlcInterceptor(s.macaroonCtx, opts...)
+	timerStop := time.Now()
+
+	log.Printf("HtlcInterceptor responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) ListChannels(in *lnrpc.ListChannelsRequest, opts ...grpc.CallOption) (*lnrpc.ListChannelsResponse, error) {
-	return s.getLightningClient().ListChannels(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getLightningClient().ListChannels(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("ListChannels responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) ListPeers(in *lnrpc.ListPeersRequest, opts ...grpc.CallOption) (*lnrpc.ListPeersResponse, error) {
-	return s.getLightningClient().ListPeers(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getLightningClient().ListPeers(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("ListPeers responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) OpenChannel(in *lnrpc.OpenChannelRequest, opts ...grpc.CallOption) (lnrpc.Lightning_OpenChannelClient, error) {
-	return s.getLightningClient().OpenChannel(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getLightningClient().OpenChannel(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("OpenChannel responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) OpenChannelSync(in *lnrpc.OpenChannelRequest, opts ...grpc.CallOption) (*lnrpc.ChannelPoint, error) {
-	return s.getLightningClient().OpenChannelSync(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getLightningClient().OpenChannelSync(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("OpenChannelSync responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) PublishTransaction(in *walletrpc.Transaction, opts ...grpc.CallOption) (*walletrpc.PublishResponse, error) {
-	return s.getWalletKitClient().PublishTransaction(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getWalletKitClient().PublishTransaction(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("PublishTransaction responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) RegisterBlockEpochNtfn(in *chainrpc.BlockEpoch, opts ...grpc.CallOption) (chainrpc.ChainNotifier_RegisterBlockEpochNtfnClient, error) {
-	return s.getChainNotifierClient().RegisterBlockEpochNtfn(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getChainNotifierClient().RegisterBlockEpochNtfn(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("RegisterBlockEpochNtfn responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) SendCustomMessage(in *lnrpc.SendCustomMessageRequest, opts ...grpc.CallOption) (*lnrpc.SendCustomMessageResponse, error) {
-	return s.getLightningClient().SendCustomMessage(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getLightningClient().SendCustomMessage(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("SendCustomMessage responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) SendPaymentV2(in *routerrpc.SendPaymentRequest, opts ...grpc.CallOption) (routerrpc.Router_SendPaymentV2Client, error) {
-	return s.getRouterClient().SendPaymentV2(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getRouterClient().SendPaymentV2(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("SendPaymentV2 responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) SubscribeChannelBackups(in *lnrpc.ChannelBackupSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeChannelBackupsClient, error) {
-	return s.getLightningClient().SubscribeChannelBackups(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getLightningClient().SubscribeChannelBackups(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("SubscribeChannelBackups responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) SubscribeChannelEvents(in *lnrpc.ChannelEventSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeChannelEventsClient, error) {
-	return s.getLightningClient().SubscribeChannelEvents(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getLightningClient().SubscribeChannelEvents(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("SubscribeChannelEvents responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) SubscribeChannelGraph(in *lnrpc.GraphTopologySubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeChannelGraphClient, error) {
-	return s.getLightningClient().SubscribeChannelGraph(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getLightningClient().SubscribeChannelGraph(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("SubscribeChannelGraph responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) SubscribeCustomMessages(in *lnrpc.SubscribeCustomMessagesRequest, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeCustomMessagesClient, error) {
-	return s.getLightningClient().SubscribeCustomMessages(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getLightningClient().SubscribeCustomMessages(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("SubscribeCustomMessages responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) SubscribeHtlcEvents(in *routerrpc.SubscribeHtlcEventsRequest, opts ...grpc.CallOption) (routerrpc.Router_SubscribeHtlcEventsClient, error) {
-	return s.getRouterClient().SubscribeHtlcEvents(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getRouterClient().SubscribeHtlcEvents(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("SubscribeHtlcEvents responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) SubscribeInvoices(in *lnrpc.InvoiceSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeInvoicesClient, error) {
-	return s.getLightningClient().SubscribeInvoices(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getLightningClient().SubscribeInvoices(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("SubscribeInvoices responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) SubscribePeerEvents(in *lnrpc.PeerEventSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribePeerEventsClient, error) {
-	return s.getLightningClient().SubscribePeerEvents(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getLightningClient().SubscribePeerEvents(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("SubscribePeerEvents responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) SubscribeTransactions(in *lnrpc.GetTransactionsRequest, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeTransactionsClient, error) {
-	return s.getLightningClient().SubscribeTransactions(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getLightningClient().SubscribeTransactions(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("SubscribeTransactions responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) UpdateChannelPolicy(in *lnrpc.PolicyUpdateRequest, opts ...grpc.CallOption) (*lnrpc.PolicyUpdateResponse, error) {
-	return s.getLightningClient().UpdateChannelPolicy(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getLightningClient().UpdateChannelPolicy(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("UpdateChannelPolicy responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) WalletBalance(in *lnrpc.WalletBalanceRequest, opts ...grpc.CallOption) (*lnrpc.WalletBalanceResponse, error) {
-	return s.getLightningClient().WalletBalance(s.macaroonCtx, in, opts...)
+	timerStart := time.Now()
+	response, err := s.getLightningClient().WalletBalance(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("WalletBalance responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
 }
 
 func (s *LightningNetworkService) getChainNotifierClient() chainrpc.ChainNotifierClient {
