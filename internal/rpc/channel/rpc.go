@@ -9,7 +9,6 @@ import (
 
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/walletrpc"
-	"github.com/lightningnetwork/lnd/lnwire"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/lsprpc"
@@ -48,25 +47,22 @@ func (r *RpcChannelResolver) OpenChannel(ctx context.Context, input *lsprpc.Open
 			return nil, errors.New("error funding channel request")
 		}
 
-		alias, err := r.LightningService.AllocateAlias(&lnrpc.AllocateAliasRequest{})
+		nodeScid, err := r.ScidService.AllocateScid(ctx)
 
 		if err != nil {
-			metrics.RecordError("LSP107", "Error allocating alias", err)
+			metrics.RecordError("LSP107", "Error allocating scid", err)
 			log.Printf("LSP107: OpenChannelRequest=%#v", input)
-			return nil, errors.New("error allocating alias")
+			return nil, errors.New("error allocating scid")
 		}
 
 		pendingChanId := r.generatePendingChanId(ctx)
-		shortChanID := lnwire.NewShortChanIDFromInt(alias.Scid)
-		log.Printf("Allocating alias ShortChannelID: %v", shortChanID.String())
-
 		baseFeeMsat := int64(dbUtil.GetEnvInt32("BASE_FEE_MSAT", 0))
 		feeRatePpm := uint32(dbUtil.GetEnvInt32("FEE_RATE_PPM", 0))
 		timeLockDelta := uint32(dbUtil.GetEnvInt32("TIME_LOCK_DELTA", 100))
 
 		return &lsprpc.OpenChannelResponse{
 			PendingChanId:             pendingChanId,
-			Scid:                      alias.Scid,
+			Scid:                      util.BytesToUint64(nodeScid.Scid),
 			FeeBaseMsat:               baseFeeMsat,
 			FeeProportionalMillionths: feeRatePpm,
 			CltvExpiryDelta:           timeLockDelta,

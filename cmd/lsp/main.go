@@ -77,14 +77,15 @@ func startLsp(cmd *cobra.Command, args []string) {
 	metricsService := metrics.NewMetrics()
 	metricsService.StartMetrics(shutdownCtx, waitGroup)
 
+	monitorService := monitor.NewMonitor(shutdownCtx, repositoryService, services)
+
 	restService := rest.NewRest(database)
 	restService.StartRest(shutdownCtx, waitGroup)
 
-	rpcService := rpc.NewRpc(shutdownCtx, database, services)
+	rpcService := rpc.NewRpc(shutdownCtx, database, services, monitorService)
 	rpcService.StartRpc(waitGroup)
-
-	monitor := monitor.NewMonitor(shutdownCtx, repositoryService, services)
-	monitor.StartMonitor(waitGroup)
+	
+	monitorService.StartMonitor(waitGroup)
 
 	sigtermChan := make(chan os.Signal, 1)
 	signal.Notify(sigtermChan, os.Kill, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)

@@ -12,6 +12,7 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
 	metrics "github.com/satimoto/go-lsp/internal/metric"
+	"github.com/satimoto/go-lsp/internal/monitor"
 	"github.com/satimoto/go-lsp/internal/rpc/cdr"
 	"github.com/satimoto/go-lsp/internal/rpc/channel"
 	"github.com/satimoto/go-lsp/internal/rpc/invoice"
@@ -38,14 +39,14 @@ type RpcService struct {
 	ShutdownCtx        context.Context
 }
 
-func NewRpc(shutdownCtx context.Context, d *sql.DB, services *service.ServiceResolver) Rpc {
+func NewRpc(shutdownCtx context.Context, d *sql.DB, services *service.ServiceResolver, monitorService *monitor.Monitor) Rpc {
 	repositoryService := db.NewRepositoryService(d)
 
 	return &RpcService{
 		RepositoryService:  repositoryService,
 		Server:             grpc.NewServer(),
 		RpcCdrResolver:     cdr.NewResolver(repositoryService, services),
-		RpcChannelResolver: channel.NewResolver(repositoryService, services),
+		RpcChannelResolver: channel.NewResolver(repositoryService, services, monitorService.ScidService),
 		RpcInvoiceResolver: invoice.NewResolver(repositoryService, services),
 		RpcResolver:        rpc.NewResolver(repositoryService, services),
 		RpcSessionResolver: session.NewResolver(repositoryService, services),

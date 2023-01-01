@@ -10,10 +10,10 @@ import (
 )
 
 type ServiceResolver struct {
-	FerpService                  ferp.Ferp
-	LightningService             lightningnetwork.LightningNetwork
-	NotificationService          notification.Notification
-	OcpiService                  ocpi.Ocpi
+	FerpService         ferp.Ferp
+	LightningService    lightningnetwork.LightningNetwork
+	NotificationService notification.Notification
+	OcpiService         ocpi.Ocpi
 }
 
 func NewService() *ServiceResolver {
@@ -23,9 +23,9 @@ func NewService() *ServiceResolver {
 	ocpiService := ocpi.NewService(os.Getenv("OCPI_RPC_ADDRESS"))
 
 	return &ServiceResolver{
-		FerpService:                  ferpService,
-		LightningService:             lightningService,
-		OcpiService:                  ocpiService,
-		NotificationService:          notificationService,
+		FerpService:         ferpService,
+		LightningService:    lightningService,
+		OcpiService:         ocpiService,
+		NotificationService: notificationService,
 	}
 }
