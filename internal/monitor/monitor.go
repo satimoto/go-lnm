@@ -29,6 +29,7 @@ import (
 	"github.com/satimoto/go-lsp/internal/monitor/peerevent"
 	"github.com/satimoto/go-lsp/internal/monitor/pendingnotification"
 	"github.com/satimoto/go-lsp/internal/monitor/psbtfund"
+	"github.com/satimoto/go-lsp/internal/monitor/scid"
 	"github.com/satimoto/go-lsp/internal/monitor/startup"
 	"github.com/satimoto/go-lsp/internal/monitor/transaction"
 	"github.com/satimoto/go-lsp/internal/service"
@@ -40,6 +41,7 @@ import (
 type Monitor struct {
 	LightningService           lightningnetwork.LightningNetwork
 	PsbtFundService            psbtfund.PsbtFund
+	ScidService                scid.Scid
 	StartupService             startup.Startup
 	NodeRepository             node.NodeRepository
 	BlockEpochMonitor          *blockepoch.BlockEpochMonitor
@@ -61,12 +63,14 @@ type Monitor struct {
 func NewMonitor(shutdownCtx context.Context, repositoryService *db.RepositoryService, services *service.ServiceResolver) *Monitor {
 	backupService := backup.NewService()
 	psbtFundService := psbtfund.NewService(repositoryService, services)
+	scidService := scid.NewService(repositoryService, services)
 	startupService := startup.NewService(repositoryService, services)
 	htlcMonitor := htlc.NewHtlcMonitor(repositoryService, services, psbtFundService)
 
 	return &Monitor{
 		LightningService:           services.LightningService,
 		PsbtFundService:            psbtFundService,
+		ScidService:                scidService,
 		StartupService:             startupService,
 		NodeRepository:             node.NewRepository(repositoryService),
 		BlockEpochMonitor:          blockepoch.NewBlockEpochMonitor(repositoryService, services),
@@ -90,6 +94,7 @@ func (m *Monitor) StartMonitor(waitGroup *sync.WaitGroup) {
 	dbUtil.PanicOnError("LSP010", "Error registering LSP", err)
 
 	m.PsbtFundService.Start(m.nodeID, m.shutdownCtx, waitGroup)
+	m.ScidService.Start(m.nodeID, m.shutdownCtx, waitGroup)
 	m.StartupService.Start(m.nodeID, m.shutdownCtx, waitGroup)
 	m.BlockEpochMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
 	m.ChannelAcceptorMonitor.StartMonitor(m.nodeID, m.shutdownCtx, waitGroup)
