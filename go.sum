@@ -704,6 +704,8 @@ github.com/satimoto/go-ocpi v0.2.1-0.20221223204513-df5cc88e8f50 h1:MoNF7WBTDLhS
 github.com/satimoto/go-ocpi v0.2.1-0.20221223204513-df5cc88e8f50/go.mod h1:ssc53qce1bcA6kv5ZMQFMSxtNTvTavKw+v68tsbAtks=
 github.com/satimoto/go-ocpi v0.2.1-0.20230102074739-0d606ab8a31a h1:OqeBDojG5+gCt7eBa33k7123NXi0LA/rAe3pgcpqJYQ=
 github.com/satimoto/go-ocpi v0.2.1-0.20230102074739-0d606ab8a31a/go.mod h1:ssc53qce1bcA6kv5ZMQFMSxtNTvTavKw+v68tsbAtks=
+github.com/satimoto/go-ocpi v0.2.1-0.20230102080446-03fa3215a2e3 h1:B8xrnxCalhRilWq+8BPFGINAKOpWudSqjrhZaByvHGI=
+github.com/satimoto/go-ocpi v0.2.1-0.20230102080446-03fa3215a2e3/go.mod h1:ssc53qce1bcA6kv5ZMQFMSxtNTvTavKw+v68tsbAtks=
 github.com/satimoto/lnd v0.15.2-beta.0.20221010062558-1915d31fb4d7 h1:/aR9cD32rt3Ata1G2F3dzvx1HFPXhpMfWcArKil5oZ8=
 github.com/satimoto/lnd v0.15.2-beta.0.20221010062558-1915d31fb4d7/go.mod h1:5yIbnUmyc/U4dNkA9QSgWlWpTSAwcbiP1vYIrLT4e1s=
 github.com/satimoto/lnd v0.15.4-beta h1:PWl1BDhpZL81/frFIFv5Njqsodk0T220HSgEg7zqT28=
