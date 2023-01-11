@@ -19,8 +19,9 @@ import (
 	"github.com/satimoto/go-lsp/lsprpc"
 )
 
-func (r *RpcInvoiceResolver) UpdateInvoiceRequest(ctx context.Context, input *lsprpc.UpdateInvoiceRequestRequest) (*lsprpc.UpdateInvoiceRequestResponse, error) {
+func (r *RpcInvoiceResolver) UpdateInvoiceRequest(reqCtx context.Context, input *lsprpc.UpdateInvoiceRequestRequest) (*lsprpc.UpdateInvoiceRequestResponse, error) {
 	if input != nil {
+		ctx := context.Background()
 		invoiceRequest, err := r.InvoiceRequestRepository.GetInvoiceRequest(ctx, input.Id)
 
 		if err != nil {
@@ -84,8 +85,9 @@ func (r *RpcInvoiceResolver) UpdateInvoiceRequest(ctx context.Context, input *ls
 	return nil, errors.New("missing request")
 }
 
-func (r *RpcInvoiceResolver) UpdateSessionInvoice(ctx context.Context, input *lsprpc.UpdateSessionInvoiceRequest) (*lsprpc.UpdateSessionInvoiceResponse, error) {
+func (r *RpcInvoiceResolver) UpdateSessionInvoice(reqCtx context.Context, input *lsprpc.UpdateSessionInvoiceRequest) (*lsprpc.UpdateSessionInvoiceResponse, error) {
 	if input != nil {
+		ctx := context.Background()
 		sessionInvoice, err := r.SessionRepository.GetSessionInvoice(ctx, input.Id)
 
 		if err != nil {
