@@ -15,8 +15,9 @@ import (
 	"github.com/satimoto/go-lsp/pkg/util"
 )
 
-func (r *RpcChannelResolver) OpenChannel(ctx context.Context, input *lsprpc.OpenChannelRequest) (*lsprpc.OpenChannelResponse, error) {
+func (r *RpcChannelResolver) OpenChannel(reqCtx context.Context, input *lsprpc.OpenChannelRequest) (*lsprpc.OpenChannelResponse, error) {
 	if input != nil {
+		ctx := context.Background()
 		maxFeeSatPerVByte := uint64(dbUtil.GetEnvInt32("PSBT_MAX_FEE_SAT_VBYTE", 64))
 		satPerVByte := uint64(2)
 
