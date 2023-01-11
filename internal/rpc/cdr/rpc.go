@@ -9,9 +9,10 @@ import (
 	"github.com/satimoto/go-ocpi/ocpirpc"
 )
 
-func (r *RpcCdrResolver) CdrCreated(ctx context.Context, input *ocpirpc.CdrCreatedRequest) (*ocpirpc.CdrCreatedResponse, error) {
+func (r *RpcCdrResolver) CdrCreated(reqCtx context.Context, input *ocpirpc.CdrCreatedRequest) (*ocpirpc.CdrCreatedResponse, error) {
 	if input != nil {
 		// TODO: This RPC call should be handled asynchronously
+		ctx := context.Background()
 		cdr, err := r.CdrResolver.Repository.GetCdrByUid(ctx, input.CdrUid)
 
 		if err != nil {
