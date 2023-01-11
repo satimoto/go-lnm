@@ -12,8 +12,9 @@ import (
 	"github.com/satimoto/go-ocpi/pkg/ocpi"
 )
 
-func (r *RpcResolver) TestConnection(ctx context.Context, input *ocpirpc.TestConnectionRequest) (*ocpirpc.TestConnectionResponse, error) {
+func (r *RpcResolver) TestConnection(reqCtx context.Context, input *ocpirpc.TestConnectionRequest) (*ocpirpc.TestConnectionResponse, error) {
 	if input != nil {
+		ctx := context.Background()
 		ocpiService := ocpi.NewService(input.Addr)
 		message := strconv.FormatInt(time.Now().Unix(), 16)
 		testMessageReponse, err := ocpiService.TestMessage(ctx, &ocpirpc.TestMessageRequest{
