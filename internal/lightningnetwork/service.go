@@ -37,6 +37,7 @@ type LightningNetwork interface {
 	RegisterBlockEpochNtfn(in *chainrpc.BlockEpoch, opts ...grpc.CallOption) (chainrpc.ChainNotifier_RegisterBlockEpochNtfnClient, error)
 	SendCustomMessage(in *lnrpc.SendCustomMessageRequest, opts ...grpc.CallOption) (*lnrpc.SendCustomMessageResponse, error)
 	SendPaymentV2(in *routerrpc.SendPaymentRequest, opts ...grpc.CallOption) (routerrpc.Router_SendPaymentV2Client, error)
+	SignMessage(in *lnrpc.SignMessageRequest, opts ...grpc.CallOption) (*lnrpc.SignMessageResponse, error)
 	SubscribeChannelBackups(in *lnrpc.ChannelBackupSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeChannelBackupsClient, error)
 	SubscribeChannelEvents(in *lnrpc.ChannelEventSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeChannelEventsClient, error)
 	SubscribeChannelGraph(in *lnrpc.GraphTopologySubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeChannelGraphClient, error)
@@ -255,6 +256,16 @@ func (s *LightningNetworkService) SendPaymentV2(in *routerrpc.SendPaymentRequest
 	timerStop := time.Now()
 
 	log.Printf("SendPaymentV2 responded in %f seconds", timerStop.Sub(timerStart).Seconds())
+
+	return response, err
+}
+
+func (s *LightningNetworkService) SignMessage(in *lnrpc.SignMessageRequest, opts ...grpc.CallOption) (*lnrpc.SignMessageResponse, error) {
+	timerStart := time.Now()
+	response, err := s.getLightningClient().SignMessage(s.macaroonCtx, in, opts...)
+	timerStop := time.Now()
+
+	log.Printf("SignMessage responded in %f seconds", timerStop.Sub(timerStart).Seconds())
 
 	return response, err
 }

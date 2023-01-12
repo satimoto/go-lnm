@@ -2,13 +2,10 @@ package invoice
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 	"log"
 	"time"
 
-	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
-	"github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
 	"github.com/satimoto/go-datastore/pkg/db"
@@ -123,14 +120,6 @@ func (r *RpcInvoiceResolver) UpdateSessionInvoice(reqCtx context.Context, input 
 			return nil, errors.New("error retrieving session")
 		}
 
-		tokenAuthorization, err := r.TokenAuthorizationRepository.GetTokenAuthorizationByAuthorizationID(ctx, session.AuthorizationID.String)
-
-		if err != nil {
-			metrics.RecordError("LSP149", "Error retrieving token authorization", err)
-			log.Printf("LSP149: SessionUid=%v, AuthorizationID=%v", session.Uid, session.AuthorizationID.String)
-			return nil, errors.New("error retrieving session token authorization")
-		}
-
 		preimage, err := lightningnetwork.RandomPreimage()
 
 		if err != nil {
@@ -152,14 +141,19 @@ func (r *RpcInvoiceResolver) UpdateSessionInvoice(reqCtx context.Context, input 
 			return nil, errors.New("error creating lightning invoice")
 		}
 
-		privateKey := secp.PrivKeyFromBytes(tokenAuthorization.SigningKey)
-		hash := sha256.New()
-		hash.Write([]byte(invoice.PaymentRequest))
-		signature := ecdsa.Sign(privateKey, hash.Sum(nil))
+		signMessage, err := r.LightningService.SignMessage(&lnrpc.SignMessageRequest{
+			Msg: []byte(invoice.PaymentRequest),
+		})
+	
+		if err != nil {
+			metrics.RecordError("LSP149", "Error signing payment request", err)
+			log.Printf("LSP149: PaymentRequest=%v,", invoice.PaymentRequest)
+			return nil, errors.New("error signing payment request")
+		}
 
 		updateSessionInvoiceParams := param.NewUpdateSessionInvoiceParams(sessionInvoice)
 		updateSessionInvoiceParams.PaymentRequest = invoice.PaymentRequest
-		updateSessionInvoiceParams.Signature = signature.Serialize()
+		updateSessionInvoiceParams.Signature = signMessage.Signature
 		updateSessionInvoiceParams.IsExpired = false
 
 		sessionInvoice, err = r.SessionRepository.UpdateSessionInvoice(ctx, updateSessionInvoiceParams)
