@@ -143,7 +143,7 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 				break invoiceLoop
 			case db.SessionStatusTypeACTIVE:
 				// Session is active, calculate new invoice
-				if ok := r.processInvoicePeriod(ctx, user, session, tokenAuthorization, timeLocation, tariffIto, connector.Wattage, taxPercent); !ok {
+				if ok := r.processInvoicePeriod(ctx, user, session, timeLocation, tariffIto, connector.Wattage, taxPercent); !ok {
 					log.Printf("Ending session monitoring for %s with errors", session.Uid)
 					break invoiceLoop
 				}
@@ -173,7 +173,7 @@ func (r *SessionResolver) StopSession(ctx context.Context, session db.Session) (
 	return nil, errors.New("cannot remotely stop this session")
 }
 
-func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User, session db.Session, tokenAuthorization db.TokenAuthorization, timeLocation *time.Location, tariffIto *ito.TariffIto, connectorWattage int32, taxPercent float64) bool {
+func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User, session db.Session, timeLocation *time.Location, tariffIto *ito.TariffIto, connectorWattage int32, taxPercent float64) bool {
 	sessionInvoices, err := r.Repository.ListSessionInvoicesBySessionID(ctx, session.ID)
 
 	if err != nil {
@@ -182,6 +182,12 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 		return true
 	}
 
+	/*
+	// TODO: Update how we handle unsettled invoices.
+	//       Mobile devices are not reliable enought to pay invoices as they arrive
+	//       to the device because it may be in a hibernated state with no network access.
+	//       The session invoice is sent to the device and it should be paid once the
+	//       device is woken for a background task or the app is opened.
 	if hasUnsettledInvoices(sessionInvoices) {
 		// Lock user tokens until all session invoices are settled
 		err = r.UserResolver.RestrictUser(ctx, user)
@@ -197,7 +203,7 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 
 			return false
 		}
-	}
+	}*/
 
 	timeNow := time.Now().UTC()
 	delta := timeNow.Sub(session.LastUpdated).Minutes()
@@ -230,7 +236,7 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 			MeteredTime:     timeNow.Sub(sessionIto.StartDatetime).Hours(),
 		}
 
-		r.IssueSessionInvoice(ctx, user, session, tokenAuthorization, invoiceParams, chargeParams)
+		r.IssueSessionInvoice(ctx, user, session, invoiceParams, chargeParams)
 	}
 
 	return true

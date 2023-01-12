@@ -146,7 +146,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 		if err != nil {
 			metrics.RecordError("LSP159", "Error loading time location", err)
 			log.Printf("LSP159: TimeZone=%v", location.TimeZone.String)
-			timeLocation, err = time.LoadLocation("UTC")
+			timeLocation, _ = time.LoadLocation("UTC")
 		}
 
 		cdrTotalFiat, cdrTotalEnergy, cdrTotalTime = r.SessionResolver.ProcessChargingPeriods(sessionIto, tariffIto, connector.Wattage, timeLocation, cdr.LastUpdated)
@@ -161,16 +161,15 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 	}
 
 	if cdrTotalFiat > 0 {
+		chargeParams := util.ChargeParams{
+			EstimatedEnergy: cdrTotalEnergy,
+			EstimatedTime:   cdrTotalTime,
+			MeteredEnergy:   cdrTotalEnergy,
+			MeteredTime:     cdrTotalTime,
+		}
+
 		if cdrTotalFiat > priceFiat {
 			// Issue final invoice
-			tokenAuthorization, err := r.SessionResolver.TokenAuthorizationRepository.GetTokenAuthorizationByAuthorizationID(ctx, sess.AuthorizationID.String)
-
-			if err != nil {
-				metrics.RecordError("LSP128", "Error retrieving token authorization", err)
-				log.Printf("LSP128: SessionUid=%v, AuthorizationID=%v", sess.Uid, sess.AuthorizationID.String)
-				return errors.New("error retrieving token authorization")
-			}
-
 			invoicePriceFiat := cdrTotalFiat - priceFiat
 			invoiceTotalFiat, invoiceCommissionFiat, invoiceTaxFiat := session.CalculateCommission(invoicePriceFiat, user.CommissionPercent, taxPercent)
 
@@ -181,17 +180,10 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 				TotalFiat:      dbUtil.SqlNullFloat64(invoiceTotalFiat),
 			}
 
-			chargeParams := util.ChargeParams{
-				EstimatedEnergy: cdrTotalEnergy,
-				EstimatedTime:   cdrTotalTime,
-				MeteredEnergy:   cdrTotalEnergy,
-				MeteredTime:     cdrTotalTime,
-			}
-
-			sessionInvoice := r.SessionResolver.IssueSessionInvoice(ctx, user, sess, tokenAuthorization, invoiceParams, chargeParams)
+			sessionInvoice := r.SessionResolver.IssueSessionInvoice(ctx, user, sess, invoiceParams, chargeParams)
 
 			if sessionInvoice != nil {
-				sessionInvoices = append(sessionInvoices, *sessionInvoice)
+				sessionInvoices = session.AppendSessionInvoice(sessionInvoices, *sessionInvoice)
 				_, priceMsat = session.CalculatePriceInvoiced(sessionInvoices)
 			}
 		} else if cdrTotalFiat <= priceFiat {
@@ -208,18 +200,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 					TotalFiat:      dbUtil.SqlNullFloat64(rebateTotalFiat),
 				}
 
-				if invoiceRequest, err := r.IssueInvoiceRequest(ctx, user.ID, "REBATE", sess.Currency, sess.Uid, invoiceParams); err == nil {
-					updateSessionByUidParams := param.NewUpdateSessionByUidParams(sess)
-					updateSessionByUidParams.InvoiceRequestID = dbUtil.SqlNullInt64(invoiceRequest.ID)
-
-					_, err := r.SessionResolver.Repository.UpdateSessionByUid(ctx, updateSessionByUidParams)
-
-					if err != nil {
-						metrics.RecordError("LSP117", "Error updating session", err)
-						log.Printf("LSP117: Params=%v", updateSessionByUidParams)
-						return errors.New("error updating session")
-					}
-				}
+				r.IssueRebate(ctx, sess, user.ID, invoiceParams, chargeParams)
 			}
 
 			r.SessionResolver.SendSessionUpdateNotification(user, sess)

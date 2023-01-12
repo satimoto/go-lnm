@@ -39,6 +39,6 @@ func (r *SessionResolver) Startup(nodeID int64) {
 	}
 
 	for _, sessionInvoice := range sessionInvoices {
-		go r.waitForInvoiceExpiry(sessionInvoice.PaymentRequest)
+		go r.WaitForInvoiceExpiry(sessionInvoice.PaymentRequest)
 	}
 }
