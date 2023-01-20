@@ -46,25 +46,30 @@ func (r *SessionResolver) WaitForInvoiceExpiry(paymentRequest string) {
 	}
 
 	ctx := context.Background()
-	timeout := (time.Second * time.Duration(expiry)) + time.Minute
+	timeout := (time.Second * time.Duration(expiry)) - (time.Second * 90)
 
 	time.Sleep(timeout)
 
 	if sessionInvoice, err := r.Repository.GetSessionInvoiceByPaymentRequest(ctx, paymentRequest); err == nil && !sessionInvoice.IsSettled {
 		if paymentRequest, signature, err := lightningnetwork.CreateLightningInvoice(r.LightningService, payReqResponse.Description, sessionInvoice.TotalMsat); err == nil {
-			sessionInvoiceParams := param.NewUpdateSessionInvoiceParams(sessionInvoice)
-			sessionInvoiceParams.PaymentRequest = paymentRequest
-			sessionInvoiceParams.Signature = signature
-			sessionInvoiceParams.IsExpired = false
+			// Get the session invoice again to check if it's been settled or updated
+			latestSessionInvoice, err := r.Repository.GetSessionInvoice(ctx, sessionInvoice.ID)
 
-			_, err := r.Repository.UpdateSessionInvoice(ctx, sessionInvoiceParams)
+			if err == nil && !latestSessionInvoice.IsSettled && latestSessionInvoice.PaymentRequest == sessionInvoice.PaymentRequest {
+				sessionInvoiceParams := param.NewUpdateSessionInvoiceParams(sessionInvoice)
+				sessionInvoiceParams.PaymentRequest = paymentRequest
+				sessionInvoiceParams.Signature = signature
+				sessionInvoiceParams.IsExpired = false
 
-			if err != nil {
-				metrics.RecordError("LSP170", "Error updating session invoice", err)
-				log.Printf("LSP170: Params=%#v", sessionInvoiceParams)
+				_, err := r.Repository.UpdateSessionInvoice(ctx, sessionInvoiceParams)
+
+				if err != nil {
+					metrics.RecordError("LSP170", "Error updating session invoice", err)
+					log.Printf("LSP170: Params=%#v", sessionInvoiceParams)
+				}
+
+				go r.WaitForInvoiceExpiry(paymentRequest)
 			}
-
-			go r.WaitForInvoiceExpiry(paymentRequest)
 
 			return
 		}
