@@ -6,7 +6,7 @@ require (
 	github.com/joho/godotenv v1.4.0
 	github.com/lightningnetwork/lnd v0.15.5-beta
 	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
-	github.com/satimoto/go-datastore v0.3.1-0.20221231220252-3fa12661d0b7
+	github.com/satimoto/go-datastore v0.3.1-0.20230111130402-8d2b68e54ba7
 	google.golang.org/grpc v1.47.0
 )
 
@@ -159,7 +159,7 @@ require (
 	github.com/jessevdk/go-flags v1.4.0 // indirect
 	github.com/lightningnetwork/lnd/tlv v1.0.3 // indirect
 	github.com/lightningnetwork/lnd/tor v1.0.1 // indirect
-	github.com/satimoto/go-ocpi v0.2.1-0.20230102080446-03fa3215a2e3
+	github.com/satimoto/go-ocpi v0.3.2-0.20230111095839-982e7ff0d05a
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 )
 
