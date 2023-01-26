@@ -11,6 +11,18 @@ import (
 	"github.com/satimoto/go-lsp/pkg/util"
 )
 
+
+func AppendSessionInvoice(sessionInvoices []db.SessionInvoice, sessionInvoice db.SessionInvoice) []db.SessionInvoice {
+	for index, si := range sessionInvoices {
+		if si.ID == sessionInvoice.ID {
+			sessionInvoices[index] = sessionInvoice
+			return sessionInvoices
+		}
+	}
+
+	return append(sessionInvoices, sessionInvoice)
+}
+
 func CalculatePriceInvoiced(sessionInvoices []db.SessionInvoice) (priceFiat float64, priceMsat int64) {
 	for _, sessionInvoice := range sessionInvoices {
 		priceFiat += sessionInvoice.PriceFiat

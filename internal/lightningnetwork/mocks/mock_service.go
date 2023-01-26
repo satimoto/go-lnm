@@ -30,6 +30,7 @@ type MockLightningNetworkService struct {
 	registerBlockEpochNtfnMockData  []chainrpc.ChainNotifier_RegisterBlockEpochNtfnClient
 	sendCustomMessageMockData       []*lnrpc.SendCustomMessageResponse
 	sendPaymentV2MockData           []routerrpc.Router_SendPaymentV2Client
+	signMessageMockData             []*lnrpc.SignMessageResponse
 	subscribeChannelBackupsMockData []lnrpc.Lightning_SubscribeChannelBackupsClient
 	subscribeChannelEventsMockData  []lnrpc.Lightning_SubscribeChannelEventsClient
 	subscribeChannelGraphMockData   []lnrpc.Lightning_SubscribeChannelGraphClient
@@ -318,6 +319,20 @@ func (s *MockLightningNetworkService) NewSendPaymentV2MockData() chan<- *lnrpc.P
 	s.sendPaymentV2MockData = append(s.sendPaymentV2MockData, NewMockSendPaymentV2Client(recvChan))
 
 	return recvChan
+}
+
+func (s *MockLightningNetworkService) SignMessage(in *lnrpc.SignMessageRequest, opts ...grpc.CallOption) (*lnrpc.SignMessageResponse, error) {
+	if len(s.signMessageMockData) == 0 {
+		return &lnrpc.SignMessageResponse{}, errors.New("NotFound")
+	}
+
+	response := s.signMessageMockData[0]
+	s.signMessageMockData = s.signMessageMockData[1:]
+	return response, nil
+}
+
+func (s *MockLightningNetworkService) SetSignMessageMockData(mockData *lnrpc.SignMessageResponse) {
+	s.signMessageMockData = append(s.signMessageMockData, mockData)
 }
 
 func (s *MockLightningNetworkService) SubscribeChannelBackups(in *lnrpc.ChannelBackupSubscription, opts ...grpc.CallOption) (lnrpc.Lightning_SubscribeChannelBackupsClient, error) {

@@ -2,7 +2,6 @@ package cdr
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"log"
 	"time"
@@ -10,10 +9,36 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
+	"github.com/satimoto/go-lsp/internal/lightningnetwork"
 	metrics "github.com/satimoto/go-lsp/internal/metric"
 	"github.com/satimoto/go-lsp/internal/notification"
 	"github.com/satimoto/go-lsp/pkg/util"
 )
+
+func (r *CdrResolver) IssueRebate(ctx context.Context, session db.Session, userID int64, invoiceParams util.InvoiceParams, chargeParams util.ChargeParams) {
+	sessionInvoice, err := r.SessionResolver.Repository.GetUnsettledSessionInvoiceBySession(ctx, session.ID)
+
+	// First try to rebute via deducting from an unsettled session invoice
+	if err == nil && invoiceParams.TotalFiat.Valid && sessionInvoice.TotalFiat > invoiceParams.TotalFiat.Float64 {
+		// An unsettled session invoice exists, try to update it
+		if updatedSessionInvoice := r.updateSessionInvoice(ctx, session, sessionInvoice, invoiceParams, chargeParams); updatedSessionInvoice != nil {
+			return
+		}
+	}
+
+	// Then issue an invoice request if no session invoice exists
+	if invoiceRequest, err := r.IssueInvoiceRequest(ctx, userID, "REBATE", session.Currency, session.Uid, invoiceParams); err == nil {
+		updateSessionByUidParams := param.NewUpdateSessionByUidParams(session)
+		updateSessionByUidParams.InvoiceRequestID = dbUtil.SqlNullInt64(invoiceRequest.ID)
+
+		_, err := r.SessionResolver.Repository.UpdateSessionByUid(ctx, updateSessionByUidParams)
+
+		if err != nil {
+			metrics.RecordError("LSP117", "Error updating session", err)
+			log.Printf("LSP117: Params=%v", updateSessionByUidParams)
+		}
+	}
+}
 
 func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, promotionCode string, currency string, memo string, invoiceParams util.InvoiceParams) (*db.InvoiceRequest, error) {
 	currencyRate, err := r.FerpService.GetRate(currency)
@@ -53,12 +78,12 @@ func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, pro
 
 	if err == nil {
 		updateInvoiceRequestParams := param.NewUpdateInvoiceRequestParams(invoiceRequest)
-		updateInvoiceRequestParams.PriceFiat = addNullFloat64(updateInvoiceRequestParams.PriceFiat, invoiceParams.PriceFiat)
-		updateInvoiceRequestParams.PriceMsat = addNullInt64(updateInvoiceRequestParams.PriceMsat, invoiceParams.PriceMsat)
-		updateInvoiceRequestParams.CommissionFiat = addNullFloat64(updateInvoiceRequestParams.CommissionFiat, invoiceParams.CommissionFiat)
-		updateInvoiceRequestParams.CommissionMsat = addNullInt64(updateInvoiceRequestParams.CommissionMsat, invoiceParams.CommissionMsat)
-		updateInvoiceRequestParams.TaxFiat = addNullFloat64(updateInvoiceRequestParams.TaxFiat, invoiceParams.TaxFiat)
-		updateInvoiceRequestParams.TaxMsat = addNullInt64(updateInvoiceRequestParams.TaxMsat, invoiceParams.TaxMsat)
+		updateInvoiceRequestParams.PriceFiat = util.AddNullFloat64(updateInvoiceRequestParams.PriceFiat, invoiceParams.PriceFiat)
+		updateInvoiceRequestParams.PriceMsat = util.AddNullInt64(updateInvoiceRequestParams.PriceMsat, invoiceParams.PriceMsat)
+		updateInvoiceRequestParams.CommissionFiat = util.AddNullFloat64(updateInvoiceRequestParams.CommissionFiat, invoiceParams.CommissionFiat)
+		updateInvoiceRequestParams.CommissionMsat = util.AddNullInt64(updateInvoiceRequestParams.CommissionMsat, invoiceParams.CommissionMsat)
+		updateInvoiceRequestParams.TaxFiat = util.AddNullFloat64(updateInvoiceRequestParams.TaxFiat, invoiceParams.TaxFiat)
+		updateInvoiceRequestParams.TaxMsat = util.AddNullInt64(updateInvoiceRequestParams.TaxMsat, invoiceParams.TaxMsat)
 		updateInvoiceRequestParams.TotalFiat = updateInvoiceRequestParams.TotalFiat + invoiceParams.TotalFiat.Float64
 		updateInvoiceRequestParams.TotalMsat = updateInvoiceRequestParams.TotalMsat + invoiceParams.TotalMsat.Int64
 
@@ -139,10 +164,68 @@ func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, pro
 	return &invoiceRequest, nil
 }
 
-func addNullFloat64(floatA, floatB sql.NullFloat64) sql.NullFloat64 {
-	return dbUtil.SqlNullFloat64(floatA.Float64 + floatB.Float64)
-}
+func (r *CdrResolver) updateSessionInvoice(ctx context.Context, session db.Session, sessionInvoice db.SessionInvoice, invoiceParams util.InvoiceParams, chargeParams util.ChargeParams) *db.SessionInvoice {
+	currencyRate, err := r.FerpService.GetRate(session.Currency)
 
-func addNullInt64(intA, intB sql.NullInt64) sql.NullInt64 {
-	return dbUtil.SqlNullInt64(intA.Int64 + intB.Int64)
+	if err != nil {
+		metrics.RecordError("LSP171", "Error retrieving exchange rate", err)
+		log.Printf("LSP171: Currency=%v", session.Currency)
+		return nil
+	}
+	
+	rateMsat := float64(currencyRate.RateMsat)
+	updateInvoiceParams := util.InvoiceParams{
+		PriceFiat:      util.MinusNullFloat64(dbUtil.SqlNullFloat64(sessionInvoice.PriceFiat), invoiceParams.PriceFiat),
+		CommissionFiat: util.MinusNullFloat64(dbUtil.SqlNullFloat64(sessionInvoice.CommissionFiat), invoiceParams.CommissionFiat),
+		TaxFiat:        util.MinusNullFloat64(dbUtil.SqlNullFloat64(sessionInvoice.TaxFiat), invoiceParams.TaxFiat),
+		TotalFiat:      util.MinusNullFloat64(dbUtil.SqlNullFloat64(sessionInvoice.TotalFiat), invoiceParams.TotalFiat),
+	}
+
+	updateInvoiceParams = util.FillInvoiceRequestParams(updateInvoiceParams, rateMsat)
+
+	if !invoiceParams.TotalMsat.Valid {
+		metrics.RecordError("LSP172", "Error filling request params", errors.New("invoiceParams TotalMsat not valid"))
+		log.Printf("LSP172: SessionInvoiceID=%v, Params=%#v", sessionInvoice.ID, invoiceParams)
+		return nil
+	}
+
+	if paymentRequest, signature, err := lightningnetwork.CreateLightningInvoice(r.LightningService, session.Uid, invoiceParams.TotalMsat.Int64); err == nil {
+		// Get the session invoice again to check if it's been settled or updated
+		latestSessionInvoice, err := r.SessionResolver.Repository.GetSessionInvoice(ctx, sessionInvoice.ID)
+
+		if err == nil && !latestSessionInvoice.IsSettled && latestSessionInvoice.PaymentRequest == sessionInvoice.PaymentRequest {
+			sessionInvoiceParams := param.NewUpdateSessionInvoiceParams(latestSessionInvoice)
+			sessionInvoiceParams.CurrencyRate = currencyRate.Rate
+			sessionInvoiceParams.CurrencyRateMsat = currencyRate.RateMsat
+			sessionInvoiceParams.PriceFiat = invoiceParams.PriceFiat.Float64
+			sessionInvoiceParams.PriceMsat = invoiceParams.PriceMsat.Int64
+			sessionInvoiceParams.CommissionFiat = invoiceParams.CommissionFiat.Float64
+			sessionInvoiceParams.CommissionMsat = invoiceParams.CommissionMsat.Int64
+			sessionInvoiceParams.TaxFiat = invoiceParams.TaxFiat.Float64
+			sessionInvoiceParams.TaxMsat = invoiceParams.TaxMsat.Int64
+			sessionInvoiceParams.TotalFiat = invoiceParams.TotalFiat.Float64
+			sessionInvoiceParams.TotalMsat = invoiceParams.TotalMsat.Int64
+			sessionInvoiceParams.PaymentRequest = paymentRequest
+			sessionInvoiceParams.Signature = signature
+			sessionInvoiceParams.IsExpired = false
+			sessionInvoiceParams.EstimatedEnergy = chargeParams.EstimatedEnergy
+			sessionInvoiceParams.EstimatedTime = chargeParams.EstimatedTime
+			sessionInvoiceParams.MeteredEnergy = chargeParams.MeteredEnergy
+			sessionInvoiceParams.MeteredTime = chargeParams.MeteredTime
+			
+			_, err := r.SessionResolver.Repository.UpdateSessionInvoice(ctx, sessionInvoiceParams)
+
+			if err != nil {
+				metrics.RecordError("LSP173", "Error updating session invoice", err)
+				log.Printf("LSP173: Params=%#v", sessionInvoiceParams)
+				return nil
+			}
+
+			go r.SessionResolver.WaitForInvoiceExpiry(paymentRequest)
+
+			return &sessionInvoice
+		}
+	}
+
+	return nil
 }
