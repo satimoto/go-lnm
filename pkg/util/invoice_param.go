@@ -35,13 +35,12 @@ func FillInvoiceRequestParams(invoiceParams InvoiceParams, rateMsat float64) Inv
 }
 
 func fillInvoiceRequestParam(amountFiat sql.NullFloat64, amountMsat sql.NullInt64, rateMsat float64) (sql.NullFloat64, sql.NullInt64) {
-	if amountFiat.Valid || amountMsat.Valid {
-		switch {
-		case !amountFiat.Valid:
-			amountFiat = dbUtil.SqlNullFloat64(float64(amountMsat.Int64) / rateMsat)
-		case !amountMsat.Valid:
-			amountMsat = dbUtil.SqlNullInt64(int64(amountFiat.Float64 * rateMsat))
-		}
+	if amountMsat.Valid && !amountFiat.Valid {
+		amountFiat = dbUtil.SqlNullFloat64(float64(amountMsat.Int64) / rateMsat)
+	}
+
+	if amountFiat.Valid && !amountMsat.Valid {
+		amountMsat = dbUtil.SqlNullInt64(int64(amountFiat.Float64 * rateMsat))
 	}
 
 	return amountFiat, amountMsat
