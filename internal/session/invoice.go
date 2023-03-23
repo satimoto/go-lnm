@@ -25,10 +25,14 @@ func (r *SessionResolver) IssueSessionInvoice(ctx context.Context, user db.User,
 		return nil
 	}
 
-	if sessionInvoice, err := r.Repository.GetUnsettledSessionInvoiceBySession(ctx, session.ID); err == nil {
-		// An unsettled session invoice exists, try to update it
-		if updatedSessionInvoice := r.updateSessionInvoice(ctx, currencyRate, session, sessionInvoice, invoiceParams, chargeParams); updatedSessionInvoice != nil {
-			return updatedSessionInvoice
+	updateUnsettledInvoices := dbUtil.GetEnvBool("UPDATE_UNSETTLED_INVOICES", false)
+
+	if updateUnsettledInvoices {
+		if sessionInvoice, err := r.Repository.GetUnsettledSessionInvoiceBySession(ctx, session.ID); err == nil {
+			// An unsettled session invoice exists, try to update it
+			if updatedSessionInvoice := r.updateSessionInvoice(ctx, currencyRate, session, sessionInvoice, invoiceParams, chargeParams); updatedSessionInvoice != nil {
+				return updatedSessionInvoice
+			}
 		}
 	}
 
