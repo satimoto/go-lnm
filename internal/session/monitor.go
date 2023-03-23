@@ -118,7 +118,7 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 			timeLocation, err = time.LoadLocation("UTC")
 		}
 
-		taxPercent := r.CountryAccountResolver.GetTaxPercentByCountry(ctx, location.Country, dbUtil.GetEnvFloat64("DEFAULT_TAX_PERCENT", 19))
+		taxPercent := r.AccountResolver.GetTaxPercentByCountry(ctx, location.Country, dbUtil.GetEnvFloat64("DEFAULT_TAX_PERCENT", 19))
 		invoiceInterval := calculateInvoiceInterval(connector.Wattage)
 		log.Printf("Monitor session for %s, running every %f seconds", session.Uid, invoiceInterval.Seconds())
 
@@ -182,8 +182,7 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 		return true
 	}
 
-	/*
-	// TODO: Update how we handle unsettled invoices.
+	/* TODO: Update how we handle unsettled invoices.
 	//       Mobile devices are not reliable enought to pay invoices as they arrive
 	//       to the device because it may be in a hibernated state with no network access.
 	//       The session invoice is sent to the device and it should be paid once the

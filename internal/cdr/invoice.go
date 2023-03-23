@@ -16,18 +16,22 @@ import (
 )
 
 func (r *CdrResolver) IssueRebate(ctx context.Context, session db.Session, userID int64, invoiceParams util.InvoiceParams, chargeParams util.ChargeParams) {
-	sessionInvoice, err := r.SessionResolver.Repository.GetUnsettledSessionInvoiceBySession(ctx, session.ID)
+	updateUnsettledInvoices := dbUtil.GetEnvBool("UPDATE_UNSETTLED_INVOICES", false)
 
-	// First try to rebute via deducting from an unsettled session invoice
-	if err == nil && invoiceParams.TotalFiat.Valid && sessionInvoice.TotalFiat > invoiceParams.TotalFiat.Float64 {
-		// An unsettled session invoice exists, try to update it
-		if updatedSessionInvoice := r.updateSessionInvoice(ctx, session, sessionInvoice, invoiceParams, chargeParams); updatedSessionInvoice != nil {
-			return
+	if updateUnsettledInvoices {
+		sessionInvoice, err := r.SessionResolver.Repository.GetUnsettledSessionInvoiceBySession(ctx, session.ID)
+
+		// First try to rebute via deducting from an unsettled session invoice
+		if err == nil && invoiceParams.TotalFiat.Valid && sessionInvoice.TotalFiat > invoiceParams.TotalFiat.Float64 {
+			// An unsettled session invoice exists, try to update it
+			if updatedSessionInvoice := r.updateSessionInvoice(ctx, session, sessionInvoice, invoiceParams, chargeParams); updatedSessionInvoice != nil {
+				return
+			}
 		}
 	}
 
 	// Then issue an invoice request if no session invoice exists
-	if invoiceRequest, err := r.IssueInvoiceRequest(ctx, userID, "REBATE", session.Currency, session.Uid, invoiceParams); err == nil {
+	if invoiceRequest, err := r.IssueInvoiceRequest(ctx, userID, &session.ID, "REBATE", session.Currency, session.Uid, invoiceParams); err == nil {
 		updateSessionByUidParams := param.NewUpdateSessionByUidParams(session)
 		updateSessionByUidParams.InvoiceRequestID = dbUtil.SqlNullInt64(invoiceRequest.ID)
 
@@ -40,7 +44,7 @@ func (r *CdrResolver) IssueRebate(ctx context.Context, session db.Session, userI
 	}
 }
 
-func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, promotionCode string, currency string, memo string, invoiceParams util.InvoiceParams) (*db.InvoiceRequest, error) {
+func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, sessionID *int64, promotionCode string, currency string, memo string, invoiceParams util.InvoiceParams) (*db.InvoiceRequest, error) {
 	currencyRate, err := r.FerpService.GetRate(currency)
 
 	if err != nil {
@@ -98,6 +102,7 @@ func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, pro
 		createInvoiceRequestParams := db.CreateInvoiceRequestParams{
 			UserID:         user.ID,
 			PromotionID:    promotion.ID,
+			SessionID:      dbUtil.SqlNullInt64(sessionID),
 			Currency:       currency,
 			Memo:           memo,
 			PriceFiat:      invoiceParams.PriceFiat,
@@ -172,7 +177,7 @@ func (r *CdrResolver) updateSessionInvoice(ctx context.Context, session db.Sessi
 		log.Printf("LSP171: Currency=%v", session.Currency)
 		return nil
 	}
-	
+
 	rateMsat := float64(currencyRate.RateMsat)
 	updateInvoiceParams := util.InvoiceParams{
 		PriceFiat:      util.MinusNullFloat64(dbUtil.SqlNullFloat64(sessionInvoice.PriceFiat), invoiceParams.PriceFiat),
@@ -212,7 +217,7 @@ func (r *CdrResolver) updateSessionInvoice(ctx context.Context, session db.Sessi
 			sessionInvoiceParams.EstimatedTime = chargeParams.EstimatedTime
 			sessionInvoiceParams.MeteredEnergy = chargeParams.MeteredEnergy
 			sessionInvoiceParams.MeteredTime = chargeParams.MeteredTime
-			
+
 			_, err := r.SessionResolver.Repository.UpdateSessionInvoice(ctx, sessionInvoiceParams)
 
 			if err != nil {
