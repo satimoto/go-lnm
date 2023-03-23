@@ -121,9 +121,9 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 		return errors.New("error retrieving session invoices")
 	}
 
-	priceFiat, priceMsat := session.CalculatePriceInvoiced(sessionInvoices)
+	priceFiat, _ := session.CalculatePriceInvoiced(sessionInvoices)
 
-	taxPercent := r.SessionResolver.CountryAccountResolver.GetTaxPercentByCountry(ctx, location.Country, dbUtil.GetEnvFloat64("DEFAULT_TAX_PERCENT", 19))
+	taxPercent := r.SessionResolver.AccountResolver.GetTaxPercentByCountry(ctx, location.Country, dbUtil.GetEnvFloat64("DEFAULT_TAX_PERCENT", 19))
 	cdrTotalFiat := cdr.TotalCost
 	cdrTotalEnergy := cdr.TotalEnergy
 	cdrTotalTime := cdr.TotalTime
@@ -180,12 +180,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 				TotalFiat:      dbUtil.SqlNullFloat64(invoiceTotalFiat),
 			}
 
-			sessionInvoice := r.SessionResolver.IssueSessionInvoice(ctx, user, sess, invoiceParams, chargeParams)
-
-			if sessionInvoice != nil {
-				sessionInvoices = session.AppendSessionInvoice(sessionInvoices, *sessionInvoice)
-				_, priceMsat = session.CalculatePriceInvoiced(sessionInvoices)
-			}
+			r.SessionResolver.IssueSessionInvoice(ctx, user, sess, invoiceParams, chargeParams)
 		} else if cdrTotalFiat <= priceFiat {
 			if cdrTotalFiat < priceFiat {
 				// Issue rebate if overpaid
@@ -205,23 +200,39 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 
 			r.SessionResolver.SendSessionUpdateNotification(user, sess)
 		}
-	}
 
-	// Issue invoice request to circuit user
-	circuitPercent := dbUtil.GetEnvFloat64("CIRCUIT_PERCENT", 0.5)
-	circuitAmountMsat := int64((float64(priceMsat) / 100.0) * circuitPercent)
+		// Issue invoice request for session confirmation
+		if sess.IsConfirmed {
+			confirmationPercent := 0.1
+			confirmationTotalFiat := (cdrTotalFiat / 100.0) * confirmationPercent
+			confirmationPriceFiat, confirmationCommissionFiat, confirmationTaxFiat := session.ReverseCommission(confirmationTotalFiat, user.CommissionPercent, taxPercent)
 
-	if user.CircuitUserID.Valid && circuitAmountMsat > 0 {
-		// TODO: This should be launched as a goroutine to force completion/retries
-		releaseDate := time.Now().Add(time.Duration(rand.Intn(120)) * time.Minute)
-		invoiceParams := util.InvoiceParams{
-			TotalMsat:   dbUtil.SqlNullInt64(circuitAmountMsat),
-			ReleaseDate: dbUtil.SqlNullTime(releaseDate),
+			invoiceParams := util.InvoiceParams{
+				PriceFiat:      dbUtil.SqlNullFloat64(confirmationPriceFiat),
+				CommissionFiat: dbUtil.SqlNullFloat64(confirmationCommissionFiat),
+				TaxFiat:        dbUtil.SqlNullFloat64(confirmationTaxFiat),
+				TotalFiat:      dbUtil.SqlNullFloat64(confirmationTotalFiat),
+			}
+
+			r.IssueInvoiceRequest(ctx, user.ID, &sess.ID, "SESSION_CONFIRMED", sess.Currency, sess.Uid, invoiceParams)
 		}
 
-		_, err := r.IssueInvoiceRequest(ctx, user.CircuitUserID.Int64, "CIRCUIT", sess.Currency, "Satsback", invoiceParams)
+		// Issue invoice request to circuit user
+		circuitPercent := dbUtil.GetEnvFloat64("CIRCUIT_PERCENT", 0.5)
+		circuitAmountFiat := (cdrTotalFiat / 100.0) * circuitPercent
 
-		return err
+		if user.CircuitUserID.Valid && circuitAmountFiat > 0.0 {
+			// TODO: This should be launched as a goroutine to force completion/retries
+			releaseDate := time.Now().Add(time.Duration(rand.Intn(120)) * time.Minute)
+			invoiceParams := util.InvoiceParams{
+				TotalFiat:   dbUtil.SqlNullFloat64(circuitAmountFiat),
+				ReleaseDate: dbUtil.SqlNullTime(releaseDate),
+			}
+
+			_, err := r.IssueInvoiceRequest(ctx, user.CircuitUserID.Int64, nil, "CIRCUIT", sess.Currency, "Satsback", invoiceParams)
+
+			return err
+		}
 	}
 
 	return nil

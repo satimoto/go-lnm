@@ -121,11 +121,11 @@ func (m *Monitor) register() error {
 		rpcHost = ipAddr
 	}
 
-	lspAddr := fmt.Sprintf("%s:%s", rpcHost, os.Getenv("RPC_PORT"))
+	rpcAddr := fmt.Sprintf("%s:%s", rpcHost, os.Getenv("RPC_PORT"))
 	ocpiService := ocpi.NewService(os.Getenv("OCPI_RPC_ADDRESS"))
 
 	_, err := ocpiService.TestConnection(ctx, &ocpirpc.TestConnectionRequest{
-		Addr: lspAddr,
+		Addr: rpcAddr,
 	})
 
 	dbUtil.PanicOnError("LSP047", "Error testing RPC connectivity", err)
@@ -143,7 +143,7 @@ func (m *Monitor) register() error {
 			log.Printf("Version: %v", getInfoResponse.Version)
 			log.Printf("CommitHash: %v", getInfoResponse.CommitHash)
 			log.Printf("IdentityPubkey: %v", getInfoResponse.IdentityPubkey)
-			log.Printf("LSP Address: %v", lspAddr)
+			log.Printf("RPC Address: %v", rpcAddr)
 		}
 
 		if getInfoResponse.SyncedToChain {
@@ -157,7 +157,7 @@ func (m *Monitor) register() error {
 				// Update node
 				updateNodeParams := param.NewUpdateNodeParams(n)
 				updateNodeParams.NodeAddr = lndAddr
-				updateNodeParams.LspAddr = lspAddr
+				updateNodeParams.RpcAddr = rpcAddr
 				updateNodeParams.Alias = getInfoResponse.Alias
 				updateNodeParams.Color = getInfoResponse.Color
 				updateNodeParams.CommitHash = getInfoResponse.CommitHash
@@ -178,7 +178,7 @@ func (m *Monitor) register() error {
 				createNodeParams := db.CreateNodeParams{
 					Pubkey:     getInfoResponse.IdentityPubkey,
 					NodeAddr:   lndAddr,
-					LspAddr:    lspAddr,
+					RpcAddr:    rpcAddr,
 					Alias:      getInfoResponse.Alias,
 					Color:      getInfoResponse.Color,
 					CommitHash: getInfoResponse.CommitHash,
