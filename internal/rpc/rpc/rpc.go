@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	metrics "github.com/satimoto/go-lsp/internal/metric"
+	metrics "github.com/satimoto/go-lnm/internal/metric"
 	"github.com/satimoto/go-ocpi/ocpirpc"
 	"github.com/satimoto/go-ocpi/pkg/ocpi"
 )
@@ -22,14 +22,14 @@ func (r *RpcResolver) TestConnection(reqCtx context.Context, input *ocpirpc.Test
 		})
 
 		if err != nil {
-			metrics.RecordError("LSP056", "Error testing connection", err)
-			log.Printf("LSP056: Addr=%v", input.Addr)
+			metrics.RecordError("LNM056", "Error testing connection", err)
+			log.Printf("LNM056: Addr=%v", input.Addr)
 			return nil, errors.New("Connection test failed")
 		}
 
 		if testMessageReponse.Message != message {
-			metrics.RecordError("LSP057", "Error message response mismatch", err)
-			log.Printf("LSP057: Message=%v, Response=%v", message, testMessageReponse.Message)
+			metrics.RecordError("LNM057", "Error message response mismatch", err)
+			log.Printf("LNM057: Message=%v, Response=%v", message, testMessageReponse.Message)
 		}
 
 		return &ocpirpc.TestConnectionResponse{Result: "OK"}, nil

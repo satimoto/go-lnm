@@ -7,8 +7,8 @@ import (
 
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
-	"github.com/satimoto/go-lsp/internal/ito"
-	metrics "github.com/satimoto/go-lsp/internal/metric"
+	"github.com/satimoto/go-lnm/internal/ito"
+	metrics "github.com/satimoto/go-lnm/internal/metric"
 )
 
 func (r *SessionResolver) ProcessChargingPeriods(sessionIto *ito.SessionIto, tariffIto *ito.TariffIto, connectorWattage int32, timeLocation *time.Location, processDatetime time.Time) (totalAmount, totalEnergy, totalTime float64) {
@@ -214,8 +214,8 @@ func (r *SessionResolver) UpdateSession(session db.Session) {
 	user, err := r.UserResolver.Repository.GetUser(ctx, session.UserID)
 
 	if err != nil {
-		metrics.RecordError("LSP051", "Error retrieving user from session", err)
-		log.Printf("LSP051: SessionUid=%v, UserID=%v", session.Uid, session.UserID)
+		metrics.RecordError("LNM051", "Error retrieving user from session", err)
+		log.Printf("LNM051: SessionUid=%v, UserID=%v", session.Uid, session.UserID)
 		return
 	}
 

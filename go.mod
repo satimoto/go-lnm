@@ -1,12 +1,12 @@
-module github.com/satimoto/go-lsp
+module github.com/satimoto/go-lnm
 
 go 1.17
 
 require (
-	github.com/joho/godotenv v1.4.0
+	github.com/joho/godotenv v1.5.1
 	github.com/lightningnetwork/lnd v0.15.5-beta
 	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
-	github.com/satimoto/go-datastore v0.3.1-0.20230111130402-8d2b68e54ba7
+	github.com/satimoto/go-datastore v0.5.1-0.20230330192315-803e5bdd1cec
 	google.golang.org/grpc v1.47.0
 )
 

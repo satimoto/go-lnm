@@ -5,7 +5,7 @@ import (
 
 	"github.com/appleboy/go-fcm"
 	"github.com/satimoto/go-datastore/pkg/db"
-	"github.com/satimoto/go-lsp/internal/notification"
+	"github.com/satimoto/go-lnm/internal/notification"
 )
 
 type MockNotificationService struct {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	metrics "github.com/satimoto/go-lsp/internal/metric"
+	metrics "github.com/satimoto/go-lnm/internal/metric"
 )
 
 func (r *CdrResolver) Startup(nodeID int64) {
@@ -12,8 +12,8 @@ func (r *CdrResolver) Startup(nodeID int64) {
 	cdrs, err := r.Repository.ListCdrsByCompletedSessionStatus(ctx, nodeID)
 
 	if err != nil {
-		metrics.RecordError("LSP134", "Error listing cdrs", err)
-		log.Printf("LSP134: NodeID=%v", nodeID)
+		metrics.RecordError("LNM134", "Error listing cdrs", err)
+		log.Printf("LNM134: NodeID=%v", nodeID)
 	}
 
 	for _, cdr := range cdrs {

@@ -5,9 +5,9 @@ import (
 	mocks "github.com/satimoto/go-datastore/pkg/db/mocks"
 	invoicerequest "github.com/satimoto/go-datastore/pkg/invoicerequest/mocks"
 	promotion "github.com/satimoto/go-datastore/pkg/promotion/mocks"
-	"github.com/satimoto/go-lsp/internal/cdr"
-	"github.com/satimoto/go-lsp/internal/service"
-	session "github.com/satimoto/go-lsp/internal/session/mocks"
+	"github.com/satimoto/go-lnm/internal/cdr"
+	"github.com/satimoto/go-lnm/internal/service"
+	session "github.com/satimoto/go-lnm/internal/session/mocks"
 )
 
 func NewResolver(repositoryService *mocks.MockRepositoryService, services *service.ServiceResolver) *cdr.CdrResolver {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/satimoto/go-lsp/lsprpc"
+	"github.com/satimoto/go-lnm/lsprpc"
 	"google.golang.org/grpc"
 )
 

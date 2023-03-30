@@ -526,13 +526,13 @@ Edit file `~/.git-credentials`
 ```bash
 https://<PERSONAL_ACCESS_TOKEN>:@github.com/satimoto/go-datastore
 https://<PERSONAL_ACCESS_TOKEN>:@github.com/satimoto/go-ferp
-https://<PERSONAL_ACCESS_TOKEN>:@github.com/satimoto/go-lsp
+https://<PERSONAL_ACCESS_TOKEN>:@github.com/satimoto/go-lnm
 https://<PERSONAL_ACCESS_TOKEN>:@github.com/satimoto/go-ocpi
 ```
 Clone the lnd repository
 ```bash
 cd ~/
-git clone https://github.com/satimoto/go-lsp
+git clone https://github.com/satimoto/go-lnm
 cd go-lsp/
 ```
 Checkout branch

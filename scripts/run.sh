@@ -1,1 +1,1 @@
-go run ./cmd/lsp
+go run ./cmd/lnm

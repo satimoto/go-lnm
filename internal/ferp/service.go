@@ -50,7 +50,7 @@ func (s *FerpService) GetRate(currency string) (*rate.CurrencyRate, error) {
 	return nil, errors.New("no currency rate available")
 }
 
-func (s *FerpService) ConvertRate(currency string, amount float64) (*int64, error)  {
+func (s *FerpService) ConvertRate(currency string, amount float64) (*int64, error) {
 	if currencyRate, ok := s.currencyRates[currency]; ok {
 		rateMsat := float64(currencyRate.RateMsat)
 		amountMsat := int64(amount * rateMsat)
@@ -75,7 +75,7 @@ func (s *FerpService) handleRate(currencyRate ferprpc.SubscribeRatesResponse) {
 
 func (s *FerpService) subscribeRates(shutdownCtx context.Context, ratesChan chan<- ferprpc.SubscribeRatesResponse) {
 	ratesClient, err := s.waitForSubscribeRatesClient(shutdownCtx, 0, 1000)
-	util.PanicOnError("LSP060", "Error creating FERP client", err)
+	util.PanicOnError("LNM060", "Error creating FERP client", err)
 	s.RatesClient = ratesClient
 
 	for {
@@ -90,7 +90,7 @@ func (s *FerpService) subscribeRates(shutdownCtx context.Context, ratesChan chan
 			}
 
 			s.RatesClient, err = s.waitForSubscribeRatesClient(shutdownCtx, 100, 1000)
-			util.PanicOnError("LSP061", "Error creating FERP client", err)
+			util.PanicOnError("LNM061", "Error creating FERP client", err)
 		}
 	}
 }

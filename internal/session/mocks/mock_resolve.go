@@ -5,11 +5,11 @@ import (
 	location "github.com/satimoto/go-datastore/pkg/location/mocks"
 	sessionMocks "github.com/satimoto/go-datastore/pkg/session/mocks"
 	tokenauthorization "github.com/satimoto/go-datastore/pkg/tokenauthorization/mocks"
-	account "github.com/satimoto/go-lsp/internal/account/mocks"
-	"github.com/satimoto/go-lsp/internal/service"
-	"github.com/satimoto/go-lsp/internal/session"
-	tariff "github.com/satimoto/go-lsp/internal/tariff/mocks"
-	user "github.com/satimoto/go-lsp/internal/user/mocks"
+	account "github.com/satimoto/go-lnm/internal/account/mocks"
+	"github.com/satimoto/go-lnm/internal/service"
+	"github.com/satimoto/go-lnm/internal/session"
+	tariff "github.com/satimoto/go-lnm/internal/tariff/mocks"
+	user "github.com/satimoto/go-lnm/internal/user/mocks"
 )
 
 func NewResolver(repositoryService *mocks.MockRepositoryService, services *service.ServiceResolver) *session.SessionResolver {

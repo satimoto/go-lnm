@@ -61,28 +61,28 @@ if [ -n "$MAINNET" ]; then
 fi
 
 if [ -n "$BUILD" ]; then
-    echo "Building lsp"
-    docker build -t lsp .
+    echo "Building lnm"
+    docker build -t lnm .
 fi
 
-docker tag lsp ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lsp:${VERSION}
-echo "Tagged ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lsp:${VERSION}"
-docker tag lsp ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lsp:${VERSION}-${COMMIT_HASH}
-echo "Tagged ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lsp:${VERSION}-${COMMIT_HASH}"
+docker tag lnm ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lnm:${VERSION}
+echo "Tagged ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lnm:${VERSION}"
+docker tag lnm ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lnm:${VERSION}-${COMMIT_HASH}
+echo "Tagged ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lnm:${VERSION}-${COMMIT_HASH}"
 
 if [ -n "$TAG" ]; then
-    docker tag lsp ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lsp:${NETWORK}
-    echo "Tagged ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lsp:${NETWORK}"
+    docker tag lnm ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lnm:${NETWORK}
+    echo "Tagged ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lnm:${NETWORK}"
 fi
 
 if [ -n "$COMMIT" ]; then
-    docker push ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lsp:${VERSION}
-    echo "Pushed ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lsp:${VERSION}"
-    docker push ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lsp:${VERSION}-${COMMIT_HASH}
-    echo "Pushed ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lsp:${VERSION}-${COMMIT_HASH}"
+    docker push ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lnm:${VERSION}
+    echo "Pushed ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lnm:${VERSION}"
+    docker push ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lnm:${VERSION}-${COMMIT_HASH}
+    echo "Pushed ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lnm:${VERSION}-${COMMIT_HASH}"
 
     if [ -n "TAG" ]; then
-        docker push ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lsp:${NETWORK}
-        echo "Pushed ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lsp:${NETWORK}"
+        docker push ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lnm:${NETWORK}
+        echo "Pushed ${ACCOUNT_ID}.dkr.ecr.eu-central-1.amazonaws.com/lnm:${NETWORK}"
     fi
 fi

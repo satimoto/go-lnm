@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package invoice;
 
-option go_package = "github.com/satimoto/go-lsp/lsprpc";
+option go_package = "github.com/satimoto/go-lnm/lsprpc";
 
 service InvoiceService {
   rpc UpdateInvoiceRequest(UpdateInvoiceRequestRequest) returns (UpdateInvoiceRequestResponse);

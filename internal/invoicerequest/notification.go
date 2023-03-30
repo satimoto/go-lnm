@@ -5,8 +5,8 @@ import (
 
 	"github.com/appleboy/go-fcm"
 	"github.com/satimoto/go-datastore/pkg/db"
-	metrics "github.com/satimoto/go-lsp/internal/metric"
-	"github.com/satimoto/go-lsp/internal/notification"
+	metrics "github.com/satimoto/go-lnm/internal/metric"
+	"github.com/satimoto/go-lnm/internal/notification"
 )
 
 func (r *InvoiceRequestResolver) SendInvoiceRequestNotification(user db.User, invoiceRequest db.InvoiceRequest) {
@@ -27,8 +27,8 @@ func (r *InvoiceRequestResolver) sendNotification(user db.User, data notificatio
 
 	if err != nil {
 		// TODO: Cancel session?
-		metrics.RecordError("LSP141", "Error sending notification", err)
-		log.Printf("LSP141: Message=%v", message)
+		metrics.RecordError("LNM141", "Error sending notification", err)
+		log.Printf("LNM141: Message=%v", message)
 	}
 
 	notification.RecordNotificationSent(notification.INVOICE_REQUEST, 1)
