@@ -6,16 +6,15 @@ import (
 
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lntypes"
-	metrics "github.com/satimoto/go-lsp/internal/metric"
+	metrics "github.com/satimoto/go-lnm/internal/metric"
 )
-
 
 func CreateLightningInvoice(lightningService LightningNetwork, memo string, valueMsat int64) (string, string, error) {
 	preimage, err := RandomPreimage()
 
 	if err != nil {
-		metrics.RecordError("LSP030", "Error creating invoice preimage", err)
-		log.Printf("LSP030: SessionUid=%v", memo)
+		metrics.RecordError("LNM030", "Error creating invoice preimage", err)
+		log.Printf("LNM030: SessionUid=%v", memo)
 		return "", "", nil
 	}
 
@@ -27,8 +26,8 @@ func CreateLightningInvoice(lightningService LightningNetwork, memo string, valu
 	})
 
 	if err != nil {
-		metrics.RecordError("LSP031", "Error creating lightning invoice", err)
-		log.Printf("LSP031: Preimage=%v, ValueMsat=%v", preimage.String(), valueMsat)
+		metrics.RecordError("LNM031", "Error creating lightning invoice", err)
+		log.Printf("LNM031: Preimage=%v, ValueMsat=%v", preimage.String(), valueMsat)
 		return "", "", nil
 	}
 
@@ -37,8 +36,8 @@ func CreateLightningInvoice(lightningService LightningNetwork, memo string, valu
 	})
 
 	if err != nil {
-		metrics.RecordError("LSP167", "Error signing payment request", err)
-		log.Printf("LSP167: PaymentRequest=%v,", invoice.PaymentRequest)
+		metrics.RecordError("LNM167", "Error signing payment request", err)
+		log.Printf("LNM167: PaymentRequest=%v,", invoice.PaymentRequest)
 		return "", "", nil
 	}
 

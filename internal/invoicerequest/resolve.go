@@ -3,8 +3,8 @@ package invoicerequest
 import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/invoicerequest"
-	"github.com/satimoto/go-lsp/internal/notification"
-	"github.com/satimoto/go-lsp/internal/service"
+	"github.com/satimoto/go-lnm/internal/notification"
+	"github.com/satimoto/go-lnm/internal/service"
 )
 
 type InvoiceRequestResolver struct {

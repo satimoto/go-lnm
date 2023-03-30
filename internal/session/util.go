@@ -7,10 +7,9 @@ import (
 
 	"github.com/satimoto/go-datastore/pkg/db"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
-	"github.com/satimoto/go-lsp/internal/ito"
-	"github.com/satimoto/go-lsp/pkg/util"
+	"github.com/satimoto/go-lnm/internal/ito"
+	"github.com/satimoto/go-lnm/pkg/util"
 )
-
 
 func AppendSessionInvoice(sessionInvoices []db.SessionInvoice, sessionInvoice db.SessionInvoice) []db.SessionInvoice {
 	for index, si := range sessionInvoices {

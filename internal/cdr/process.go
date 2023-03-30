@@ -10,9 +10,9 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
-	metrics "github.com/satimoto/go-lsp/internal/metric"
-	"github.com/satimoto/go-lsp/internal/session"
-	"github.com/satimoto/go-lsp/pkg/util"
+	metrics "github.com/satimoto/go-lnm/internal/metric"
+	"github.com/satimoto/go-lnm/internal/session"
+	"github.com/satimoto/go-lnm/pkg/util"
 )
 
 func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
@@ -29,16 +29,16 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 		// There is no AuthorizationID set,
 		// we cannot reconcile the session without it.
 		// Flag the cdr to be looked at later.
-		log.Printf("LSP035: Cdr AuthorizationID is nil")
-		log.Printf("LSP035: CdrUid=%v", cdr.Uid)
+		log.Printf("LNM035: Cdr AuthorizationID is nil")
+		log.Printf("LNM035: CdrUid=%v", cdr.Uid)
 
 		cdrIsFlagged = true
 
 		sessions, err := r.SessionResolver.Repository.ListInProgressSessionsByUserID(ctx, cdr.UserID)
 
 		if err != nil {
-			metrics.RecordError("LSP139", "Error retrieving in progress sessions", err)
-			log.Printf("LSP139: UserID=%v", cdr.UserID)
+			metrics.RecordError("LNM139", "Error retrieving in progress sessions", err)
+			log.Printf("LNM139: UserID=%v", cdr.UserID)
 			return errors.New("error retrieving in progress sessions")
 		}
 
@@ -49,14 +49,14 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 
 			// Check the session and cdr location/evs/connector matches
 			if sess.AuthID == cdr.AuthID && sess.LocationID == cdr.LocationID && sess.EvseID == cdr.EvseID && sess.ConnectorID == cdr.ConnectorID {
-				log.Printf("LSP035: Using matched session %v with authorization %v instead", sess.Uid, sess.AuthorizationID.String)
+				log.Printf("LNM035: Using matched session %v with authorization %v instead", sess.Uid, sess.AuthorizationID.String)
 				authorizationId = sess.AuthorizationID
 			}
 		}
 
 		if !authorizationId.Valid {
 			for _, sess := range sessions {
-				log.Printf("LSP035: Stopping session %v", sess.Uid)
+				log.Printf("LNM035: Stopping session %v", sess.Uid)
 				sessionParams := param.NewUpdateSessionByUidParams(sess)
 				sessionParams.Status = db.SessionStatusTypeCOMPLETED
 
@@ -72,8 +72,8 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 	tariffs, err := r.SessionResolver.TariffResolver.Repository.ListTariffsByCdr(ctx, dbUtil.SqlNullInt64(cdr.ID))
 
 	if err != nil {
-		metrics.RecordError("LSP157", "Error listing cdr tariffs", err)
-		log.Printf("LSP157: CdrID=%v", cdr.ID)
+		metrics.RecordError("LNM157", "Error listing cdr tariffs", err)
+		log.Printf("LNM157: CdrID=%v", cdr.ID)
 	}
 
 	// Flag the cdr if the cdr has a cost but no tariffs
@@ -92,32 +92,32 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 	sess, err := r.SessionResolver.Repository.GetSessionByAuthorizationID(ctx, authorizationId.String)
 
 	if err != nil {
-		metrics.RecordError("LSP043", "Error retrieving cdr session", err)
-		log.Printf("LSP043: CdrUid=%v, AuthorizationID=%v", cdr.Uid, authorizationId)
+		metrics.RecordError("LNM043", "Error retrieving cdr session", err)
+		log.Printf("LNM043: CdrUid=%v, AuthorizationID=%v", cdr.Uid, authorizationId)
 		return errors.New("error retrieving cdr session")
 	}
 
 	user, err := r.SessionResolver.UserResolver.Repository.GetUser(ctx, sess.UserID)
 
 	if err != nil {
-		metrics.RecordError("LSP044", "Error retrieving session user", err)
-		log.Printf("LSP044: SessionUid=%v, UserID=%v", sess.Uid, sess.UserID)
+		metrics.RecordError("LNM044", "Error retrieving session user", err)
+		log.Printf("LNM044: SessionUid=%v, UserID=%v", sess.Uid, sess.UserID)
 		return errors.New("error retrieving session user")
 	}
 
 	location, err := r.SessionResolver.LocationRepository.GetLocation(ctx, sess.LocationID)
 
 	if err != nil {
-		metrics.RecordError("LSP045", "Error retrieving session location", err)
-		log.Printf("LSP045: SessionUid=%v, LocationID=%v", sess.Uid, sess.LocationID)
+		metrics.RecordError("LNM045", "Error retrieving session location", err)
+		log.Printf("LNM045: SessionUid=%v, LocationID=%v", sess.Uid, sess.LocationID)
 		return errors.New("error retrieving session location")
 	}
 
 	sessionInvoices, err := r.SessionResolver.Repository.ListSessionInvoicesBySessionID(ctx, sess.ID)
 
 	if err != nil {
-		metrics.RecordError("LSP046", "Error retrieving session invoices", err)
-		log.Printf("LSP046: SessionUid=%v", sess.Uid)
+		metrics.RecordError("LNM046", "Error retrieving session invoices", err)
+		log.Printf("LNM046: SessionUid=%v", sess.Uid)
 		return errors.New("error retrieving session invoices")
 	}
 
@@ -136,16 +136,16 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 		connector, err := r.SessionResolver.LocationRepository.GetConnector(ctx, sess.ConnectorID)
 
 		if err != nil {
-			metrics.RecordError("LSP158", "Error getting session connector", err)
-			log.Printf("LSP158: SessionUid=%v, ConnectorID=%v", sess.Uid, sess.ConnectorID)
+			metrics.RecordError("LNM158", "Error getting session connector", err)
+			log.Printf("LNM158: SessionUid=%v, ConnectorID=%v", sess.Uid, sess.ConnectorID)
 			return errors.New("error gettings session connector")
 		}
 
 		timeLocation, err := time.LoadLocation(location.TimeZone.String)
 
 		if err != nil {
-			metrics.RecordError("LSP159", "Error loading time location", err)
-			log.Printf("LSP159: TimeZone=%v", location.TimeZone.String)
+			metrics.RecordError("LNM159", "Error loading time location", err)
+			log.Printf("LNM159: TimeZone=%v", location.TimeZone.String)
 			timeLocation, _ = time.LoadLocation("UTC")
 		}
 

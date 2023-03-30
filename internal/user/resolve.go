@@ -3,7 +3,7 @@ package user
 import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/user"
-	"github.com/satimoto/go-lsp/internal/service"
+	"github.com/satimoto/go-lnm/internal/service"
 	"github.com/satimoto/go-ocpi/pkg/ocpi"
 )
 

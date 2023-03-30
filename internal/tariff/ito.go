@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/satimoto/go-datastore/pkg/db"
-	"github.com/satimoto/go-lsp/internal/ito"
+	"github.com/satimoto/go-lnm/internal/ito"
 )
 
 func (r *TariffResolver) CreateElementIto(ctx context.Context, element db.Element) *ito.ElementIto {

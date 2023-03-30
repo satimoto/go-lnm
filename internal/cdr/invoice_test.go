@@ -8,12 +8,12 @@ import (
 	dbMocks "github.com/satimoto/go-datastore/pkg/db/mocks"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-ferp/pkg/rate"
-	cdrMocks "github.com/satimoto/go-lsp/internal/cdr/mocks"
-	ferpMocks "github.com/satimoto/go-lsp/internal/ferp/mocks"
-	lightningnetworkMocks "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
-	notificationMocks "github.com/satimoto/go-lsp/internal/notification/mocks"
-	serviceMocks "github.com/satimoto/go-lsp/internal/service/mocks"
-	"github.com/satimoto/go-lsp/pkg/util"
+	cdrMocks "github.com/satimoto/go-lnm/internal/cdr/mocks"
+	ferpMocks "github.com/satimoto/go-lnm/internal/ferp/mocks"
+	lightningnetworkMocks "github.com/satimoto/go-lnm/internal/lightningnetwork/mocks"
+	notificationMocks "github.com/satimoto/go-lnm/internal/notification/mocks"
+	serviceMocks "github.com/satimoto/go-lnm/internal/service/mocks"
+	"github.com/satimoto/go-lnm/pkg/util"
 	ocpiMocks "github.com/satimoto/go-ocpi/pkg/ocpi/mocks"
 )
 

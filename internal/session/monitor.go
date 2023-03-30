@@ -9,9 +9,9 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
-	"github.com/satimoto/go-lsp/internal/ito"
-	metrics "github.com/satimoto/go-lsp/internal/metric"
-	"github.com/satimoto/go-lsp/pkg/util"
+	"github.com/satimoto/go-lnm/internal/ito"
+	metrics "github.com/satimoto/go-lnm/internal/metric"
+	"github.com/satimoto/go-lnm/pkg/util"
 	"github.com/satimoto/go-ocpi/ocpirpc"
 )
 
@@ -31,16 +31,16 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 
 	if !session.AuthorizationID.Valid {
 		// There is no AuthorizationID set, flag the session.
-		metrics.RecordError("LSP137", "Error in session", errors.New("authorizationID is nil"))
-		log.Printf("LSP137: SessionUid=%v", session.Uid)
+		metrics.RecordError("LNM137", "Error in session", errors.New("authorizationID is nil"))
+		log.Printf("LNM137: SessionUid=%v", session.Uid)
 
 		// Get the last token authorization for the session token
 		tokenAuthorization, err := r.TokenAuthorizationRepository.GetLastTokenAuthorizationByTokenID(ctx, session.TokenID)
 
 		if err != nil {
 			// No last token authorization found
-			metrics.RecordError("LSP136", "Error last token authorization not found", err)
-			log.Printf("LSP136: SessionUid=%v, TokenID=%v", session.Uid, session.TokenID)
+			metrics.RecordError("LNM136", "Error last token authorization not found", err)
+			log.Printf("LNM136: SessionUid=%v, TokenID=%v", session.Uid, session.TokenID)
 			r.StopSession(ctx, session)
 			return
 		}
@@ -60,8 +60,8 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 	user, err := r.UserResolver.Repository.GetUser(ctx, session.UserID)
 
 	if err != nil {
-		metrics.RecordError("LSP037", "Error retrieving user from session", err)
-		log.Printf("LSP037: SessionUid=%v, UserID=%v", session.Uid, session.UserID)
+		metrics.RecordError("LNM037", "Error retrieving user from session", err)
+		log.Printf("LNM037: SessionUid=%v, UserID=%v", session.Uid, session.UserID)
 		r.StopSession(ctx, session)
 		return
 	}
@@ -69,8 +69,8 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 	connector, err := r.LocationRepository.GetConnector(ctx, session.ConnectorID)
 
 	if err != nil {
-		metrics.RecordError("LSP001", "Error retrieving session connector", err)
-		log.Printf("LSP001: SessionUid=%v, ConnectorID=%v", session.Uid, session.ConnectorID)
+		metrics.RecordError("LNM001", "Error retrieving session connector", err)
+		log.Printf("LNM001: SessionUid=%v, ConnectorID=%v", session.Uid, session.ConnectorID)
 		r.StopSession(ctx, session)
 		return
 	}
@@ -78,8 +78,8 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 	tokenAuthorization, err := r.TokenAuthorizationRepository.GetTokenAuthorizationByAuthorizationID(ctx, session.AuthorizationID.String)
 
 	if err != nil {
-		metrics.RecordError("LSP127", "Error retrieving token authorization", err)
-		log.Printf("LSP127: SessionUid=%v, AuthorizationID=%v", session.Uid, session.AuthorizationID.String)
+		metrics.RecordError("LNM127", "Error retrieving token authorization", err)
+		log.Printf("LNM127: SessionUid=%v, AuthorizationID=%v", session.Uid, session.AuthorizationID.String)
 		r.StopSession(ctx, session)
 		return
 	}
@@ -96,8 +96,8 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 		tariff, err := r.TariffResolver.Repository.GetTariffByUid(ctx, connector.TariffID.String)
 
 		if err != nil {
-			metrics.RecordError("LSP002", "Error retrieving session tariff", err)
-			log.Printf("LSP002: SessionUid=%v, TariffID=%v", session.Uid, connector.TariffID.String)
+			metrics.RecordError("LNM002", "Error retrieving session tariff", err)
+			log.Printf("LNM002: SessionUid=%v, TariffID=%v", session.Uid, connector.TariffID.String)
 			return
 		}
 
@@ -105,16 +105,16 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 		location, err := r.LocationRepository.GetLocation(ctx, session.LocationID)
 
 		if err != nil {
-			metrics.RecordError("LSP038", "Error retrieving session location", err)
-			log.Printf("LSP038: SessionUid=%v, LocationID=%v", session.Uid, session.LocationID)
+			metrics.RecordError("LNM038", "Error retrieving session location", err)
+			log.Printf("LNM038: SessionUid=%v, LocationID=%v", session.Uid, session.LocationID)
 			return
 		}
 
 		timeLocation, err := time.LoadLocation(location.TimeZone.String)
 
 		if err != nil {
-			metrics.RecordError("LSP005", "Error loading time location", err)
-			log.Printf("LSP005: TimeZone=%v", location.TimeZone.String)
+			metrics.RecordError("LNM005", "Error loading time location", err)
+			log.Printf("LNM005: TimeZone=%v", location.TimeZone.String)
 			timeLocation, err = time.LoadLocation("UTC")
 		}
 
@@ -131,8 +131,8 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 			session, err = r.Repository.GetSession(ctx, session.ID)
 
 			if err != nil {
-				metrics.RecordError("LSP032", "Error retrieving session", err)
-				log.Printf("LSP032: SessionUid=%v", session.Uid)
+				metrics.RecordError("LNM032", "Error retrieving session", err)
+				log.Printf("LNM032: SessionUid=%v", session.Uid)
 				continue
 			}
 
@@ -177,8 +177,8 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 	sessionInvoices, err := r.Repository.ListSessionInvoicesBySessionID(ctx, session.ID)
 
 	if err != nil {
-		metrics.RecordError("LSP033", "Error retrieving session invoices", err)
-		log.Printf("LSP033: SessionUid=%v", session.Uid)
+		metrics.RecordError("LNM033", "Error retrieving session invoices", err)
+		log.Printf("LNM033: SessionUid=%v", session.Uid)
 		return true
 	}
 
@@ -192,8 +192,8 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 		err = r.UserResolver.RestrictUser(ctx, user)
 
 		if err != nil {
-			metrics.RecordError("LSP042", "Error restricting user", err)
-			log.Printf("LSP042: SessionUID=%v, UserID=%v", session.Uid, session.UserID)
+			metrics.RecordError("LNM042", "Error restricting user", err)
+			log.Printf("LNM042: SessionUID=%v, UserID=%v", session.Uid, session.UserID)
 		}
 
 		if _, err = r.StopSession(ctx, session); err == nil {

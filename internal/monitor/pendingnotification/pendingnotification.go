@@ -10,10 +10,10 @@ import (
 	"github.com/satimoto/go-datastore/pkg/channelrequest"
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/pendingnotification"
-	"github.com/satimoto/go-lsp/internal/lightningnetwork"
-	metrics "github.com/satimoto/go-lsp/internal/metric"
-	"github.com/satimoto/go-lsp/internal/notification"
-	"github.com/satimoto/go-lsp/internal/service"
+	"github.com/satimoto/go-lnm/internal/lightningnetwork"
+	metrics "github.com/satimoto/go-lnm/internal/metric"
+	"github.com/satimoto/go-lnm/internal/notification"
+	"github.com/satimoto/go-lnm/internal/service"
 )
 
 type PendingNotificationMonitor struct {
@@ -73,8 +73,8 @@ func (s *PendingNotificationMonitor) startPendingNotificationLoop() {
 				// TODO go-lsp#22: Handle application uninstall
 
 				if err != nil {
-					metrics.RecordError("LSP131", "Error sending notification", err)
-					log.Printf("LSP131: Message=%#v", message)
+					metrics.RecordError("LNM131", "Error sending notification", err)
+					log.Printf("LNM131: Message=%#v", message)
 				} else {
 					updatePendingNotificationsParams := db.UpdatePendingNotificationsParams{
 						SendDate: time.Now().Add(time.Hour * 24),
@@ -84,8 +84,8 @@ func (s *PendingNotificationMonitor) startPendingNotificationLoop() {
 					err = s.PendingNotificationRepository.UpdatePendingNotifications(ctx, updatePendingNotificationsParams)
 
 					if err != nil {
-						metrics.RecordError("LSP132", "Error updating pending notifications", err)
-						log.Printf("LSP132: Params=%#v", updatePendingNotificationsParams)
+						metrics.RecordError("LNM132", "Error updating pending notifications", err)
+						log.Printf("LNM132: Params=%#v", updatePendingNotificationsParams)
 					}
 
 					notification.RecordNotificationSent(notification.INVOICE_REQUEST, len(registrationIDs))

@@ -10,8 +10,8 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc/chainrpc"
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
-	"github.com/satimoto/go-lsp/internal/lightningnetwork"
-	"github.com/satimoto/go-lsp/internal/service"
+	"github.com/satimoto/go-lnm/internal/lightningnetwork"
+	"github.com/satimoto/go-lnm/internal/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -48,7 +48,7 @@ func (m *BlockEpochMonitor) handleBlockEpoch(blockEpoch chainrpc.BlockEpoch) {
 
 func (m *BlockEpochMonitor) subscribeBlockEpochNotifications(blockEpochChan chan<- chainrpc.BlockEpoch) {
 	htlcEventsClient, err := m.waitForRegisterBlockEpochNtfnClient(0, 1000)
-	util.PanicOnError("LSP073", "Error creating Block Epochs client", err)
+	util.PanicOnError("LNM073", "Error creating Block Epochs client", err)
 	m.BlockEpochsClient = htlcEventsClient
 
 	for {
@@ -58,7 +58,7 @@ func (m *BlockEpochMonitor) subscribeBlockEpochNotifications(blockEpochChan chan
 			blockEpochChan <- *blockEpoch
 		} else {
 			m.BlockEpochsClient, err = m.waitForRegisterBlockEpochNtfnClient(100, 1000)
-			util.PanicOnError("LSP074", "Error creating Block Epochs client", err)
+			util.PanicOnError("LNM074", "Error creating Block Epochs client", err)
 		}
 	}
 }

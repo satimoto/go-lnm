@@ -5,7 +5,7 @@ import (
 	"errors"
 	"log"
 
-	metrics "github.com/satimoto/go-lsp/internal/metric"
+	metrics "github.com/satimoto/go-lnm/internal/metric"
 	"github.com/satimoto/go-ocpi/ocpirpc"
 )
 
@@ -16,8 +16,8 @@ func (r *RpcCdrResolver) CdrCreated(reqCtx context.Context, input *ocpirpc.CdrCr
 		cdr, err := r.CdrResolver.Repository.GetCdrByUid(ctx, input.CdrUid)
 
 		if err != nil {
-			metrics.RecordError("LSP055", "Error retrieving cdr", err)
-			log.Printf("LSP055: CdrUid=%v", input.CdrUid)
+			metrics.RecordError("LNM055", "Error retrieving cdr", err)
+			log.Printf("LNM055: CdrUid=%v", input.CdrUid)
 			return nil, errors.New("cdr not found")
 		}
 

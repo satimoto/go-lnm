@@ -5,8 +5,8 @@ import (
 	"github.com/satimoto/go-datastore/pkg/invoicerequest"
 	"github.com/satimoto/go-datastore/pkg/session"
 	"github.com/satimoto/go-datastore/pkg/tokenauthorization"
-	"github.com/satimoto/go-lsp/internal/lightningnetwork"
-	"github.com/satimoto/go-lsp/internal/service"
+	"github.com/satimoto/go-lnm/internal/lightningnetwork"
+	"github.com/satimoto/go-lnm/internal/service"
 )
 
 type RpcInvoiceResolver struct {

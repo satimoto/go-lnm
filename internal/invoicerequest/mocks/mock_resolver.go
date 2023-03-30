@@ -3,8 +3,8 @@ package mocks
 import (
 	mocks "github.com/satimoto/go-datastore/pkg/db/mocks"
 	invoicerequestMocks "github.com/satimoto/go-datastore/pkg/invoicerequest/mocks"
-	"github.com/satimoto/go-lsp/internal/invoicerequest"
-	"github.com/satimoto/go-lsp/internal/service"
+	"github.com/satimoto/go-lnm/internal/invoicerequest"
+	"github.com/satimoto/go-lnm/internal/service"
 )
 
 func NewResolver(repositoryService *mocks.MockRepositoryService, services *service.ServiceResolver) *invoicerequest.InvoiceRequestResolver {

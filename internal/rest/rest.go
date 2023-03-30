@@ -41,7 +41,7 @@ func (rs *RestService) Handler() *chi.Mux {
 	// Set middleware
 	router.Use(render.SetContentType(render.ContentTypeJSON), middleware.RedirectSlashes, middleware.Recoverer)
 	router.Use(middleware.Timeout(120 * time.Second))
-	router.Use(chiprometheus.NewMiddleware("lsp"))
+	router.Use(chiprometheus.NewMiddleware("lnm"))
 
 	router.Mount("/health", rs.mountHealth())
 

@@ -1,0 +1,119 @@
+[
+  {
+    "image": "${account_id}.dkr.ecr.${region}.amazonaws.com/${service_name}:${image_tag}",
+    "networkMode": "${task_network_mode}",
+    "name": "${service_name}",
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "/ecs/${service_name}",
+        "awslogs-region": "${region}",
+        "awslogs-stream-prefix": "ecs"
+      }
+    },
+    "portMappings": [
+      {
+        "protocol": "tcp",
+        "containerPort": ${service_container_port}
+      },
+      {
+        "protocol": "tcp",
+        "containerPort": ${service_metric_port}
+      }
+    ],
+    "dockerLabels": {
+      "PROMETHEUS_EXPORTER_PORT": "${service_metric_port}",
+      "PROMETHEUS_EXPORTER_JOB_NAME": "${service_name}"
+    },
+    "environment": [
+      {
+        "name": "ACCOUNTING_CURRENCY",
+        "value": "${env_accounting_currency}"
+      },
+      {
+        "name": "BACKUP_AWS_REGION",
+        "value": "${env_backup_aws_region}"
+      },
+      {
+        "name": "BACKUP_AWS_ACCESS_KEY_ID",
+        "value": "${env_backup_aws_access_key_id}"
+      },
+      {
+        "name": "BACKUP_AWS_SECRET_ACCESS_KEY",
+        "value": "${env_backup_aws_secret_access_key}"
+      },
+      {
+        "name": "BACKUP_S3_BUCKET",
+        "value": "${env_backup_aws_s3_bucket}"
+      },
+      {
+        "name": "CIRCUIT_PERCENT",
+        "value": "${env_circuit_percent}"
+      },
+      {
+        "name": "DB_USER",
+        "value": "${env_db_user}"
+      },
+      {
+        "name": "DB_PASS",
+        "value": "${env_db_pass}"
+      },
+      {
+        "name": "DB_HOST",
+        "value": "${env_db_host}"
+      },
+      {
+        "name": "DB_NAME",
+        "value": "${env_db_name}"
+      },
+      {
+        "name": "DEFAULT_TAX_PERCENT",
+        "value": "${env_default_tax_percent}"
+      },
+      {
+        "name": "FCM_API_KEY",
+        "value": "${env_fcm_api_key}"
+      },
+      {
+        "name": "FERP_RPC_ADDRESS",
+        "value": "${env_ferp_rpc_address}"
+      },
+      {
+        "name": "LND_TLS_CERT",
+        "value": "${env_lnd_tls_cert}"
+      },
+      {
+        "name": "LND_GRPC_HOST",
+        "value": "${env_lnd_grpc_host}"
+      },
+      {
+        "name": "LND_MACAROON",
+        "value": "${env_lnd_macaroon}"
+      },
+      {
+        "name": "OCPI_RPC_ADDRESS",
+        "value": "${env_ocpi_rpc_address}"
+      },
+      {
+        "name": "METRIC_PORT",
+        "value": "${env_metric_port}"
+      },
+      {
+        "name": "REST_PORT",
+        "value": "${env_rest_port}"
+      },
+      {
+        "name": "RPC_PORT",
+        "value": "${env_rpc_port}"
+      },
+      {
+        "name": "SHUTDOWN_TIMEOUT",
+        "value": "${env_shutdown_timeout}"
+      },
+      {
+        "name": "UPDATE_UNSETTLED_INVOICES",
+        "value": "${env_update_unsettled_invoices}"
+      }
+    ]
+  }
+]

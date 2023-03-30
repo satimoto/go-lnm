@@ -1,11 +1,11 @@
 package mocks
 
 import (
-	"github.com/satimoto/go-lsp/lsprpc"
+	"github.com/satimoto/go-lnm/lsprpc"
 )
 
 type MockLspService struct {
-	openChannelMockData []*lsprpc.OpenChannelResponse
+	openChannelMockData  []*lsprpc.OpenChannelResponse
 	listChannelsMockData []*lsprpc.ListChannelsResponse
 }
 

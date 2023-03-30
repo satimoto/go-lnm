@@ -6,12 +6,12 @@ import (
 
 	dbMocks "github.com/satimoto/go-datastore/pkg/db/mocks"
 	"github.com/satimoto/go-datastore/pkg/util"
-	ferpMocks "github.com/satimoto/go-lsp/internal/ferp/mocks"
-	"github.com/satimoto/go-lsp/internal/ito"
-	lightningnetworkMocks "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
-	notificationMocks "github.com/satimoto/go-lsp/internal/notification/mocks"
-	serviceMocks "github.com/satimoto/go-lsp/internal/service/mocks"
-	sessionsMocks "github.com/satimoto/go-lsp/internal/session/mocks"
+	ferpMocks "github.com/satimoto/go-lnm/internal/ferp/mocks"
+	"github.com/satimoto/go-lnm/internal/ito"
+	lightningnetworkMocks "github.com/satimoto/go-lnm/internal/lightningnetwork/mocks"
+	notificationMocks "github.com/satimoto/go-lnm/internal/notification/mocks"
+	serviceMocks "github.com/satimoto/go-lnm/internal/service/mocks"
+	sessionsMocks "github.com/satimoto/go-lnm/internal/session/mocks"
 	ocpiMocks "github.com/satimoto/go-ocpi/pkg/ocpi/mocks"
 
 	"testing"

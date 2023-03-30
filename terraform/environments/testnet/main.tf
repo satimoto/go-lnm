@@ -82,7 +82,7 @@ module "lsp" {
   nat_security_group_id = data.terraform_remote_state.infrastructure.outputs.nat_security_group_id
   rds_security_group_id = data.terraform_remote_state.infrastructure.outputs.rds_security_group_id
   instance_number       = count.index
-  instance_name         = "LSP${count.index + 1}"
+  instance_name         = "LNM${count.index + 1}"
   ec2_instance_type     = var.ec2_instance_type
   ec2_key_name          = "lsp${count.index + 1}"
   ebs_iops              = 3000
