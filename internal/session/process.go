@@ -11,7 +11,7 @@ import (
 	metrics "github.com/satimoto/go-lnm/internal/metric"
 )
 
-func (r *SessionResolver) ProcessChargingPeriods(sessionIto *ito.SessionIto, tariffIto *ito.TariffIto, connectorWattage int32, timeLocation *time.Location, processDatetime time.Time) (totalAmount, totalEnergy, totalTime float64) {
+func (r *SessionResolver) ProcessChargingPeriods(sessionIto *ito.SessionIto, tariffIto *ito.TariffIto, estimatedChargePower float64, timeLocation *time.Location, processDatetime time.Time) (totalAmount, totalEnergy, totalTime float64) {
 	lastDatetime := sessionIto.LastUpdated
 	numChargingPeriods := len(sessionIto.ChargingPeriods)
 	startDatetime := sessionIto.StartDatetime
@@ -138,10 +138,8 @@ func (r *SessionResolver) ProcessChargingPeriods(sessionIto *ito.SessionIto, tar
 		if chargingPeriodsEnergyCost == 0 {
 			// Estimate costs if charging periods energy costs is 0
 			if totalEnergy == 0 {
-				// kWh = hours * ((watts / 1000) * 20%)
-				connectorKiloWattage := (float64(connectorWattage) / 1000) * 0.2
-				totalEnergy = totalTime * connectorKiloWattage
-				log.Printf("%v: Connector kW: %v", sessionIto.Uid, connectorKiloWattage)
+				totalEnergy = totalTime * estimatedChargePower
+				log.Printf("%v: Connector kW: %v", sessionIto.Uid, estimatedChargePower)
 				log.Printf("%v: Estimated energy based on kWh: %v", sessionIto.Uid, totalEnergy)
 			} else if !isCdr && sessionIto.EndDatetime == nil {
 				if lastUpdatedTime > 0 && lastUpdatedTime < totalTime {

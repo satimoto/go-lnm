@@ -11,6 +11,7 @@ import (
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-lnm/internal/ito"
 	metrics "github.com/satimoto/go-lnm/internal/metric"
+	"github.com/satimoto/go-lnm/internal/user"
 	"github.com/satimoto/go-lnm/pkg/util"
 	"github.com/satimoto/go-ocpi/ocpirpc"
 )
@@ -143,7 +144,7 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 				break invoiceLoop
 			case db.SessionStatusTypeACTIVE:
 				// Session is active, calculate new invoice
-				if ok := r.processInvoicePeriod(ctx, user, session, timeLocation, tariffIto, connector.Wattage, taxPercent); !ok {
+				if ok := r.processInvoicePeriod(ctx, user, session, timeLocation, tariffIto, connector, taxPercent); !ok {
 					log.Printf("Ending session monitoring for %s with errors", session.Uid)
 					break invoiceLoop
 				}
@@ -173,7 +174,7 @@ func (r *SessionResolver) StopSession(ctx context.Context, session db.Session) (
 	return nil, errors.New("cannot remotely stop this session")
 }
 
-func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User, session db.Session, timeLocation *time.Location, tariffIto *ito.TariffIto, connectorWattage int32, taxPercent float64) bool {
+func (r *SessionResolver) processInvoicePeriod(ctx context.Context, sessionUser db.User, session db.Session, timeLocation *time.Location, tariffIto *ito.TariffIto, connector db.Connector, taxPercent float64) bool {
 	sessionInvoices, err := r.Repository.ListSessionInvoicesBySessionID(ctx, session.ID)
 
 	if err != nil {
@@ -213,13 +214,14 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 		log.Printf("%v: TotalCost=%v", session.Uid, session.TotalCost.Float64)
 	}
 
+	estimatedChargePower := user.GetEstimatedChargePower(sessionUser, connector)
 	invoicedPriceFiat, _ := CalculatePriceInvoiced(sessionInvoices)
 	sessionIto := r.CreateSessionIto(ctx, session)
-	estimatedFiat, estimatedEnergy, estimatedTime := r.ProcessChargingPeriods(sessionIto, tariffIto, connectorWattage, timeLocation, timeNow)
+	estimatedFiat, estimatedEnergy, estimatedTime := r.ProcessChargingPeriods(sessionIto, tariffIto, estimatedChargePower, timeLocation, timeNow)
 
 	if estimatedFiat > invoicedPriceFiat {
 		priceFiat := estimatedFiat - invoicedPriceFiat
-		totalFiat, commissionFiat, taxFiat := CalculateCommission(estimatedFiat-invoicedPriceFiat, user.CommissionPercent, taxPercent)
+		totalFiat, commissionFiat, taxFiat := CalculateCommission(estimatedFiat-invoicedPriceFiat, sessionUser.CommissionPercent, taxPercent)
 
 		invoiceParams := util.InvoiceParams{
 			PriceFiat:      dbUtil.SqlNullFloat64(priceFiat),
@@ -235,7 +237,7 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 			MeteredTime:     timeNow.Sub(sessionIto.StartDatetime).Hours(),
 		}
 
-		r.IssueSessionInvoice(ctx, user, session, invoiceParams, chargeParams)
+		r.IssueSessionInvoice(ctx, sessionUser, session, invoiceParams, chargeParams)
 	}
 
 	return true
