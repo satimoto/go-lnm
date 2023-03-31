@@ -22,7 +22,7 @@ func TestProcessChargingPeriods(t *testing.T) {
 		desc     string
 		session  []byte
 		tariff   []byte
-		wattage  int32
+		chargePower  float64
 		location string
 		date     string
 		value    float64
@@ -47,7 +47,7 @@ func TestProcessChargingPeriods(t *testing.T) {
 					}]
 				}]
 			}`),
-			wattage:  11040,
+			chargePower:  11.040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T23:37:32Z",
 			value:    4,
@@ -77,7 +77,7 @@ func TestProcessChargingPeriods(t *testing.T) {
 					}]
 				}]
 			}`),
-			wattage:  11040,
+			chargePower:  11.040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T23:37:32Z",
 			value:    5.2,
@@ -107,7 +107,7 @@ func TestProcessChargingPeriods(t *testing.T) {
 					}]
 				}]
 			}`),
-			wattage:  11040,
+			chargePower:  11.040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T23:39:00Z",
 			value:    4.9,
@@ -137,7 +137,7 @@ func TestProcessChargingPeriods(t *testing.T) {
 					}]
 				}]
 			}`),
-			wattage:  11040,
+			chargePower:  11.040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T23:44:00Z",
 			value:    5.067,
@@ -167,7 +167,7 @@ func TestProcessChargingPeriods(t *testing.T) {
 					}]
 				}]
 			}`),
-			wattage:  11040,
+			chargePower:  11.040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T23:37:32Z",
 			value:    5,
@@ -197,7 +197,7 @@ func TestProcessChargingPeriods(t *testing.T) {
 					}]
 				}]
 			}`),
-			wattage:  11040,
+			chargePower:  11.040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T23:44:00Z",
 			value:    5.208333333333334,
@@ -227,7 +227,7 @@ func TestProcessChargingPeriods(t *testing.T) {
 					}]
 				}]
 			}`),
-			wattage:  11040,
+			chargePower:  11.040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T23:37:32Z",
 			value:    4,
@@ -257,7 +257,7 @@ func TestProcessChargingPeriods(t *testing.T) {
 					}]
 				}]
 			}`),
-			wattage:  11040,
+			chargePower:  11.040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T23:37:32Z",
 			value:    4,
@@ -287,7 +287,7 @@ func TestProcessChargingPeriods(t *testing.T) {
 					}]
 				}]
 			}`),
-			wattage:  11040,
+			chargePower:  11.040,
 			location: "Europe/Berlin",
 			date:     "2015-06-30T00:07:32Z",
 			value:    5.013656201604957,
@@ -387,7 +387,7 @@ func TestProcessChargingPeriods(t *testing.T) {
 					}
 				}]
 			}`),
-			wattage:  11040,
+			chargePower:  11.040,
 			location: "Europe/Berlin",
 			date:     "2015-06-30T00:07:32Z",
 			value:    8.5,
@@ -487,7 +487,7 @@ func TestProcessChargingPeriods(t *testing.T) {
 					}
 				}]
 			}`),
-			wattage:  11040,
+			chargePower:  11.040,
 			location: "Europe/Berlin",
 			date:     "2015-06-30T00:07:32Z",
 			value:    14.22,
@@ -558,7 +558,7 @@ func TestProcessChargingPeriods(t *testing.T) {
 					}
 				}]
 			}`),
-			wattage:  11040,
+			chargePower:  11.040,
 			location: "Europe/Berlin",
 			date:     "2015-06-30T00:07:32Z",
 			value:    14.8,
@@ -584,7 +584,7 @@ func TestProcessChargingPeriods(t *testing.T) {
 			timeLocation, _ := time.LoadLocation(tc.location)
 
 			processTime := util.ParseTime(tc.date, nil)
-			value, _, _ := sessionResolver.ProcessChargingPeriods(&sessionIto, &tariffIto, tc.wattage, timeLocation, *processTime)
+			value, _, _ := sessionResolver.ProcessChargingPeriods(&sessionIto, &tariffIto, tc.chargePower, timeLocation, *processTime)
 
 			if value != tc.value {
 				t.Errorf("Value mismatch: %v expecting %v", value, tc.value)
@@ -614,7 +614,7 @@ func TestProcessChargingPeriods2(t *testing.T) {
 		desc     string
 		session  []byte
 		tariff   []byte
-		wattage  int32
+		chargePower  float64
 		location string
 		date     string
 		value    float64
@@ -631,7 +631,7 @@ func TestProcessChargingPeriods2(t *testing.T) {
 				"last_updated": "2015-06-29T21:00:00Z"
 			}`),
 			tariff:   tariffBytes,
-			wattage:  11040,
+			chargePower:  11.040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T21:00:00Z",
 			value:    2.5,
@@ -653,7 +653,7 @@ func TestProcessChargingPeriods2(t *testing.T) {
 				"last_updated": "2015-06-29T21:02:00Z"
 			}`),
 			tariff:   tariffBytes,
-			wattage:  11040,
+			chargePower:  11.040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T21:02:00Z",
 			value:    2.667,
@@ -676,7 +676,7 @@ func TestProcessChargingPeriods2(t *testing.T) {
 				"last_updated": "2015-06-29T21:02:00Z"
 			}`),
 			tariff:   tariffBytes,
-			wattage:  11040,
+			chargePower:  11.040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T21:02:00Z",
 			value:    2.667,
@@ -698,7 +698,7 @@ func TestProcessChargingPeriods2(t *testing.T) {
 				"last_updated": "2015-06-29T21:02:00Z"
 			}`),
 			tariff:   tariffBytes,
-			wattage:  11040,
+			chargePower:  11.040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T21:03:00Z",
 			value:    2.667,
@@ -720,7 +720,7 @@ func TestProcessChargingPeriods2(t *testing.T) {
 				"last_updated": "2015-06-29T21:02:00Z"
 			}`),
 			tariff:   tariffBytes,
-			wattage:  11040,
+			chargePower:  11.040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T21:07:00Z",
 			value:    2.833,
@@ -742,7 +742,7 @@ func TestProcessChargingPeriods2(t *testing.T) {
 				"last_updated": "2015-06-29T21:02:00Z"
 			}`),
 			tariff:   tariffBytes,
-			wattage:  11040,
+			chargePower:  11.040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T22:02:00Z",
 			value:    4.5,
@@ -764,7 +764,7 @@ func TestProcessChargingPeriods2(t *testing.T) {
 				"last_updated": "2015-06-29T22:01:00Z"
 			}`),
 			tariff:   tariffBytes,
-			wattage:  11040,
+			chargePower:  11.040,
 			location: "Europe/Berlin",
 			date:     "2015-06-29T22:02:00Z",
 			value:    4.667,
@@ -790,7 +790,7 @@ func TestProcessChargingPeriods2(t *testing.T) {
 			timeLocation, _ := time.LoadLocation(tc.location)
 
 			processTime := util.ParseTime(tc.date, nil)
-			value, _, _ := sessionResolver.ProcessChargingPeriods(&sessionIto, &tariffIto, tc.wattage, timeLocation, *processTime)
+			value, _, _ := sessionResolver.ProcessChargingPeriods(&sessionIto, &tariffIto, tc.chargePower, timeLocation, *processTime)
 
 			if value != tc.value {
 				t.Errorf("Value mismatch: %v expecting %v", value, tc.value)
