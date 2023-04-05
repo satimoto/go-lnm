@@ -141,6 +141,7 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 			case db.SessionStatusTypeCOMPLETED, db.SessionStatusTypeINVALID, db.SessionStatusTypeINVOICED:
 				// End monitoring, let the CDR issue the final invoice
 				log.Printf("Ending session monitoring for %s", session.Uid)
+				r.SendSessionUpdateNotification(user, session)
 				break invoiceLoop
 			case db.SessionStatusTypeACTIVE:
 				// Session is active, calculate new invoice
