@@ -170,6 +170,7 @@ module "service-lnm" {
     env_ocpi_rpc_address             = "ocpi.${data.terraform_remote_state.infrastructure.outputs.ecs_service_discovery_namespace_name}:${var.env_ocpi_rpc_port}"
     env_metric_port                  = var.service_metric_port
     env_rest_port                    = var.service_container_port
+    env_rpc_host                     = "${var.subdomain_name}.${data.terraform_remote_state.infrastructure.outputs.ecs_service_discovery_namespace_name}"
     env_rpc_port                     = var.env_rpc_port
     env_shutdown_timeout             = var.env_shutdown_timeout
     env_update_unsettled_invoices    = var.env_update_unsettled_invoices
