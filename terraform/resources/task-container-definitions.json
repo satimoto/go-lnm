@@ -103,6 +103,10 @@
         "value": "${env_rest_port}"
       },
       {
+        "name": "RPC_HOST",
+        "value": "${env_rpc_host}"
+      },
+      {
         "name": "RPC_PORT",
         "value": "${env_rpc_port}"
       },
