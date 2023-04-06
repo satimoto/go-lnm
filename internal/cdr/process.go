@@ -3,6 +3,7 @@ package cdr
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"math/rand"
 	"time"
@@ -206,6 +207,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 
 		// Issue invoice request for session confirmation
 		if sess.IsConfirmed {
+			memo := fmt.Sprintf("Satimoto: %s", sess.Uid)
 			confirmationPercent := 0.1
 			confirmationTotalFiat := (cdrTotalFiat / 100.0) * confirmationPercent
 			confirmationPriceFiat, confirmationCommissionFiat, confirmationTaxFiat := session.ReverseCommission(confirmationTotalFiat, sessionUser.CommissionPercent, taxPercent)
@@ -217,7 +219,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 				TotalFiat:      dbUtil.SqlNullFloat64(confirmationTotalFiat),
 			}
 
-			r.IssueInvoiceRequest(ctx, sessionUser.ID, &sess.ID, "SESSION_CONFIRMED", sess.Currency, sess.Uid, invoiceParams)
+			r.IssueInvoiceRequest(ctx, sessionUser.ID, &sess.ID, "SESSION_CONFIRMED", sess.Currency, memo, invoiceParams)
 		}
 
 		// Issue invoice request to circuit user
@@ -232,7 +234,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 				ReleaseDate: dbUtil.SqlNullTime(releaseDate),
 			}
 
-			_, err := r.IssueInvoiceRequest(ctx, sessionUser.CircuitUserID.Int64, nil, "CIRCUIT", sess.Currency, "Satsback", invoiceParams)
+			_, err := r.IssueInvoiceRequest(ctx, sessionUser.CircuitUserID.Int64, nil, "CIRCUIT", sess.Currency, "Satimoto: Recharge", invoiceParams)
 
 			return err
 		}

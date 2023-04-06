@@ -225,7 +225,7 @@ func TestIssueInvoiceRequest(t *testing.T) {
 				Code: "CIRCUIT",
 			}})
 
-			_, err := cdrResolver.IssueInvoiceRequest(ctx, 1, nil, "CIRCUIT", "EUR", "Satsback", tc.invoiceParams)
+			_, err := cdrResolver.IssueInvoiceRequest(ctx, 1, nil, "CIRCUIT", "EUR", "Satimoto: Recharge", tc.invoiceParams)
 
 			if tc.after != nil {
 				tc.after(t, mockRepository, mockLightningService, mockOcpiService)

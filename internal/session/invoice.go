@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -94,6 +95,7 @@ func (r *SessionResolver) WaitForInvoiceExpiry(paymentRequest string) {
 }
 
 func (r *SessionResolver) createSessionInvoice(ctx context.Context, currencyRate *rate.CurrencyRate, user db.User, session db.Session, invoiceParams util.InvoiceParams, chargeParams util.ChargeParams) *db.SessionInvoice {
+	memo := fmt.Sprintf("Satimoto: %s", session.Uid)
 	rateMsat := float64(currencyRate.RateMsat)
 	invoiceParams = util.FillInvoiceRequestParams(invoiceParams, rateMsat)
 
@@ -103,7 +105,7 @@ func (r *SessionResolver) createSessionInvoice(ctx context.Context, currencyRate
 		return nil
 	}
 
-	if paymentRequest, signature, err := lightningnetwork.CreateLightningInvoice(r.LightningService, session.Uid, invoiceParams.TotalMsat.Int64); err == nil {
+	if paymentRequest, signature, err := lightningnetwork.CreateLightningInvoice(r.LightningService, memo, invoiceParams.TotalMsat.Int64); err == nil {
 		sessionInvoiceParams := param.NewCreateSessionInvoiceParams(session)
 		sessionInvoiceParams.UserID = user.ID
 		sessionInvoiceParams.CurrencyRate = currencyRate.Rate
@@ -154,6 +156,7 @@ func (r *SessionResolver) createSessionInvoice(ctx context.Context, currencyRate
 }
 
 func (r *SessionResolver) updateSessionInvoice(ctx context.Context, currencyRate *rate.CurrencyRate, session db.Session, sessionInvoice db.SessionInvoice, invoiceParams util.InvoiceParams, chargeParams util.ChargeParams) *db.SessionInvoice {
+	memo := fmt.Sprintf("Satimoto: %s", session.Uid)
 	rateMsat := float64(currencyRate.RateMsat)
 	updateInvoiceParams := util.InvoiceParams{
 		PriceFiat:      util.AddNullFloat64(dbUtil.SqlNullFloat64(sessionInvoice.PriceFiat), invoiceParams.PriceFiat),
@@ -170,7 +173,7 @@ func (r *SessionResolver) updateSessionInvoice(ctx context.Context, currencyRate
 		return nil
 	}
 
-	if paymentRequest, signature, err := lightningnetwork.CreateLightningInvoice(r.LightningService, session.Uid, invoiceParams.TotalMsat.Int64); err == nil {
+	if paymentRequest, signature, err := lightningnetwork.CreateLightningInvoice(r.LightningService, memo, invoiceParams.TotalMsat.Int64); err == nil {
 		// Get the session invoice again to check if it's been settled or updated
 		latestSessionInvoice, err := r.Repository.GetSessionInvoice(ctx, sessionInvoice.ID)
 
