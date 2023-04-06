@@ -58,11 +58,16 @@ func ReverseCommission(total float64, commissionPercent float64, taxPercent floa
 	return amount, commission, tax
 }
 
-func calculateCost(priceComponent *ito.PriceComponentIto, volume float64, factor float64) float64 {
+func calculateCost(priceComponent *ito.PriceComponentIto, volume *float64, factor float64) float64 {
 	stepRound := getPriceComponentRounding(priceComponent.StepRound, db.RoundingGranularityUNIT, db.RoundingRuleROUNDUP)
 	priceRound := getPriceComponentRounding(priceComponent.PriceRound, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)
 	pricePerStep := priceComponent.Price / factor * float64(priceComponent.StepSize)
-	volumeFactor := volume * factor
+	volumeFactor := 0.0
+
+	if volume != nil {
+		volumeFactor = *volume * factor
+	}
+
 	steps := volumeFactor / float64(priceComponent.StepSize)
 	roundedSteps := calculateRoundedValue(steps, stepRound.Granularity, stepRound.Rule)
 
@@ -90,7 +95,7 @@ func getPriceComponentByType(priceComponents []*ito.PriceComponentIto, tariffDim
 	return nil
 }
 
-func getPriceComponents(elements []*ito.ElementIto, timeLocation *time.Location, startDatetime time.Time, endDatetime time.Time, energy float64, minPower float64, maxPower float64) []*ito.PriceComponentIto {
+func getPriceComponents(elements []*ito.ElementIto, timeLocation *time.Location, startDatetime time.Time, endDatetime time.Time, energy *float64, minPower *float64, maxPower *float64) []*ito.PriceComponentIto {
 	list := []*ito.PriceComponentIto{}
 	startDatetimeAtLocation := startDatetime.In(timeLocation)
 	weekday := strings.ToUpper(startDatetimeAtLocation.Weekday().String())
@@ -110,10 +115,10 @@ func getPriceComponents(elements []*ito.ElementIto, timeLocation *time.Location,
 				(restrictionEndTime == nil || startDatetimeAtLocation.Before(*restrictionEndTime)) &&
 				(restrictionStartDate == nil || startDatetimeAtLocation.After(*restrictionStartDate)) &&
 				(restrictionEndDate == nil || startDatetimeAtLocation.Before(*restrictionEndDate)) &&
-				(restrictions.MinKwh == nil || energy >= *restrictions.MinKwh) &&
-				(restrictions.MaxKwh == nil || (energy > 0 && energy < *restrictions.MaxKwh)) &&
-				(restrictions.MinPower == nil || minPower >= *restrictions.MinPower) &&
-				(restrictions.MaxPower == nil || (maxPower > 0 && maxPower < *restrictions.MaxPower)) &&
+				(restrictions.MinKwh == nil || energy == nil || *energy >= *restrictions.MinKwh) &&
+				(restrictions.MaxKwh == nil || energy == nil || (*energy > 0 && *energy < *restrictions.MaxKwh)) &&
+				(restrictions.MinPower == nil || minPower == nil || *minPower >= *restrictions.MinPower) &&
+				(restrictions.MaxPower == nil || maxPower == nil || (*maxPower > 0 && *maxPower < *restrictions.MaxPower)) &&
 				(restrictions.MinDuration == nil || duration >= *restrictions.MinDuration) &&
 				(restrictions.MaxDuration == nil || duration < *restrictions.MaxDuration) &&
 				(len(restrictions.DayOfWeek) == 0 || dbUtil.StringsContainString(restrictions.DayOfWeek, weekday)) {
@@ -186,14 +191,14 @@ func calculateRoundedValue(value float64, granularity db.RoundingGranularity, ru
 	return math.Ceil(value*factor) / factor
 }
 
-func getVolumeByType(dimensions []*ito.ChargingPeriodDimensionIto, dimensionType db.ChargingPeriodDimensionType) float64 {
+func getVolumeByType(dimensions []*ito.ChargingPeriodDimensionIto, dimensionType db.ChargingPeriodDimensionType) *float64 {
 	for _, dimension := range dimensions {
 		if dimension.Type == dimensionType {
-			return dimension.Volume
+			return &dimension.Volume
 		}
 	}
 
-	return 0
+	return nil
 }
 
 func calculateInvoiceInterval(wattage int32) time.Duration {
