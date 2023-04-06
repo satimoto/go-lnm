@@ -3,6 +3,7 @@ package cdr
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -31,7 +32,9 @@ func (r *CdrResolver) IssueRebate(ctx context.Context, session db.Session, userI
 	}
 
 	// Then issue an invoice request if no session invoice exists
-	if invoiceRequest, err := r.IssueInvoiceRequest(ctx, userID, &session.ID, "REBATE", session.Currency, session.Uid, invoiceParams); err == nil {
+	memo := fmt.Sprintf("Satimoto: %s", session.Uid)
+
+	if invoiceRequest, err := r.IssueInvoiceRequest(ctx, userID, &session.ID, "REBATE", session.Currency, memo, invoiceParams); err == nil {
 		updateSessionByUidParams := param.NewUpdateSessionByUidParams(session)
 		updateSessionByUidParams.InvoiceRequestID = dbUtil.SqlNullInt64(invoiceRequest.ID)
 
@@ -186,6 +189,7 @@ func (r *CdrResolver) updateSessionInvoice(ctx context.Context, session db.Sessi
 		TotalFiat:      util.MinusNullFloat64(dbUtil.SqlNullFloat64(sessionInvoice.TotalFiat), invoiceParams.TotalFiat),
 	}
 
+	memo := fmt.Sprintf("Satimoto: %s", session.Uid)
 	updateInvoiceParams = util.FillInvoiceRequestParams(updateInvoiceParams, rateMsat)
 
 	if !invoiceParams.TotalMsat.Valid {
@@ -194,7 +198,7 @@ func (r *CdrResolver) updateSessionInvoice(ctx context.Context, session db.Sessi
 		return nil
 	}
 
-	if paymentRequest, signature, err := lightningnetwork.CreateLightningInvoice(r.LightningService, session.Uid, invoiceParams.TotalMsat.Int64); err == nil {
+	if paymentRequest, signature, err := lightningnetwork.CreateLightningInvoice(r.LightningService, memo, invoiceParams.TotalMsat.Int64); err == nil {
 		// Get the session invoice again to check if it's been settled or updated
 		latestSessionInvoice, err := r.SessionResolver.Repository.GetSessionInvoice(ctx, sessionInvoice.ID)
 
