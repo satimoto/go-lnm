@@ -58,6 +58,15 @@ func ReverseCommission(total float64, commissionPercent float64, taxPercent floa
 	return amount, commission, tax
 }
 
+func ReverseCommissionInt64(total int64, commissionPercent float64, taxPercent float64) (amount int64, commission int64, tax int64) {
+	amount = int64(float64(total) / (1 + (taxPercent / 100)))
+	tax = total - amount
+	amount = int64(float64(amount) / (1 + (commissionPercent / 100)))
+	commission = total - amount - tax
+
+	return amount, commission, tax
+}
+
 func calculateCost(priceComponent *ito.PriceComponentIto, volume *float64, factor float64) float64 {
 	stepRound := getPriceComponentRounding(priceComponent.StepRound, db.RoundingGranularityUNIT, db.RoundingRuleROUNDUP)
 	priceRound := getPriceComponentRounding(priceComponent.PriceRound, db.RoundingGranularityTHOUSANDTH, db.RoundingRuleROUNDNEAR)

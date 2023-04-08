@@ -3,7 +3,6 @@ package cdr
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"math/rand"
 	"time"
@@ -207,7 +206,6 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 
 		// Issue invoice request for session confirmation
 		if sess.IsConfirmed {
-			memo := fmt.Sprintf("Satimoto: %s", sess.Uid)
 			confirmationPercent := 0.1
 			confirmationTotalFiat := (cdrTotalFiat / 100.0) * confirmationPercent
 			confirmationPriceFiat, confirmationCommissionFiat, confirmationTaxFiat := session.ReverseCommission(confirmationTotalFiat, sessionUser.CommissionPercent, taxPercent)
@@ -219,7 +217,51 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 				TotalFiat:      dbUtil.SqlNullFloat64(confirmationTotalFiat),
 			}
 
-			r.IssueInvoiceRequest(ctx, sessionUser.ID, &sess.ID, "SESSION_CONFIRMED", sess.Currency, memo, invoiceParams)
+			r.IssueInvoiceRequest(ctx, sessionUser.ID, &sess.ID, "SESSION_CONFIRMED", sess.Currency, "Satimoto: Confirmed", invoiceParams)
+		}
+
+		// Issue invoice request based on location charge count
+		if cdrsCount, err := r.Repository.CountCdrsByLocationID(ctx, cdr.LocationID); err == nil && cdrsCount == 1 {
+			totalMsat := int64(21000)
+			confirmationPriceMsat, confirmationCommissionMsat, confirmationTaxMsat := session.ReverseCommissionInt64(totalMsat, sessionUser.CommissionPercent, taxPercent)
+
+			invoiceParams := util.InvoiceParams{
+				PriceMsat:      dbUtil.SqlNullInt64(confirmationPriceMsat),
+				CommissionMsat: dbUtil.SqlNullInt64(confirmationCommissionMsat),
+				TaxMsat:        dbUtil.SqlNullInt64(confirmationTaxMsat),
+				TotalMsat:      dbUtil.SqlNullInt64(totalMsat),
+			}
+
+			r.IssueInvoiceRequest(ctx, sessionUser.ID, &sess.ID, "FIRST_LOCATION_CHARGE", sess.Currency, "Satimoto: First", invoiceParams)
+		}
+
+		// Issue invoice request based on user charge count
+		if cdrsCount, err := r.Repository.CountCdrsByUserID(ctx, cdr.UserID); err == nil {
+			if cdrsCount == 1 {
+				totalMsat := int64(21000)
+				confirmationPriceMsat, confirmationCommissionMsat, confirmationTaxMsat := session.ReverseCommissionInt64(totalMsat, sessionUser.CommissionPercent, taxPercent)
+
+				invoiceParams := util.InvoiceParams{
+					PriceMsat:      dbUtil.SqlNullInt64(confirmationPriceMsat),
+					CommissionMsat: dbUtil.SqlNullInt64(confirmationCommissionMsat),
+					TaxMsat:        dbUtil.SqlNullInt64(confirmationTaxMsat),
+					TotalMsat:      dbUtil.SqlNullInt64(totalMsat),
+				}
+
+				r.IssueInvoiceRequest(ctx, sessionUser.ID, &sess.ID, "FIRST_USER_CHARGE", sess.Currency, "Satimoto: Hello", invoiceParams)
+			} else if cdrsCount == 21 {
+				totalMsat := int64(2100000)
+				confirmationPriceMsat, confirmationCommissionMsat, confirmationTaxMsat := session.ReverseCommissionInt64(totalMsat, sessionUser.CommissionPercent, taxPercent)
+
+				invoiceParams := util.InvoiceParams{
+					PriceMsat:      dbUtil.SqlNullInt64(confirmationPriceMsat),
+					CommissionMsat: dbUtil.SqlNullInt64(confirmationCommissionMsat),
+					TaxMsat:        dbUtil.SqlNullInt64(confirmationTaxMsat),
+					TotalMsat:      dbUtil.SqlNullInt64(totalMsat),
+				}
+
+				r.IssueInvoiceRequest(ctx, sessionUser.ID, &sess.ID, "21_CHARGES", sess.Currency, "Satimoto: 21", invoiceParams)
+			}
 		}
 
 		// Issue invoice request to circuit user
