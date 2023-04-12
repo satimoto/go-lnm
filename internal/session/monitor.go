@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"math"
 	"time"
 
 	"github.com/satimoto/go-datastore/pkg/db"
@@ -223,6 +224,7 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, sessionUser 
 	if estimatedFiat > invoicedPriceFiat {
 		priceFiat := estimatedFiat - invoicedPriceFiat
 		totalFiat, commissionFiat, taxFiat := CalculateCommission(estimatedFiat-invoicedPriceFiat, sessionUser.CommissionPercent, taxPercent)
+		meteredTime := session.LastUpdated.Sub(sessionIto.StartDatetime).Hours()
 
 		invoiceParams := util.InvoiceParams{
 			PriceFiat:      dbUtil.SqlNullFloat64(priceFiat),
@@ -232,10 +234,10 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, sessionUser 
 		}
 
 		chargeParams := util.ChargeParams{
-			EstimatedEnergy: estimatedEnergy,
-			EstimatedTime:   estimatedTime,
-			MeteredEnergy:   sessionIto.TotalEnergy,
-			MeteredTime:     timeNow.Sub(sessionIto.StartDatetime).Hours(),
+			EstimatedEnergy: math.Max(0, estimatedEnergy),
+			EstimatedTime:   math.Max(0, estimatedTime),
+			MeteredEnergy:   math.Max(0, sessionIto.TotalEnergy),
+			MeteredTime:     math.Max(0, meteredTime),
 		}
 
 		r.IssueSessionInvoice(ctx, sessionUser, session, invoiceParams, chargeParams)
