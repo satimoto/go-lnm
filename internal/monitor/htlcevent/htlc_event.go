@@ -47,7 +47,6 @@ func (m *HtlcEventMonitor) StartMonitor(nodeID int64, shutdownCtx context.Contex
 }
 
 func (m *HtlcEventMonitor) handleHtlcEvent(htlcEvent routerrpc.HtlcEvent) {
-	log.Printf("HTLC Event: %v", htlcEvent.EventType)
 	/** HTLC Event received.
 	 *  Check that the event type is a Forward event and that it is successful.
 	 *  Find the Channel Request HTLC by the circuit key params.
@@ -71,11 +70,7 @@ func (m *HtlcEventMonitor) handleHtlcEvent(htlcEvent routerrpc.HtlcEvent) {
 }
 
 func (m *HtlcEventMonitor) handleForwardHtlcEvent(ctx context.Context, htlcEvent routerrpc.HtlcEvent) {
-	log.Printf("Forward HTLC Event")
 	forwardEvent := htlcEvent.GetForwardEvent()
-
-	log.Printf("IncomingAmtMsat: %v", forwardEvent.Info.IncomingAmtMsat)
-	log.Printf("OutgoingAmtMsat: %v", forwardEvent.Info.OutgoingAmtMsat)
 
 	currencyRate, err := m.FerpService.GetRate(m.accountingCurrency)
 
@@ -115,8 +110,6 @@ func (m *HtlcEventMonitor) handleForwardHtlcEvent(ctx context.Context, htlcEvent
 }
 
 func (m *HtlcEventMonitor) handleForwardFailHtlcEvent(ctx context.Context, htlcEvent routerrpc.HtlcEvent) {
-	log.Printf("Forward Fail HTLC Event")
-
 	incomingChannelId := int64(htlcEvent.IncomingChannelId)
 	incomingHtlcId := int64(htlcEvent.IncomingHtlcId)
 
@@ -149,15 +142,9 @@ func (m *HtlcEventMonitor) handleForwardFailHtlcEvent(ctx context.Context, htlcE
 }
 
 func (m *HtlcEventMonitor) handleLinkFailHtlcEvent(ctx context.Context, htlcEvent routerrpc.HtlcEvent) {
-	log.Printf("Link Fail HTLC Event")
-
 	linkFailEvent := htlcEvent.GetLinkFailEvent()
 	incomingChannelId := int64(htlcEvent.IncomingChannelId)
 	incomingHtlcId := int64(htlcEvent.IncomingHtlcId)
-
-	log.Printf("WireFailure: %v", linkFailEvent.WireFailure)
-	log.Printf("FailureDetail: %v", linkFailEvent.FailureDetail)
-	log.Printf("FailureString: %v", linkFailEvent.FailureString)
 
 	// Update routing event
 	updateRoutingEventParams := db.UpdateRoutingEventParams{
@@ -218,7 +205,6 @@ func (m *HtlcEventMonitor) handleLinkFailHtlcEvent(ctx context.Context, htlcEven
 }
 
 func (m *HtlcEventMonitor) handleSettleHtlcEvent(ctx context.Context, htlcEvent routerrpc.HtlcEvent) {
-	log.Printf("Settle HTLC Event")
 	incomingChannelId := int64(htlcEvent.IncomingChannelId)
 	incomingHtlcId := int64(htlcEvent.IncomingHtlcId)
 
