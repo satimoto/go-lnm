@@ -117,6 +117,10 @@
       {
         "name": "UPDATE_UNSETTLED_INVOICES",
         "value": "${env_update_unsettled_invoices}"
+      },
+      {
+        "name": "TEST_RPC_CONNECTION",
+        "value": "${env_test_rpc_connection}"
       }
     ]
   }
