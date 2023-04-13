@@ -77,6 +77,7 @@ func (m *Monitor) StartMonitor(waitGroup *sync.WaitGroup) {
 func (m *Monitor) register() error {
 	ctx := context.Background()
 	rpcHost := os.Getenv("RPC_HOST")
+	testRpcConnection := dbUtil.GetEnvBool("TEST_RPC_CONNECTION", true)
 	waitingForSync := false
 
 	if len(rpcHost) == 0 {
@@ -86,13 +87,16 @@ func (m *Monitor) register() error {
 	}
 
 	rpcAddr := fmt.Sprintf("%s:%s", rpcHost, os.Getenv("RPC_PORT"))
-	ocpiService := ocpi.NewService(os.Getenv("OCPI_RPC_ADDRESS"))
 
-	_, err := ocpiService.TestConnection(ctx, &ocpirpc.TestConnectionRequest{
-		Addr: rpcAddr,
-	})
+	if testRpcConnection {
+		ocpiService := ocpi.NewService(os.Getenv("OCPI_RPC_ADDRESS"))
 
-	dbUtil.PanicOnError("LNM047", "Error testing RPC connectivity", err)
+		_, err := ocpiService.TestConnection(ctx, &ocpirpc.TestConnectionRequest{
+			Addr: rpcAddr,
+		})
+
+		dbUtil.PanicOnError("LNM047", "Error testing RPC connectivity", err)
+	}
 
 	for {
 		getInfoResponse, err := m.LightningService.GetInfo(&lnrpc.GetInfoRequest{})
