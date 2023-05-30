@@ -205,7 +205,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 		}
 
 		// Issue invoice request for session confirmation
-		if sess.IsConfirmed {
+		if sess.IsConfirmedStarted {
 			confirmationPercent := 0.1
 			confirmationTotalFiat := (cdrTotalFiat / 100.0) * confirmationPercent
 			confirmationPriceFiat, confirmationCommissionFiat, confirmationTaxFiat := session.ReverseCommission(confirmationTotalFiat, sessionUser.CommissionPercent, taxPercent)
