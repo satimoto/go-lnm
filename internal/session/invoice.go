@@ -18,11 +18,11 @@ import (
 )
 
 func (r *SessionResolver) IssueSessionInvoice(ctx context.Context, user db.User, session db.Session, invoiceParams util.InvoiceParams, chargeParams util.ChargeParams) *db.SessionInvoice {
-	currencyRate, err := r.FerpService.GetRate(session.Currency)
+	currencyRate, err := r.FerpService.GetRate(invoiceParams.Currency)
 
 	if err != nil {
 		metrics.RecordError("LNM054", "Error retrieving exchange rate", err)
-		log.Printf("LNM054: Currency=%v", session.Currency)
+		log.Printf("LNM054: Currency=%v", invoiceParams.Currency)
 		return nil
 	}
 
@@ -135,13 +135,13 @@ func (r *SessionResolver) createSessionInvoice(ctx context.Context, currencyRate
 
 		// Metrics
 		metricSessionInvoicesTotal.Inc()
-		metricSessionInvoicesCommissionFiat.WithLabelValues(session.Currency).Add(sessionInvoice.CommissionFiat)
+		metricSessionInvoicesCommissionFiat.WithLabelValues(invoiceParams.Currency).Add(sessionInvoice.CommissionFiat)
 		metricSessionInvoicesCommissionSatoshis.Add(float64(sessionInvoice.CommissionMsat / 1000))
-		metricSessionInvoicesPriceFiat.WithLabelValues(session.Currency).Add(sessionInvoice.PriceFiat)
+		metricSessionInvoicesPriceFiat.WithLabelValues(invoiceParams.Currency).Add(sessionInvoice.PriceFiat)
 		metricSessionInvoicesPriceSatoshis.Add(float64(sessionInvoice.PriceMsat / 1000))
-		metricSessionInvoicesTaxFiat.WithLabelValues(session.Currency).Add(sessionInvoice.TaxFiat)
+		metricSessionInvoicesTaxFiat.WithLabelValues(invoiceParams.Currency).Add(sessionInvoice.TaxFiat)
 		metricSessionInvoicesTaxSatoshis.Add(float64(sessionInvoice.TaxMsat / 1000))
-		metricSessionInvoicesTotalFiat.WithLabelValues(session.Currency).Add(sessionInvoice.TotalFiat)
+		metricSessionInvoicesTotalFiat.WithLabelValues(invoiceParams.Currency).Add(sessionInvoice.TotalFiat)
 		metricSessionInvoicesTotalSatoshis.Add(float64(sessionInvoice.TotalMsat / 1000))
 
 		// TODO: handle notification failure
@@ -159,6 +159,7 @@ func (r *SessionResolver) updateSessionInvoice(ctx context.Context, currencyRate
 	memo := fmt.Sprintf("Satimoto: %s", session.Uid)
 	rateMsat := float64(currencyRate.RateMsat)
 	updateInvoiceParams := util.InvoiceParams{
+		Currency:       invoiceParams.Currency,
 		PriceFiat:      util.AddNullFloat64(dbUtil.SqlNullFloat64(sessionInvoice.PriceFiat), invoiceParams.PriceFiat),
 		CommissionFiat: util.AddNullFloat64(dbUtil.SqlNullFloat64(sessionInvoice.CommissionFiat), invoiceParams.CommissionFiat),
 		TaxFiat:        util.AddNullFloat64(dbUtil.SqlNullFloat64(sessionInvoice.TaxFiat), invoiceParams.TaxFiat),
@@ -207,13 +208,13 @@ func (r *SessionResolver) updateSessionInvoice(ctx context.Context, currencyRate
 
 			// Metrics
 			metricSessionInvoicesTotal.Inc()
-			metricSessionInvoicesCommissionFiat.WithLabelValues(session.Currency).Add(invoiceParams.CommissionFiat.Float64)
+			metricSessionInvoicesCommissionFiat.WithLabelValues(invoiceParams.Currency).Add(invoiceParams.CommissionFiat.Float64)
 			metricSessionInvoicesCommissionSatoshis.Add(float64(invoiceParams.CommissionMsat.Int64 / 1000))
-			metricSessionInvoicesPriceFiat.WithLabelValues(session.Currency).Add(invoiceParams.PriceFiat.Float64)
+			metricSessionInvoicesPriceFiat.WithLabelValues(invoiceParams.Currency).Add(invoiceParams.PriceFiat.Float64)
 			metricSessionInvoicesPriceSatoshis.Add(float64(invoiceParams.PriceMsat.Int64 / 1000))
-			metricSessionInvoicesTaxFiat.WithLabelValues(session.Currency).Add(invoiceParams.TaxFiat.Float64)
+			metricSessionInvoicesTaxFiat.WithLabelValues(invoiceParams.Currency).Add(invoiceParams.TaxFiat.Float64)
 			metricSessionInvoicesTaxSatoshis.Add(float64(invoiceParams.TaxMsat.Int64 / 1000))
-			metricSessionInvoicesTotalFiat.WithLabelValues(session.Currency).Add(invoiceParams.TotalFiat.Float64)
+			metricSessionInvoicesTotalFiat.WithLabelValues(invoiceParams.Currency).Add(invoiceParams.TotalFiat.Float64)
 			metricSessionInvoicesTotalSatoshis.Add(float64(invoiceParams.TotalMsat.Int64 / 1000))
 
 			go r.WaitForInvoiceExpiry(paymentRequest)

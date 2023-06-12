@@ -209,7 +209,7 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, sessionUser 
 
 	timeNow := time.Now().UTC()
 	delta := timeNow.Sub(session.LastUpdated).Minutes()
-	log.Printf("Processing session %v with currency %v", session.Uid, session.Currency)
+	log.Printf("Processing session %v with currency %v", session.Uid, tariffIto.Currency)
 	log.Printf("%v: Kwh=%v, LastUpdated=%v, DeltaMinutes=%v", session.Uid, session.Kwh, session.LastUpdated.Format(time.RFC3339), delta)
 
 	if session.TotalCost.Valid {
@@ -227,6 +227,7 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, sessionUser 
 		meteredTime := session.LastUpdated.Sub(sessionIto.StartDatetime).Hours()
 
 		invoiceParams := util.InvoiceParams{
+			Currency:       tariffIto.Currency,
 			PriceFiat:      dbUtil.SqlNullFloat64(priceFiat),
 			CommissionFiat: dbUtil.SqlNullFloat64(commissionFiat),
 			TaxFiat:        dbUtil.SqlNullFloat64(taxFiat),

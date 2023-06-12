@@ -35,6 +35,7 @@ func TestIssueInvoiceRequest(t *testing.T) {
 			})
 		},
 		invoiceParams: util.InvoiceParams{
+			Currency:       "EUR",
 			PriceFiat:      dbUtil.SqlNullFloat64(0.3852),
 			CommissionFiat: dbUtil.SqlNullFloat64(0.026964),
 			TaxFiat:        dbUtil.SqlNullFloat64(0.07831116),
@@ -104,6 +105,7 @@ func TestIssueInvoiceRequest(t *testing.T) {
 			})
 		},
 		invoiceParams: util.InvoiceParams{
+			Currency:       "EUR",
 			PriceFiat:      dbUtil.SqlNullFloat64(0.3852),
 			CommissionFiat: dbUtil.SqlNullFloat64(0.026964),
 			TaxFiat:        dbUtil.SqlNullFloat64(0.07831116),
@@ -159,6 +161,7 @@ func TestIssueInvoiceRequest(t *testing.T) {
 			})
 		},
 		invoiceParams: util.InvoiceParams{
+			Currency:       "EUR",
 			TotalMsat: dbUtil.SqlNullInt64(2207138),
 		},
 		err: nil,
