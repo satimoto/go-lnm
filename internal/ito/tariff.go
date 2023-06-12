@@ -39,8 +39,9 @@ type PriceComponentRoundingIto struct {
 }
 
 type TariffIto struct {
-	Elements                 []*ElementIto         `json:"elements"`
-	Restriction              *TariffRestrictionIto `json:"restriction,omitempty"`
+	Currency    string                `json:"currency"`
+	Elements    []*ElementIto         `json:"elements"`
+	Restriction *TariffRestrictionIto `json:"restriction,omitempty"`
 }
 
 type TariffRestrictionIto struct {

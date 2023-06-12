@@ -34,7 +34,7 @@ func (r *CdrResolver) IssueRebate(ctx context.Context, session db.Session, userI
 	// Then issue an invoice request if no session invoice exists
 	memo := fmt.Sprintf("Satimoto: %s", session.Uid)
 
-	if invoiceRequest, err := r.IssueInvoiceRequest(ctx, userID, &session.ID, "REBATE", session.Currency, memo, invoiceParams); err == nil {
+	if invoiceRequest, err := r.IssueInvoiceRequest(ctx, userID, &session.ID, "REBATE", invoiceParams.Currency, memo, invoiceParams); err == nil {
 		updateSessionByUidParams := param.NewUpdateSessionByUidParams(session)
 		updateSessionByUidParams.InvoiceRequestID = dbUtil.SqlNullInt64(invoiceRequest.ID)
 
@@ -173,16 +173,17 @@ func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, ses
 }
 
 func (r *CdrResolver) updateSessionInvoice(ctx context.Context, session db.Session, sessionInvoice db.SessionInvoice, invoiceParams util.InvoiceParams, chargeParams util.ChargeParams) *db.SessionInvoice {
-	currencyRate, err := r.FerpService.GetRate(session.Currency)
+	currencyRate, err := r.FerpService.GetRate(invoiceParams.Currency)
 
 	if err != nil {
 		metrics.RecordError("LNM171", "Error retrieving exchange rate", err)
-		log.Printf("LNM171: Currency=%v", session.Currency)
+		log.Printf("LNM171: Currency=%v", invoiceParams.Currency)
 		return nil
 	}
 
 	rateMsat := float64(currencyRate.RateMsat)
 	updateInvoiceParams := util.InvoiceParams{
+		Currency:       invoiceParams.Currency,
 		PriceFiat:      util.MinusNullFloat64(dbUtil.SqlNullFloat64(sessionInvoice.PriceFiat), invoiceParams.PriceFiat),
 		CommissionFiat: util.MinusNullFloat64(dbUtil.SqlNullFloat64(sessionInvoice.CommissionFiat), invoiceParams.CommissionFiat),
 		TaxFiat:        util.MinusNullFloat64(dbUtil.SqlNullFloat64(sessionInvoice.TaxFiat), invoiceParams.TaxFiat),

@@ -98,6 +98,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 		return errors.New("error retrieving cdr session")
 	}
 
+	currency := sess.Currency
 	sessionUser, err := r.SessionResolver.UserResolver.Repository.GetUser(ctx, sess.UserID)
 
 	if err != nil {
@@ -150,6 +151,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 			timeLocation, _ = time.LoadLocation("UTC")
 		}
 
+		currency = tariffIto.Currency
 		estimatedChargePower := user.GetEstimatedChargePower(sessionUser, connector)
 
 		cdrTotalFiat, cdrTotalEnergy, cdrTotalTime = r.SessionResolver.ProcessChargingPeriods(sessionIto, tariffIto, estimatedChargePower, timeLocation, cdr.LastUpdated)
@@ -177,6 +179,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 			invoiceTotalFiat, invoiceCommissionFiat, invoiceTaxFiat := session.CalculateCommission(invoicePriceFiat, sessionUser.CommissionPercent, taxPercent)
 
 			invoiceParams := util.InvoiceParams{
+				Currency:       currency,
 				PriceFiat:      dbUtil.SqlNullFloat64(invoicePriceFiat),
 				CommissionFiat: dbUtil.SqlNullFloat64(invoiceCommissionFiat),
 				TaxFiat:        dbUtil.SqlNullFloat64(invoiceTaxFiat),
@@ -192,6 +195,7 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 				rebatePriceFiat, rebateCommissionFiat, rebateTaxFiat := session.ReverseCommission(rebateTotalFiat, sessionUser.CommissionPercent, taxPercent)
 
 				invoiceParams := util.InvoiceParams{
+					Currency:       currency,
 					PriceFiat:      dbUtil.SqlNullFloat64(rebatePriceFiat),
 					CommissionFiat: dbUtil.SqlNullFloat64(rebateCommissionFiat),
 					TaxFiat:        dbUtil.SqlNullFloat64(rebateTaxFiat),
@@ -211,13 +215,14 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 			confirmationPriceFiat, confirmationCommissionFiat, confirmationTaxFiat := session.ReverseCommission(confirmationTotalFiat, sessionUser.CommissionPercent, taxPercent)
 
 			invoiceParams := util.InvoiceParams{
+				Currency:       currency,
 				PriceFiat:      dbUtil.SqlNullFloat64(confirmationPriceFiat),
 				CommissionFiat: dbUtil.SqlNullFloat64(confirmationCommissionFiat),
 				TaxFiat:        dbUtil.SqlNullFloat64(confirmationTaxFiat),
 				TotalFiat:      dbUtil.SqlNullFloat64(confirmationTotalFiat),
 			}
 
-			r.IssueInvoiceRequest(ctx, sessionUser.ID, &sess.ID, "SESSION_CONFIRMED", sess.Currency, "Satimoto: Confirmed", invoiceParams)
+			r.IssueInvoiceRequest(ctx, sessionUser.ID, &sess.ID, "SESSION_CONFIRMED", currency, "Satimoto: Confirmed", invoiceParams)
 		}
 
 		// Issue invoice request based on location charge count
@@ -226,13 +231,14 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 			confirmationPriceMsat, confirmationCommissionMsat, confirmationTaxMsat := session.ReverseCommissionInt64(totalMsat, sessionUser.CommissionPercent, taxPercent)
 
 			invoiceParams := util.InvoiceParams{
+				Currency:       currency,
 				PriceMsat:      dbUtil.SqlNullInt64(confirmationPriceMsat),
 				CommissionMsat: dbUtil.SqlNullInt64(confirmationCommissionMsat),
 				TaxMsat:        dbUtil.SqlNullInt64(confirmationTaxMsat),
 				TotalMsat:      dbUtil.SqlNullInt64(totalMsat),
 			}
 
-			r.IssueInvoiceRequest(ctx, sessionUser.ID, &sess.ID, "FIRST_LOCATION_CHARGE", sess.Currency, "Satimoto: First", invoiceParams)
+			r.IssueInvoiceRequest(ctx, sessionUser.ID, &sess.ID, "FIRST_LOCATION_CHARGE", currency, "Satimoto: First", invoiceParams)
 		}
 
 		// Issue invoice request based on user charge count
@@ -242,25 +248,27 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 				confirmationPriceMsat, confirmationCommissionMsat, confirmationTaxMsat := session.ReverseCommissionInt64(totalMsat, sessionUser.CommissionPercent, taxPercent)
 
 				invoiceParams := util.InvoiceParams{
+					Currency:       currency,
 					PriceMsat:      dbUtil.SqlNullInt64(confirmationPriceMsat),
 					CommissionMsat: dbUtil.SqlNullInt64(confirmationCommissionMsat),
 					TaxMsat:        dbUtil.SqlNullInt64(confirmationTaxMsat),
 					TotalMsat:      dbUtil.SqlNullInt64(totalMsat),
 				}
 
-				r.IssueInvoiceRequest(ctx, sessionUser.ID, &sess.ID, "FIRST_USER_CHARGE", sess.Currency, "Satimoto: Hello", invoiceParams)
+				r.IssueInvoiceRequest(ctx, sessionUser.ID, &sess.ID, "FIRST_USER_CHARGE", currency, "Satimoto: Hello", invoiceParams)
 			} else if cdrsCount == 21 {
 				totalMsat := int64(2100000)
 				confirmationPriceMsat, confirmationCommissionMsat, confirmationTaxMsat := session.ReverseCommissionInt64(totalMsat, sessionUser.CommissionPercent, taxPercent)
 
 				invoiceParams := util.InvoiceParams{
+					Currency:       currency,
 					PriceMsat:      dbUtil.SqlNullInt64(confirmationPriceMsat),
 					CommissionMsat: dbUtil.SqlNullInt64(confirmationCommissionMsat),
 					TaxMsat:        dbUtil.SqlNullInt64(confirmationTaxMsat),
 					TotalMsat:      dbUtil.SqlNullInt64(totalMsat),
 				}
 
-				r.IssueInvoiceRequest(ctx, sessionUser.ID, &sess.ID, "21_CHARGES", sess.Currency, "Satimoto: 21", invoiceParams)
+				r.IssueInvoiceRequest(ctx, sessionUser.ID, &sess.ID, "21_CHARGES", currency, "Satimoto: 21", invoiceParams)
 			}
 		}
 
@@ -272,11 +280,12 @@ func (r *CdrResolver) ProcessCdr(cdr db.Cdr) error {
 			// TODO: This should be launched as a goroutine to force completion/retries
 			releaseDate := time.Now().Add(time.Duration(rand.Intn(120)) * time.Minute)
 			invoiceParams := util.InvoiceParams{
+				Currency:    currency,
 				TotalFiat:   dbUtil.SqlNullFloat64(circuitAmountFiat),
 				ReleaseDate: dbUtil.SqlNullTime(releaseDate),
 			}
 
-			_, err := r.IssueInvoiceRequest(ctx, sessionUser.CircuitUserID.Int64, nil, "CIRCUIT", sess.Currency, "Satimoto: Recharge", invoiceParams)
+			_, err := r.IssueInvoiceRequest(ctx, sessionUser.CircuitUserID.Int64, nil, "CIRCUIT", currency, "Satimoto: Recharge", invoiceParams)
 
 			return err
 		}
