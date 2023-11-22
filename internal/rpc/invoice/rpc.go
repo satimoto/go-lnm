@@ -74,6 +74,8 @@ func (r *RpcInvoiceResolver) UpdateInvoiceRequest(reqCtx context.Context, input 
 			return nil, errors.New("error payment request amount mismatch")
 		}
 
+		log.Printf("LNM153: Update PaymentId=%v PaymentRequest=%v", invoiceRequest.ID, invoiceRequest.PaymentRequest)
+
 		go r.waitForPayment(invoiceRequest)
 
 		return &lsprpc.UpdateInvoiceRequestResponse{}, nil
@@ -234,9 +236,11 @@ waitLoop:
 
 		switch payment.Status {
 		case lnrpc.Payment_FAILED:
+			log.Printf("LNM154: PaymentRequest=%v failed: %#v", invoiceRequest.PaymentRequest, payment)
 			updateInvoiceRequestParams.PaymentRequest = dbUtil.SqlNullString(nil)
 			break waitLoop
 		case lnrpc.Payment_SUCCEEDED:
+			log.Printf("LNM155: PaymentRequest=%v succeeded", invoiceRequest.PaymentRequest)
 			updateInvoiceRequestParams.IsSettled = true
 			break waitLoop
 		}
