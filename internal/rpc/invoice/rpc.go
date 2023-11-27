@@ -212,6 +212,7 @@ func (r *RpcInvoiceResolver) waitForPayment(invoiceRequest db.InvoiceRequest) {
 	client, err := r.LightningService.SendPaymentV2(&routerrpc.SendPaymentRequest{
 		PaymentRequest: invoiceRequest.PaymentRequest.String,
 		TimeoutSeconds: 120,
+		FeeLimitSat:    10,
 	})
 
 	if err != nil {
