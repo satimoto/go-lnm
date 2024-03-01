@@ -221,6 +221,22 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, sessionUser 
 	sessionIto := r.CreateSessionIto(ctx, session)
 	estimatedFiat, estimatedEnergy, estimatedTime := r.ProcessChargingPeriods(sessionIto, tariffIto, estimatedChargePower, timeLocation, timeNow)
 
+	// Sanity check the estimated energy
+	// If the estimated energy is over 50 kWh then flag the session and stop issuing invoices
+	if estimatedEnergy >= 50 {
+		log.Printf("Flagging session %v because of estimated energy", session.Uid)
+		r.FlagSession(ctx, session)
+		return false
+	}
+
+	// Sanity check the estimated time
+	// If the estimated time is over 6 hours then flag the session and stop issuing invoices
+	if estimatedTime >= 6 {
+		log.Printf("Flagging session %v because of estimated time", session.Uid)
+		r.FlagSession(ctx, session)
+		return false
+	}
+
 	if estimatedFiat > invoicedPriceFiat {
 		priceFiat := estimatedFiat - invoicedPriceFiat
 		totalFiat, commissionFiat, taxFiat := CalculateCommission(estimatedFiat-invoicedPriceFiat, sessionUser.CommissionPercent, taxPercent)
