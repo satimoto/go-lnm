@@ -10,31 +10,28 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/routingevent"
 	"github.com/satimoto/go-datastore/pkg/util"
-	"github.com/satimoto/go-lsp/internal/channelrequest"
-	"github.com/satimoto/go-lsp/internal/ferp"
-	"github.com/satimoto/go-lsp/internal/lightningnetwork"
-	metrics "github.com/satimoto/go-lsp/internal/metric"
-	"github.com/satimoto/go-lsp/internal/service"
+	"github.com/satimoto/go-lnm/internal/ferp"
+	"github.com/satimoto/go-lnm/internal/lightningnetwork"
+	metrics "github.com/satimoto/go-lnm/internal/metric"
+	"github.com/satimoto/go-lnm/internal/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type HtlcEventMonitor struct {
-	FerpService            ferp.Ferp
-	LightningService       lightningnetwork.LightningNetwork
-	HtlcEventsClient       routerrpc.Router_SubscribeHtlcEventsClient
-	ChannelRequestResolver *channelrequest.ChannelRequestResolver
-	RoutingEventRepository routingevent.RoutingEventRepository
-	accountingCurrency     string
-	nodeID                 int64
+	FerpService              ferp.Ferp
+	LightningService         lightningnetwork.LightningNetwork
+	HtlcEventsClient         routerrpc.Router_SubscribeHtlcEventsClient
+	RoutingEventRepository   routingevent.RoutingEventRepository
+	accountingCurrency       string
+	nodeID                   int64
 }
 
 func NewHtlcEventMonitor(repositoryService *db.RepositoryService, services *service.ServiceResolver) *HtlcEventMonitor {
 	return &HtlcEventMonitor{
-		FerpService:            services.FerpService,
-		LightningService:       services.LightningService,
-		ChannelRequestResolver: channelrequest.NewResolver(repositoryService),
-		RoutingEventRepository: routingevent.NewRepository(repositoryService),
+		FerpService:              services.FerpService,
+		LightningService:         services.LightningService,
+		RoutingEventRepository:   routingevent.NewRepository(repositoryService),
 	}
 }
 
@@ -50,7 +47,6 @@ func (m *HtlcEventMonitor) StartMonitor(nodeID int64, shutdownCtx context.Contex
 }
 
 func (m *HtlcEventMonitor) handleHtlcEvent(htlcEvent routerrpc.HtlcEvent) {
-	log.Printf("HTLC Event: %v", htlcEvent.EventType)
 	/** HTLC Event received.
 	 *  Check that the event type is a Forward event and that it is successful.
 	 *  Find the Channel Request HTLC by the circuit key params.
@@ -74,17 +70,13 @@ func (m *HtlcEventMonitor) handleHtlcEvent(htlcEvent routerrpc.HtlcEvent) {
 }
 
 func (m *HtlcEventMonitor) handleForwardHtlcEvent(ctx context.Context, htlcEvent routerrpc.HtlcEvent) {
-	log.Printf("Forward HTLC Event")
 	forwardEvent := htlcEvent.GetForwardEvent()
-
-	log.Printf("IncomingAmtMsat: %v", forwardEvent.Info.IncomingAmtMsat)
-	log.Printf("OutgoingAmtMsat: %v", forwardEvent.Info.OutgoingAmtMsat)
 
 	currencyRate, err := m.FerpService.GetRate(m.accountingCurrency)
 
 	if err != nil {
-		metrics.RecordError("LSP071", "Error getting FERP rate", err)
-		log.Printf("LSP071: Currency=%v", m.accountingCurrency)
+		metrics.RecordError("LNM071", "Error getting FERP rate", err)
+		log.Printf("LNM071: Currency=%v", m.accountingCurrency)
 		return
 	}
 
@@ -112,24 +104,14 @@ func (m *HtlcEventMonitor) handleForwardHtlcEvent(ctx context.Context, htlcEvent
 	_, err = m.RoutingEventRepository.CreateRoutingEvent(ctx, createRoutingEventParams)
 
 	if err != nil {
-		metrics.RecordError("LSP072", "Error creating routing event", err)
-		log.Printf("LSP072: Params=%#v", createRoutingEventParams)
+		metrics.RecordError("LNM072", "Error creating routing event", err)
+		log.Printf("LNM072: Params=%#v", createRoutingEventParams)
 	}
 }
 
 func (m *HtlcEventMonitor) handleForwardFailHtlcEvent(ctx context.Context, htlcEvent routerrpc.HtlcEvent) {
-	log.Printf("Forward Fail HTLC Event")
-
 	incomingChannelId := int64(htlcEvent.IncomingChannelId)
 	incomingHtlcId := int64(htlcEvent.IncomingHtlcId)
-
-	// Update channel request HTLC
-	m.ChannelRequestResolver.Repository.UpdateChannelRequestHtlcByCircuitKey(ctx, db.UpdateChannelRequestHtlcByCircuitKeyParams{
-		ChanID:    incomingChannelId,
-		HtlcID:    incomingHtlcId,
-		IsSettled: false,
-		IsFailed:  true,
-	})
 
 	// Update routing event
 	updateRoutingEventParams := db.UpdateRoutingEventParams{
@@ -144,8 +126,8 @@ func (m *HtlcEventMonitor) handleForwardFailHtlcEvent(ctx context.Context, htlcE
 	routingEvent, err := m.RoutingEventRepository.UpdateRoutingEvent(ctx, updateRoutingEventParams)
 
 	if err != nil {
-		metrics.RecordError("LSP081", "Error updating routing event", err)
-		log.Printf("LSP081: Params=%#v", updateRoutingEventParams)
+		metrics.RecordError("LNM081", "Error updating routing event", err)
+		log.Printf("LNM081: Params=%#v", updateRoutingEventParams)
 	}
 
 	// Metrics: Increment number of failed routing events
@@ -160,23 +142,9 @@ func (m *HtlcEventMonitor) handleForwardFailHtlcEvent(ctx context.Context, htlcE
 }
 
 func (m *HtlcEventMonitor) handleLinkFailHtlcEvent(ctx context.Context, htlcEvent routerrpc.HtlcEvent) {
-	log.Printf("Link Fail HTLC Event")
-
 	linkFailEvent := htlcEvent.GetLinkFailEvent()
 	incomingChannelId := int64(htlcEvent.IncomingChannelId)
 	incomingHtlcId := int64(htlcEvent.IncomingHtlcId)
-
-	log.Printf("WireFailure: %v", linkFailEvent.WireFailure)
-	log.Printf("FailureDetail: %v", linkFailEvent.FailureDetail)
-	log.Printf("FailureString: %v", linkFailEvent.FailureString)
-
-	// Update channel request HTLC
-	m.ChannelRequestResolver.Repository.UpdateChannelRequestHtlcByCircuitKey(ctx, db.UpdateChannelRequestHtlcByCircuitKeyParams{
-		ChanID:    incomingChannelId,
-		HtlcID:    incomingHtlcId,
-		IsSettled: false,
-		IsFailed:  true,
-	})
 
 	// Update routing event
 	updateRoutingEventParams := db.UpdateRoutingEventParams{
@@ -220,8 +188,8 @@ func (m *HtlcEventMonitor) handleLinkFailHtlcEvent(ctx context.Context, htlcEven
 		routingEvent, err = m.RoutingEventRepository.CreateRoutingEvent(ctx, createRoutingEventParams)
 
 		if err != nil {
-			metrics.RecordError("LSP082", "Error creating routing event", err)
-			log.Printf("LSP082: Params=%#v", createRoutingEventParams)
+			metrics.RecordError("LNM082", "Error creating routing event", err)
+			log.Printf("LNM082: Params=%#v", createRoutingEventParams)
 		}
 	}
 
@@ -237,17 +205,8 @@ func (m *HtlcEventMonitor) handleLinkFailHtlcEvent(ctx context.Context, htlcEven
 }
 
 func (m *HtlcEventMonitor) handleSettleHtlcEvent(ctx context.Context, htlcEvent routerrpc.HtlcEvent) {
-	log.Printf("Settle HTLC Event")
 	incomingChannelId := int64(htlcEvent.IncomingChannelId)
 	incomingHtlcId := int64(htlcEvent.IncomingHtlcId)
-
-	// Update channel request HTLC
-	m.ChannelRequestResolver.Repository.UpdateChannelRequestHtlcByCircuitKey(ctx, db.UpdateChannelRequestHtlcByCircuitKeyParams{
-		ChanID:    incomingChannelId,
-		HtlcID:    incomingHtlcId,
-		IsSettled: true,
-		IsFailed:  false,
-	})
 
 	// Update routing event
 	updateRoutingEventParams := db.UpdateRoutingEventParams{
@@ -262,8 +221,8 @@ func (m *HtlcEventMonitor) handleSettleHtlcEvent(ctx context.Context, htlcEvent 
 	routingEvent, err := m.RoutingEventRepository.UpdateRoutingEvent(ctx, updateRoutingEventParams)
 
 	if err != nil {
-		metrics.RecordError("LSP083", "Error updating routing event", err)
-		log.Printf("LSP083: Params=%#v", updateRoutingEventParams)
+		metrics.RecordError("LNM083", "Error updating routing event", err)
+		log.Printf("LNM083: Params=%#v", updateRoutingEventParams)
 	}
 
 	// Metrics: Increment number of settled routing events
@@ -279,7 +238,7 @@ func (m *HtlcEventMonitor) handleSettleHtlcEvent(ctx context.Context, htlcEvent 
 
 func (m *HtlcEventMonitor) subscribeHtlcEventInterceptions(htlcEventChan chan<- routerrpc.HtlcEvent) {
 	htlcEventsClient, err := m.waitForSubscribeHtlcEventsClient(0, 1000)
-	util.PanicOnError("LSP018", "Error creating Htlc Events client", err)
+	util.PanicOnError("LNM018", "Error creating Htlc Events client", err)
 	m.HtlcEventsClient = htlcEventsClient
 
 	for {
@@ -289,7 +248,7 @@ func (m *HtlcEventMonitor) subscribeHtlcEventInterceptions(htlcEventChan chan<- 
 			htlcEventChan <- *htlcInterceptRequest
 		} else {
 			m.HtlcEventsClient, err = m.waitForSubscribeHtlcEventsClient(100, 1000)
-			util.PanicOnError("LSP019", "Error creating Htlc Events client", err)
+			util.PanicOnError("LNM019", "Error creating Htlc Events client", err)
 		}
 	}
 }

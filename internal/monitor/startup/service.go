@@ -6,9 +6,9 @@ import (
 	"sync"
 
 	"github.com/satimoto/go-datastore/pkg/db"
-	"github.com/satimoto/go-lsp/internal/cdr"
-	"github.com/satimoto/go-lsp/internal/service"
-	"github.com/satimoto/go-lsp/internal/session"
+	"github.com/satimoto/go-lnm/internal/cdr"
+	"github.com/satimoto/go-lnm/internal/service"
+	"github.com/satimoto/go-lnm/internal/session"
 )
 
 type Startup interface {

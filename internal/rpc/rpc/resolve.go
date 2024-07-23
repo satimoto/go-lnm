@@ -2,7 +2,7 @@ package rpc
 
 import (
 	"github.com/satimoto/go-datastore/pkg/db"
-	"github.com/satimoto/go-lsp/internal/service"
+	"github.com/satimoto/go-lnm/internal/service"
 )
 
 type RpcResolver struct{}

@@ -14,6 +14,7 @@ type ChargeParams struct {
 }
 
 type InvoiceParams struct {
+	Currency       string
 	PriceFiat      sql.NullFloat64
 	PriceMsat      sql.NullInt64
 	CommissionFiat sql.NullFloat64

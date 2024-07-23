@@ -4,14 +4,16 @@ import (
 	"context"
 	"errors"
 	"log"
+	"math"
 	"time"
 
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
-	"github.com/satimoto/go-lsp/internal/ito"
-	metrics "github.com/satimoto/go-lsp/internal/metric"
-	"github.com/satimoto/go-lsp/pkg/util"
+	"github.com/satimoto/go-lnm/internal/ito"
+	metrics "github.com/satimoto/go-lnm/internal/metric"
+	"github.com/satimoto/go-lnm/internal/user"
+	"github.com/satimoto/go-lnm/pkg/util"
 	"github.com/satimoto/go-ocpi/ocpirpc"
 )
 
@@ -31,16 +33,16 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 
 	if !session.AuthorizationID.Valid {
 		// There is no AuthorizationID set, flag the session.
-		metrics.RecordError("LSP137", "Error in session", errors.New("authorizationID is nil"))
-		log.Printf("LSP137: SessionUid=%v", session.Uid)
+		metrics.RecordError("LNM137", "Error in session", errors.New("authorizationID is nil"))
+		log.Printf("LNM137: SessionUid=%v", session.Uid)
 
 		// Get the last token authorization for the session token
 		tokenAuthorization, err := r.TokenAuthorizationRepository.GetLastTokenAuthorizationByTokenID(ctx, session.TokenID)
 
 		if err != nil {
 			// No last token authorization found
-			metrics.RecordError("LSP136", "Error last token authorization not found", err)
-			log.Printf("LSP136: SessionUid=%v, TokenID=%v", session.Uid, session.TokenID)
+			metrics.RecordError("LNM136", "Error last token authorization not found", err)
+			log.Printf("LNM136: SessionUid=%v, TokenID=%v", session.Uid, session.TokenID)
 			r.StopSession(ctx, session)
 			return
 		}
@@ -60,8 +62,8 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 	user, err := r.UserResolver.Repository.GetUser(ctx, session.UserID)
 
 	if err != nil {
-		metrics.RecordError("LSP037", "Error retrieving user from session", err)
-		log.Printf("LSP037: SessionUid=%v, UserID=%v", session.Uid, session.UserID)
+		metrics.RecordError("LNM037", "Error retrieving user from session", err)
+		log.Printf("LNM037: SessionUid=%v, UserID=%v", session.Uid, session.UserID)
 		r.StopSession(ctx, session)
 		return
 	}
@@ -69,8 +71,8 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 	connector, err := r.LocationRepository.GetConnector(ctx, session.ConnectorID)
 
 	if err != nil {
-		metrics.RecordError("LSP001", "Error retrieving session connector", err)
-		log.Printf("LSP001: SessionUid=%v, ConnectorID=%v", session.Uid, session.ConnectorID)
+		metrics.RecordError("LNM001", "Error retrieving session connector", err)
+		log.Printf("LNM001: SessionUid=%v, ConnectorID=%v", session.Uid, session.ConnectorID)
 		r.StopSession(ctx, session)
 		return
 	}
@@ -78,8 +80,8 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 	tokenAuthorization, err := r.TokenAuthorizationRepository.GetTokenAuthorizationByAuthorizationID(ctx, session.AuthorizationID.String)
 
 	if err != nil {
-		metrics.RecordError("LSP127", "Error retrieving token authorization", err)
-		log.Printf("LSP127: SessionUid=%v, AuthorizationID=%v", session.Uid, session.AuthorizationID.String)
+		metrics.RecordError("LNM127", "Error retrieving token authorization", err)
+		log.Printf("LNM127: SessionUid=%v, AuthorizationID=%v", session.Uid, session.AuthorizationID.String)
 		r.StopSession(ctx, session)
 		return
 	}
@@ -96,8 +98,8 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 		tariff, err := r.TariffResolver.Repository.GetTariffByUid(ctx, connector.TariffID.String)
 
 		if err != nil {
-			metrics.RecordError("LSP002", "Error retrieving session tariff", err)
-			log.Printf("LSP002: SessionUid=%v, TariffID=%v", session.Uid, connector.TariffID.String)
+			metrics.RecordError("LNM002", "Error retrieving session tariff", err)
+			log.Printf("LNM002: SessionUid=%v, TariffID=%v", session.Uid, connector.TariffID.String)
 			return
 		}
 
@@ -105,20 +107,20 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 		location, err := r.LocationRepository.GetLocation(ctx, session.LocationID)
 
 		if err != nil {
-			metrics.RecordError("LSP038", "Error retrieving session location", err)
-			log.Printf("LSP038: SessionUid=%v, LocationID=%v", session.Uid, session.LocationID)
+			metrics.RecordError("LNM038", "Error retrieving session location", err)
+			log.Printf("LNM038: SessionUid=%v, LocationID=%v", session.Uid, session.LocationID)
 			return
 		}
 
 		timeLocation, err := time.LoadLocation(location.TimeZone.String)
 
 		if err != nil {
-			metrics.RecordError("LSP005", "Error loading time location", err)
-			log.Printf("LSP005: TimeZone=%v", location.TimeZone.String)
+			metrics.RecordError("LNM005", "Error loading time location", err)
+			log.Printf("LNM005: TimeZone=%v", location.TimeZone.String)
 			timeLocation, err = time.LoadLocation("UTC")
 		}
 
-		taxPercent := r.CountryAccountResolver.GetTaxPercentByCountry(ctx, location.Country, dbUtil.GetEnvFloat64("DEFAULT_TAX_PERCENT", 19))
+		taxPercent := r.AccountResolver.GetTaxPercentByCountry(ctx, location.Country, dbUtil.GetEnvFloat64("DEFAULT_TAX_PERCENT", 19))
 		invoiceInterval := calculateInvoiceInterval(connector.Wattage)
 		log.Printf("Monitor session for %s, running every %f seconds", session.Uid, invoiceInterval.Seconds())
 
@@ -131,19 +133,20 @@ func (r *SessionResolver) StartSessionMonitor(session db.Session) {
 			session, err = r.Repository.GetSession(ctx, session.ID)
 
 			if err != nil {
-				metrics.RecordError("LSP032", "Error retrieving session", err)
-				log.Printf("LSP032: SessionUid=%v", session.Uid)
+				metrics.RecordError("LNM032", "Error retrieving session", err)
+				log.Printf("LNM032: SessionUid=%v", session.Uid)
 				continue
 			}
 
 			switch session.Status {
-			case db.SessionStatusTypeCOMPLETED, db.SessionStatusTypeINVALID, db.SessionStatusTypeINVOICED:
+			case db.SessionStatusTypeCOMPLETED, db.SessionStatusTypeENDING, db.SessionStatusTypeINVALID, db.SessionStatusTypeINVOICED:
 				// End monitoring, let the CDR issue the final invoice
 				log.Printf("Ending session monitoring for %s", session.Uid)
+				r.SendSessionUpdateNotification(user, session)
 				break invoiceLoop
 			case db.SessionStatusTypeACTIVE:
 				// Session is active, calculate new invoice
-				if ok := r.processInvoicePeriod(ctx, user, session, timeLocation, tariffIto, connector.Wattage, taxPercent); !ok {
+				if ok := r.processInvoicePeriod(ctx, user, session, timeLocation, tariffIto, connector, taxPercent); !ok {
 					log.Printf("Ending session monitoring for %s with errors", session.Uid)
 					break invoiceLoop
 				}
@@ -173,17 +176,16 @@ func (r *SessionResolver) StopSession(ctx context.Context, session db.Session) (
 	return nil, errors.New("cannot remotely stop this session")
 }
 
-func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User, session db.Session, timeLocation *time.Location, tariffIto *ito.TariffIto, connectorWattage int32, taxPercent float64) bool {
+func (r *SessionResolver) processInvoicePeriod(ctx context.Context, sessionUser db.User, session db.Session, timeLocation *time.Location, tariffIto *ito.TariffIto, connector db.Connector, taxPercent float64) bool {
 	sessionInvoices, err := r.Repository.ListSessionInvoicesBySessionID(ctx, session.ID)
 
 	if err != nil {
-		metrics.RecordError("LSP033", "Error retrieving session invoices", err)
-		log.Printf("LSP033: SessionUid=%v", session.Uid)
+		metrics.RecordError("LNM033", "Error retrieving session invoices", err)
+		log.Printf("LNM033: SessionUid=%v", session.Uid)
 		return true
 	}
 
-	/*
-	// TODO: Update how we handle unsettled invoices.
+	/* TODO: Update how we handle unsettled invoices.
 	//       Mobile devices are not reliable enought to pay invoices as they arrive
 	//       to the device because it may be in a hibernated state with no network access.
 	//       The session invoice is sent to the device and it should be paid once the
@@ -193,8 +195,8 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 		err = r.UserResolver.RestrictUser(ctx, user)
 
 		if err != nil {
-			metrics.RecordError("LSP042", "Error restricting user", err)
-			log.Printf("LSP042: SessionUID=%v, UserID=%v", session.Uid, session.UserID)
+			metrics.RecordError("LNM042", "Error restricting user", err)
+			log.Printf("LNM042: SessionUID=%v, UserID=%v", session.Uid, session.UserID)
 		}
 
 		if _, err = r.StopSession(ctx, session); err == nil {
@@ -207,22 +209,41 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 
 	timeNow := time.Now().UTC()
 	delta := timeNow.Sub(session.LastUpdated).Minutes()
-	log.Printf("Processing session %v with currency %v", session.Uid, session.Currency)
+	log.Printf("Processing session %v with currency %v", session.Uid, tariffIto.Currency)
 	log.Printf("%v: Kwh=%v, LastUpdated=%v, DeltaMinutes=%v", session.Uid, session.Kwh, session.LastUpdated.Format(time.RFC3339), delta)
 
 	if session.TotalCost.Valid {
 		log.Printf("%v: TotalCost=%v", session.Uid, session.TotalCost.Float64)
 	}
 
+	estimatedChargePower := user.GetEstimatedChargePower(sessionUser, connector)
 	invoicedPriceFiat, _ := CalculatePriceInvoiced(sessionInvoices)
 	sessionIto := r.CreateSessionIto(ctx, session)
-	estimatedFiat, estimatedEnergy, estimatedTime := r.ProcessChargingPeriods(sessionIto, tariffIto, connectorWattage, timeLocation, timeNow)
+	estimatedFiat, estimatedEnergy, estimatedTime := r.ProcessChargingPeriods(sessionIto, tariffIto, estimatedChargePower, timeLocation, timeNow)
+
+	// Sanity check the estimated energy
+	// If the estimated energy is over 50 kWh then flag the session and stop issuing invoices
+	if estimatedEnergy >= 50 {
+		log.Printf("Flagging session %v because of estimated energy", session.Uid)
+		r.FlagSession(ctx, session)
+		return false
+	}
+
+	// Sanity check the estimated time
+	// If the estimated time is over 6 hours then flag the session and stop issuing invoices
+	if estimatedTime >= 6 {
+		log.Printf("Flagging session %v because of estimated time", session.Uid)
+		r.FlagSession(ctx, session)
+		return false
+	}
 
 	if estimatedFiat > invoicedPriceFiat {
 		priceFiat := estimatedFiat - invoicedPriceFiat
-		totalFiat, commissionFiat, taxFiat := CalculateCommission(estimatedFiat-invoicedPriceFiat, user.CommissionPercent, taxPercent)
+		totalFiat, commissionFiat, taxFiat := CalculateCommission(estimatedFiat-invoicedPriceFiat, sessionUser.CommissionPercent, taxPercent)
+		meteredTime := session.LastUpdated.Sub(sessionIto.StartDatetime).Hours()
 
 		invoiceParams := util.InvoiceParams{
+			Currency:       tariffIto.Currency,
 			PriceFiat:      dbUtil.SqlNullFloat64(priceFiat),
 			CommissionFiat: dbUtil.SqlNullFloat64(commissionFiat),
 			TaxFiat:        dbUtil.SqlNullFloat64(taxFiat),
@@ -230,13 +251,13 @@ func (r *SessionResolver) processInvoicePeriod(ctx context.Context, user db.User
 		}
 
 		chargeParams := util.ChargeParams{
-			EstimatedEnergy: estimatedEnergy,
-			EstimatedTime:   estimatedTime,
-			MeteredEnergy:   sessionIto.TotalEnergy,
-			MeteredTime:     timeNow.Sub(sessionIto.StartDatetime).Hours(),
+			EstimatedEnergy: math.Max(0, estimatedEnergy),
+			EstimatedTime:   math.Max(0, estimatedTime),
+			MeteredEnergy:   math.Max(0, sessionIto.TotalEnergy),
+			MeteredTime:     math.Max(0, meteredTime),
 		}
 
-		r.IssueSessionInvoice(ctx, user, session, invoiceParams, chargeParams)
+		r.IssueSessionInvoice(ctx, sessionUser, session, invoiceParams, chargeParams)
 	}
 
 	return true

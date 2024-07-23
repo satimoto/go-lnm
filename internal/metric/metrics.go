@@ -63,7 +63,7 @@ func (rs *MetricsService) listenAndServe() {
 	err := rs.Server.ListenAndServe()
 
 	if err != nil && err != http.ErrServerClosed {
-		RecordError("LSP142", "Error in Metrics service", err)
+		RecordError("LNM142", "Error in Metrics service", err)
 	}
 }
 
@@ -75,6 +75,6 @@ func (rs *MetricsService) shutdown() {
 	err := rs.Server.Shutdown(ctx)
 
 	if err != nil {
-		RecordError("LSP143", "Error shutting down Metrics service", err)
+		RecordError("LNM143", "Error shutting down Metrics service", err)
 	}
 }

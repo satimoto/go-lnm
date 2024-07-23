@@ -6,7 +6,7 @@ import (
 	"github.com/appleboy/go-fcm"
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
-	metrics "github.com/satimoto/go-lsp/internal/metric"
+	metrics "github.com/satimoto/go-lnm/internal/metric"
 )
 
 type Notification interface {
@@ -21,7 +21,7 @@ type NotificationService struct {
 
 func NewService(apiKey string) Notification {
 	client, err := fcm.NewClient(apiKey)
-	util.PanicOnError("LSP034", "Invalid FCM API key", err)
+	util.PanicOnError("LNM034", "Invalid FCM API key", err)
 
 	return &NotificationService{
 		client: client,
@@ -51,8 +51,8 @@ func (s *NotificationService) SendUserNotification(user db.User, data Notificati
 
 	if err != nil {
 		// TODO: Cancel session?
-		metrics.RecordError("LSP059", "Error sending notification", err)
-		log.Printf("LSP059: Message=%v", message)
+		metrics.RecordError("LNM059", "Error sending notification", err)
+		log.Printf("LNM059: Message=%v", message)
 	}
 
 	RecordNotificationSent(notificationType, 1)

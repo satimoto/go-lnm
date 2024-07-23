@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/satimoto/go-datastore/pkg/db"
-	"github.com/satimoto/go-lsp/internal/ito"
+	"github.com/satimoto/go-lnm/internal/ito"
 )
 
 func (r *CdrResolver) CreateChargingPeriodIto(ctx context.Context, chargingPeriod db.ChargingPeriod) *ito.ChargingPeriodIto {

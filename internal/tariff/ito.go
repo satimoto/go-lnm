@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/satimoto/go-datastore/pkg/db"
-	"github.com/satimoto/go-lsp/internal/ito"
+	"github.com/satimoto/go-lnm/internal/ito"
 )
 
 func (r *TariffResolver) CreateElementIto(ctx context.Context, element db.Element) *ito.ElementIto {
@@ -72,7 +72,9 @@ func (r *TariffResolver) CreatePriceComponentRoundingIto(ctx context.Context, pr
 }
 
 func (r *TariffResolver) CreateTariffIto(ctx context.Context, tariff db.Tariff) *ito.TariffIto {
-	tariffIto := &ito.TariffIto{}
+	tariffIto := &ito.TariffIto{
+		Currency: tariff.Currency,
+	}
 
 	if elements, err := r.Repository.ListElements(ctx, tariff.ID); err == nil {
 		tariffIto.Elements = r.CreateElementListIto(ctx, elements)

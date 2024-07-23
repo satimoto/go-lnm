@@ -10,9 +10,9 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
-	"github.com/satimoto/go-lsp/internal/backup"
-	"github.com/satimoto/go-lsp/internal/lightningnetwork"
-	"github.com/satimoto/go-lsp/internal/service"
+	"github.com/satimoto/go-lnm/internal/backup"
+	"github.com/satimoto/go-lnm/internal/lightningnetwork"
+	"github.com/satimoto/go-lnm/internal/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -53,7 +53,7 @@ func (m *ChannelBackupMonitor) handleChannelBackup(channelBackup lnrpc.ChanBacku
 
 func (m *ChannelBackupMonitor) subscribeChannelBackupInterceptions(channelBackupChan chan<- lnrpc.ChanBackupSnapshot) {
 	htlcEventsClient, err := m.waitForSubscribeChannelBackupsClient(0, 1000)
-	util.PanicOnError("LSP062", "Error creating Channel Backups client", err)
+	util.PanicOnError("LNM062", "Error creating Channel Backups client", err)
 	m.ChannelBackupsClient = htlcEventsClient
 
 	for {
@@ -63,7 +63,7 @@ func (m *ChannelBackupMonitor) subscribeChannelBackupInterceptions(channelBackup
 			channelBackupChan <- *htlcInterceptRequest
 		} else {
 			m.ChannelBackupsClient, err = m.waitForSubscribeChannelBackupsClient(100, 1000)
-			util.PanicOnError("LSP063", "Error creating Channel Backups client", err)
+			util.PanicOnError("LNM063", "Error creating Channel Backups client", err)
 		}
 	}
 }

@@ -1,2 +1,2 @@
 #!/bin/sh
-docker build -t lsp .
+docker build -t lnm .

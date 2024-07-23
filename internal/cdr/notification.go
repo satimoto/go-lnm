@@ -2,7 +2,7 @@ package cdr
 
 import (
 	"github.com/satimoto/go-datastore/pkg/db"
-	"github.com/satimoto/go-lsp/internal/notification"
+	"github.com/satimoto/go-lnm/internal/notification"
 )
 
 func (r *CdrResolver) SendInvoiceRequestNotification(user db.User, invoiceRequest db.InvoiceRequest) {

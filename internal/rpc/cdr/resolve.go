@@ -2,9 +2,9 @@ package cdr
 
 import (
 	"github.com/satimoto/go-datastore/pkg/db"
-	"github.com/satimoto/go-lsp/internal/cdr"
-	"github.com/satimoto/go-lsp/internal/ferp"
-	"github.com/satimoto/go-lsp/internal/service"
+	"github.com/satimoto/go-lnm/internal/cdr"
+	"github.com/satimoto/go-lnm/internal/ferp"
+	"github.com/satimoto/go-lnm/internal/service"
 )
 
 type RpcCdrResolver struct {

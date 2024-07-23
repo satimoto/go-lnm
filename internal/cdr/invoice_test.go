@@ -8,12 +8,12 @@ import (
 	dbMocks "github.com/satimoto/go-datastore/pkg/db/mocks"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
 	"github.com/satimoto/go-ferp/pkg/rate"
-	cdrMocks "github.com/satimoto/go-lsp/internal/cdr/mocks"
-	ferpMocks "github.com/satimoto/go-lsp/internal/ferp/mocks"
-	lightningnetworkMocks "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
-	notificationMocks "github.com/satimoto/go-lsp/internal/notification/mocks"
-	serviceMocks "github.com/satimoto/go-lsp/internal/service/mocks"
-	"github.com/satimoto/go-lsp/pkg/util"
+	cdrMocks "github.com/satimoto/go-lnm/internal/cdr/mocks"
+	ferpMocks "github.com/satimoto/go-lnm/internal/ferp/mocks"
+	lightningnetworkMocks "github.com/satimoto/go-lnm/internal/lightningnetwork/mocks"
+	notificationMocks "github.com/satimoto/go-lnm/internal/notification/mocks"
+	serviceMocks "github.com/satimoto/go-lnm/internal/service/mocks"
+	"github.com/satimoto/go-lnm/pkg/util"
 	ocpiMocks "github.com/satimoto/go-ocpi/pkg/ocpi/mocks"
 )
 
@@ -35,6 +35,7 @@ func TestIssueInvoiceRequest(t *testing.T) {
 			})
 		},
 		invoiceParams: util.InvoiceParams{
+			Currency:       "EUR",
 			PriceFiat:      dbUtil.SqlNullFloat64(0.3852),
 			CommissionFiat: dbUtil.SqlNullFloat64(0.026964),
 			TaxFiat:        dbUtil.SqlNullFloat64(0.07831116),
@@ -104,6 +105,7 @@ func TestIssueInvoiceRequest(t *testing.T) {
 			})
 		},
 		invoiceParams: util.InvoiceParams{
+			Currency:       "EUR",
 			PriceFiat:      dbUtil.SqlNullFloat64(0.3852),
 			CommissionFiat: dbUtil.SqlNullFloat64(0.026964),
 			TaxFiat:        dbUtil.SqlNullFloat64(0.07831116),
@@ -159,6 +161,7 @@ func TestIssueInvoiceRequest(t *testing.T) {
 			})
 		},
 		invoiceParams: util.InvoiceParams{
+			Currency:       "EUR",
 			TotalMsat: dbUtil.SqlNullInt64(2207138),
 		},
 		err: nil,
@@ -225,7 +228,7 @@ func TestIssueInvoiceRequest(t *testing.T) {
 				Code: "CIRCUIT",
 			}})
 
-			_, err := cdrResolver.IssueInvoiceRequest(ctx, 1, "CIRCUIT", "EUR", "Satsback", tc.invoiceParams)
+			_, err := cdrResolver.IssueInvoiceRequest(ctx, 1, nil, "CIRCUIT", "EUR", "Satimoto: Recharge", tc.invoiceParams)
 
 			if tc.after != nil {
 				tc.after(t, mockRepository, mockLightningService, mockOcpiService)

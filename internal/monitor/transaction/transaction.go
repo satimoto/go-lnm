@@ -9,25 +9,22 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/util"
-	"github.com/satimoto/go-lsp/internal/channelrequest"
-	"github.com/satimoto/go-lsp/internal/lightningnetwork"
-	metrics "github.com/satimoto/go-lsp/internal/metric"
-	"github.com/satimoto/go-lsp/internal/service"
+	"github.com/satimoto/go-lnm/internal/lightningnetwork"
+	metrics "github.com/satimoto/go-lnm/internal/metric"
+	"github.com/satimoto/go-lnm/internal/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type TransactionMonitor struct {
-	LightningService       lightningnetwork.LightningNetwork
-	TransactionsClient     lnrpc.Lightning_SubscribeTransactionsClient
-	ChannelRequestResolver *channelrequest.ChannelRequestResolver
-	nodeID                 int64
+	LightningService   lightningnetwork.LightningNetwork
+	TransactionsClient lnrpc.Lightning_SubscribeTransactionsClient
+	nodeID             int64
 }
 
 func NewTransactionMonitor(repositoryService *db.RepositoryService, services *service.ServiceResolver) *TransactionMonitor {
 	return &TransactionMonitor{
-		LightningService:       services.LightningService,
-		ChannelRequestResolver: channelrequest.NewResolver(repositoryService),
+		LightningService: services.LightningService,
 	}
 }
 
@@ -58,7 +55,7 @@ func (m *TransactionMonitor) handleTransaction(transaction lnrpc.Transaction) {
 
 func (m *TransactionMonitor) subscribeTransactionInterceptions(transactionChan chan<- lnrpc.Transaction) {
 	transactionsClient, err := m.waitForSubscribeTransactionsClient(0, 1000)
-	util.PanicOnError("LSP022", "Error creating Transactions client", err)
+	util.PanicOnError("LNM022", "Error creating Transactions client", err)
 	m.TransactionsClient = transactionsClient
 
 	for {
@@ -68,7 +65,7 @@ func (m *TransactionMonitor) subscribeTransactionInterceptions(transactionChan c
 			transactionChan <- *transaction
 		} else {
 			m.TransactionsClient, err = m.waitForSubscribeTransactionsClient(100, 1000)
-			util.PanicOnError("LSP023", "Error creating Transactions client", err)
+			util.PanicOnError("LNM023", "Error creating Transactions client", err)
 		}
 	}
 }
@@ -77,7 +74,7 @@ func (m *TransactionMonitor) updateWalletBalance() {
 	walletBalance, err := m.LightningService.WalletBalance(&lnrpc.WalletBalanceRequest{})
 
 	if err != nil {
-		metrics.RecordError("LSP080", "Error requesting wallet balance", err)
+		metrics.RecordError("LNM080", "Error requesting wallet balance", err)
 	}
 
 	log.Printf("TotalBalance: %v", walletBalance.TotalBalance)

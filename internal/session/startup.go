@@ -6,7 +6,7 @@ import (
 
 	"github.com/satimoto/go-datastore/pkg/db"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
-	metrics "github.com/satimoto/go-lsp/internal/metric"
+	metrics "github.com/satimoto/go-lnm/internal/metric"
 )
 
 func (r *SessionResolver) Startup(nodeID int64) {
@@ -16,8 +16,8 @@ func (r *SessionResolver) Startup(nodeID int64) {
 	sessions, err := r.Repository.ListInProgressSessionsByNodeID(ctx, dbUtil.SqlNullInt64(nodeID))
 
 	if err != nil {
-		metrics.RecordError("LSP135", "Error listing sessions", err)
-		log.Printf("LSP135: NodeID=%v", nodeID)
+		metrics.RecordError("LNM135", "Error listing sessions", err)
+		log.Printf("LNM135: NodeID=%v", nodeID)
 	}
 
 	for _, session := range sessions {
@@ -26,16 +26,17 @@ func (r *SessionResolver) Startup(nodeID int64) {
 	}
 
 	// List session invoices to check expiry
-	listSessionInvoicesParams := db.ListSessionInvoicesParams{
+	listSessionInvoicesParams := db.ListSessionInvoicesByNodeIDParams{
+		NodeID:    dbUtil.SqlNullInt64(nodeID),
 		IsExpired: false,
 		IsSettled: false,
 	}
 
-	sessionInvoices, err := r.Repository.ListSessionInvoices(ctx, listSessionInvoicesParams)
+	sessionInvoices, err := r.Repository.ListSessionInvoicesByNodeID(ctx, listSessionInvoicesParams)
 
 	if err != nil {
-		metrics.RecordError("LSP160", "Error listing sessions", err)
-		log.Printf("LSP160: Params=%#v", listSessionInvoicesParams)
+		metrics.RecordError("LNM160", "Error listing sessions", err)
+		log.Printf("LNM160: Params=%#v", listSessionInvoicesParams)
 	}
 
 	for _, sessionInvoice := range sessionInvoices {

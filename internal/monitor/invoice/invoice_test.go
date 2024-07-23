@@ -11,11 +11,11 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/satimoto/go-datastore/pkg/db"
 	dbMocks "github.com/satimoto/go-datastore/pkg/db/mocks"
-	ferpMocks "github.com/satimoto/go-lsp/internal/ferp/mocks"
-	lightningnetworkMocks "github.com/satimoto/go-lsp/internal/lightningnetwork/mocks"
-	invoiceMocks "github.com/satimoto/go-lsp/internal/monitor/invoice/mocks"
-	notificationMocks "github.com/satimoto/go-lsp/internal/notification/mocks"
-	serviceMocks "github.com/satimoto/go-lsp/internal/service/mocks"
+	ferpMocks "github.com/satimoto/go-lnm/internal/ferp/mocks"
+	lightningnetworkMocks "github.com/satimoto/go-lnm/internal/lightningnetwork/mocks"
+	invoiceMocks "github.com/satimoto/go-lnm/internal/monitor/invoice/mocks"
+	notificationMocks "github.com/satimoto/go-lnm/internal/notification/mocks"
+	serviceMocks "github.com/satimoto/go-lnm/internal/service/mocks"
 	ocpiMocks "github.com/satimoto/go-ocpi/pkg/ocpi/mocks"
 )
 

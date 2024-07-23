@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package channel;
 
-option go_package = "github.com/satimoto/go-lsp/lsprpc";
+option go_package = "github.com/satimoto/go-lnm/lsprpc";
 
 service ChannelService {
   rpc OpenChannel(OpenChannelRequest) returns (OpenChannelResponse);

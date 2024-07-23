@@ -6,11 +6,11 @@ import (
 	"github.com/satimoto/go-datastore/pkg/invoicerequest"
 	"github.com/satimoto/go-datastore/pkg/pendingnotification"
 	"github.com/satimoto/go-datastore/pkg/promotion"
-	"github.com/satimoto/go-lsp/internal/ferp"
-	"github.com/satimoto/go-lsp/internal/lightningnetwork"
-	"github.com/satimoto/go-lsp/internal/notification"
-	"github.com/satimoto/go-lsp/internal/service"
-	"github.com/satimoto/go-lsp/internal/session"
+	"github.com/satimoto/go-lnm/internal/ferp"
+	"github.com/satimoto/go-lnm/internal/lightningnetwork"
+	"github.com/satimoto/go-lnm/internal/notification"
+	"github.com/satimoto/go-lnm/internal/service"
+	"github.com/satimoto/go-lnm/internal/session"
 	"github.com/satimoto/go-ocpi/pkg/ocpi"
 )
 

@@ -1,16 +1,16 @@
-# go-lsp
-Satimoto Lightning Service Provider using golang
+# go-lnm
+Satimoto Lightning Node Manager using golang
 
 ## Development
 
 ### Run
 ```bash
-go run ./cmd/lsp
+go run ./cmd/lnm
 ```
 
 ## Build
 
 ### Run
 ```bash
-GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags '-s -w' -o bin/main cmd/lsp/main.go
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags '-s -w' -o bin/main cmd/lnm/main.go
 ```

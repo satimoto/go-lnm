@@ -10,10 +10,10 @@ import (
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
 	"github.com/satimoto/go-datastore/pkg/util"
-	"github.com/satimoto/go-lsp/internal/lightningnetwork"
-	metrics "github.com/satimoto/go-lsp/internal/metric"
-	"github.com/satimoto/go-lsp/internal/service"
-	"github.com/satimoto/go-lsp/internal/session"
+	"github.com/satimoto/go-lnm/internal/lightningnetwork"
+	metrics "github.com/satimoto/go-lnm/internal/metric"
+	"github.com/satimoto/go-lnm/internal/service"
+	"github.com/satimoto/go-lnm/internal/session"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -65,8 +65,8 @@ func (m *InvoiceMonitor) handleInvoice(invoice lnrpc.Invoice) {
 			_, err = m.SessionResolver.Repository.UpdateSessionInvoice(ctx, updateSessionInvoiceParams)
 
 			if err != nil {
-				metrics.RecordError("LSP027", "Error updating session invoice", err)
-				log.Printf("LSP027: Params=%#v", updateSessionInvoiceParams)
+				metrics.RecordError("LNM027", "Error updating session invoice", err)
+				log.Printf("LNM027: Params=%#v", updateSessionInvoiceParams)
 				return
 			}
 
@@ -77,21 +77,21 @@ func (m *InvoiceMonitor) handleInvoice(invoice lnrpc.Invoice) {
 			user, err := m.SessionResolver.UserResolver.Repository.GetUserBySessionID(ctx, sessionInvoice.SessionID)
 
 			if err != nil {
-				metrics.RecordError("LSP039", "Error retrieving session user", err)
-				log.Printf("LSP039: SessionID=%v", sessionInvoice.SessionID)
+				metrics.RecordError("LNM039", "Error retrieving session user", err)
+				log.Printf("LNM039: SessionID=%v", sessionInvoice.SessionID)
 				return
 			}
 
 			// List users unsettled session invoices
 			sessionInvoices, err := m.SessionResolver.Repository.ListSessionInvoicesByUserID(ctx, db.ListSessionInvoicesByUserIDParams{
-				ID: user.ID,
+				ID:        user.ID,
 				IsSettled: false,
 				IsExpired: false,
 			})
 
 			if err != nil {
-				metrics.RecordError("LSP040", "Error retrieving user unsettled session invoices", err)
-				log.Printf("LSP040: SessionID=%v, UserID=%v", sessionInvoice.SessionID, user.ID)
+				metrics.RecordError("LNM040", "Error retrieving user unsettled session invoices", err)
+				log.Printf("LNM040: SessionID=%v, UserID=%v", sessionInvoice.SessionID, user.ID)
 				return
 			}
 
@@ -100,8 +100,8 @@ func (m *InvoiceMonitor) handleInvoice(invoice lnrpc.Invoice) {
 				err = m.SessionResolver.UserResolver.UnrestrictUser(ctx, user)
 
 				if err != nil {
-					metrics.RecordError("LSP041", "Error unrestricting user", err)
-					log.Printf("LSP041: SessionID=%v, UserID=%v", sessionInvoice.SessionID, user.ID)
+					metrics.RecordError("LNM041", "Error unrestricting user", err)
+					log.Printf("LNM041: SessionID=%v, UserID=%v", sessionInvoice.SessionID, user.ID)
 				}
 			}
 		}
@@ -110,7 +110,7 @@ func (m *InvoiceMonitor) handleInvoice(invoice lnrpc.Invoice) {
 
 func (m *InvoiceMonitor) subscribeInvoiceInterceptions(invoiceChan chan<- lnrpc.Invoice) {
 	invoicesClient, err := m.waitForSubscribeInvoicesClient(0, 1000)
-	util.PanicOnError("LSP020", "Error creating Invoices client", err)
+	util.PanicOnError("LNM020", "Error creating Invoices client", err)
 	m.InvoicesClient = invoicesClient
 
 	for {
@@ -120,7 +120,7 @@ func (m *InvoiceMonitor) subscribeInvoiceInterceptions(invoiceChan chan<- lnrpc.
 			invoiceChan <- *invoice
 		} else {
 			m.InvoicesClient, err = m.waitForSubscribeInvoicesClient(100, 1000)
-			util.PanicOnError("LSP021", "Error creating Invoices client", err)
+			util.PanicOnError("LNM021", "Error creating Invoices client", err)
 		}
 	}
 }
@@ -140,7 +140,6 @@ func (m *InvoiceMonitor) waitForInvoices(shutdownCtx context.Context, waitGroup 
 		}
 	}
 }
-
 
 func (m *InvoiceMonitor) waitForSubscribeInvoicesClient(initialDelay, retryDelay time.Duration) (lnrpc.Lightning_SubscribeInvoicesClient, error) {
 	for {

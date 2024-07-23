@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/satimoto/go-datastore/pkg/util"
-	"github.com/satimoto/go-lsp/lsprpc"
+	"github.com/satimoto/go-lnm/lsprpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -29,8 +29,8 @@ func NewService(address string) Lsp {
 	clientConn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	timerStop := time.Now()
 
-	util.PanicOnError("LSP108", "Error connecting to LSP RPC address", err)
-	log.Printf("LSP %v dialed in %f seconds", address, timerStop.Sub(timerStart).Seconds())
+	util.PanicOnError("LNM108", "Error connecting to LSP RPC address", err)
+	log.Printf("LNM %v dialed in %f seconds", address, timerStop.Sub(timerStart).Seconds())
 
 	return &LspService{
 		clientConn: clientConn,

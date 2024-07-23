@@ -3,65 +3,72 @@ package cdr
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/satimoto/go-datastore/pkg/db"
 	"github.com/satimoto/go-datastore/pkg/param"
 	dbUtil "github.com/satimoto/go-datastore/pkg/util"
-	"github.com/satimoto/go-lsp/internal/lightningnetwork"
-	metrics "github.com/satimoto/go-lsp/internal/metric"
-	"github.com/satimoto/go-lsp/internal/notification"
-	"github.com/satimoto/go-lsp/pkg/util"
+	"github.com/satimoto/go-lnm/internal/lightningnetwork"
+	metrics "github.com/satimoto/go-lnm/internal/metric"
+	"github.com/satimoto/go-lnm/internal/notification"
+	"github.com/satimoto/go-lnm/pkg/util"
 )
 
 func (r *CdrResolver) IssueRebate(ctx context.Context, session db.Session, userID int64, invoiceParams util.InvoiceParams, chargeParams util.ChargeParams) {
-	sessionInvoice, err := r.SessionResolver.Repository.GetUnsettledSessionInvoiceBySession(ctx, session.ID)
+	updateUnsettledInvoices := dbUtil.GetEnvBool("UPDATE_UNSETTLED_INVOICES", false)
 
-	// First try to rebute via deducting from an unsettled session invoice
-	if err == nil && invoiceParams.TotalFiat.Valid && sessionInvoice.TotalFiat > invoiceParams.TotalFiat.Float64 {
-		// An unsettled session invoice exists, try to update it
-		if updatedSessionInvoice := r.updateSessionInvoice(ctx, session, sessionInvoice, invoiceParams, chargeParams); updatedSessionInvoice != nil {
-			return
+	if updateUnsettledInvoices {
+		sessionInvoice, err := r.SessionResolver.Repository.GetUnsettledSessionInvoiceBySession(ctx, session.ID)
+
+		// First try to rebute via deducting from an unsettled session invoice
+		if err == nil && invoiceParams.TotalFiat.Valid && sessionInvoice.TotalFiat > invoiceParams.TotalFiat.Float64 {
+			// An unsettled session invoice exists, try to update it
+			if updatedSessionInvoice := r.updateSessionInvoice(ctx, session, sessionInvoice, invoiceParams, chargeParams); updatedSessionInvoice != nil {
+				return
+			}
 		}
 	}
 
 	// Then issue an invoice request if no session invoice exists
-	if invoiceRequest, err := r.IssueInvoiceRequest(ctx, userID, "REBATE", session.Currency, session.Uid, invoiceParams); err == nil {
+	memo := fmt.Sprintf("Satimoto: %s", session.Uid)
+
+	if invoiceRequest, err := r.IssueInvoiceRequest(ctx, userID, &session.ID, "REBATE", invoiceParams.Currency, memo, invoiceParams); err == nil {
 		updateSessionByUidParams := param.NewUpdateSessionByUidParams(session)
 		updateSessionByUidParams.InvoiceRequestID = dbUtil.SqlNullInt64(invoiceRequest.ID)
 
 		_, err := r.SessionResolver.Repository.UpdateSessionByUid(ctx, updateSessionByUidParams)
 
 		if err != nil {
-			metrics.RecordError("LSP117", "Error updating session", err)
-			log.Printf("LSP117: Params=%v", updateSessionByUidParams)
+			metrics.RecordError("LNM117", "Error updating session", err)
+			log.Printf("LNM117: Params=%v", updateSessionByUidParams)
 		}
 	}
 }
 
-func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, promotionCode string, currency string, memo string, invoiceParams util.InvoiceParams) (*db.InvoiceRequest, error) {
+func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, sessionID *int64, promotionCode string, currency string, memo string, invoiceParams util.InvoiceParams) (*db.InvoiceRequest, error) {
 	currencyRate, err := r.FerpService.GetRate(currency)
 
 	if err != nil {
-		metrics.RecordError("LSP111", "Error retrieving exchange rate", err)
-		log.Printf("LSP111: Currency=%v", currency)
+		metrics.RecordError("LNM111", "Error retrieving exchange rate", err)
+		log.Printf("LNM111: Currency=%v", currency)
 		return nil, errors.New("error retrieving exchange rate")
 	}
 
 	user, err := r.SessionResolver.UserResolver.Repository.GetUser(ctx, userID)
 
 	if err != nil {
-		metrics.RecordError("LSP112", "Error retrieving user", err)
-		log.Printf("LSP112: UserID=%v", userID)
+		metrics.RecordError("LNM112", "Error retrieving user", err)
+		log.Printf("LNM112: UserID=%v", userID)
 		return nil, errors.New("error retrieving user")
 	}
 
 	promotion, err := r.PromotionRepository.GetPromotionByCode(ctx, promotionCode)
 
 	if err != nil {
-		metrics.RecordError("LSP113", "Error retrieving promotion", err)
-		log.Printf("LSP113: Code=%v", promotionCode)
+		metrics.RecordError("LNM113", "Error retrieving promotion", err)
+		log.Printf("LNM113: Code=%v", promotionCode)
 		return nil, errors.New("error retrieving promotion")
 	}
 
@@ -90,14 +97,15 @@ func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, pro
 		invoiceRequest, err = r.InvoiceRequestRepository.UpdateInvoiceRequest(ctx, updateInvoiceRequestParams)
 
 		if err != nil {
-			metrics.RecordError("LSP114", "Error updating invoice request", err)
-			log.Printf("LSP114: Params=%#v", updateInvoiceRequestParams)
+			metrics.RecordError("LNM114", "Error updating invoice request", err)
+			log.Printf("LNM114: Params=%#v", updateInvoiceRequestParams)
 			return nil, errors.New("error updating invoice request")
 		}
 	} else {
 		createInvoiceRequestParams := db.CreateInvoiceRequestParams{
 			UserID:         user.ID,
 			PromotionID:    promotion.ID,
+			SessionID:      dbUtil.SqlNullInt64(sessionID),
 			Currency:       currency,
 			Memo:           memo,
 			PriceFiat:      invoiceParams.PriceFiat,
@@ -115,8 +123,8 @@ func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, pro
 		invoiceRequest, err = r.InvoiceRequestRepository.CreateInvoiceRequest(ctx, createInvoiceRequestParams)
 
 		if err != nil {
-			metrics.RecordError("LSP115", "Error creating invoice request", err)
-			log.Printf("LSP115: Params=%#v", createInvoiceRequestParams)
+			metrics.RecordError("LNM115", "Error creating invoice request", err)
+			log.Printf("LNM115: Params=%#v", createInvoiceRequestParams)
 			return nil, errors.New("error creating invoice request")
 		}
 
@@ -140,8 +148,8 @@ func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, pro
 			_, err := r.PendingNotificationRepository.CreatePendingNotification(ctx, createPendingNotificationParams)
 
 			if err != nil {
-				metrics.RecordError("LSP130", "Error creating pending notification", err)
-				log.Printf("LSP130: Params=%#v", createPendingNotificationParams)
+				metrics.RecordError("LNM130", "Error creating pending notification", err)
+				log.Printf("LNM130: Params=%#v", createPendingNotificationParams)
 				return nil, errors.New("error creating pending notification")
 			}
 		} else {
@@ -165,31 +173,33 @@ func (r *CdrResolver) IssueInvoiceRequest(ctx context.Context, userID int64, pro
 }
 
 func (r *CdrResolver) updateSessionInvoice(ctx context.Context, session db.Session, sessionInvoice db.SessionInvoice, invoiceParams util.InvoiceParams, chargeParams util.ChargeParams) *db.SessionInvoice {
-	currencyRate, err := r.FerpService.GetRate(session.Currency)
+	currencyRate, err := r.FerpService.GetRate(invoiceParams.Currency)
 
 	if err != nil {
-		metrics.RecordError("LSP171", "Error retrieving exchange rate", err)
-		log.Printf("LSP171: Currency=%v", session.Currency)
+		metrics.RecordError("LNM171", "Error retrieving exchange rate", err)
+		log.Printf("LNM171: Currency=%v", invoiceParams.Currency)
 		return nil
 	}
-	
+
 	rateMsat := float64(currencyRate.RateMsat)
 	updateInvoiceParams := util.InvoiceParams{
+		Currency:       invoiceParams.Currency,
 		PriceFiat:      util.MinusNullFloat64(dbUtil.SqlNullFloat64(sessionInvoice.PriceFiat), invoiceParams.PriceFiat),
 		CommissionFiat: util.MinusNullFloat64(dbUtil.SqlNullFloat64(sessionInvoice.CommissionFiat), invoiceParams.CommissionFiat),
 		TaxFiat:        util.MinusNullFloat64(dbUtil.SqlNullFloat64(sessionInvoice.TaxFiat), invoiceParams.TaxFiat),
 		TotalFiat:      util.MinusNullFloat64(dbUtil.SqlNullFloat64(sessionInvoice.TotalFiat), invoiceParams.TotalFiat),
 	}
 
+	memo := fmt.Sprintf("Satimoto: %s", session.Uid)
 	updateInvoiceParams = util.FillInvoiceRequestParams(updateInvoiceParams, rateMsat)
 
 	if !invoiceParams.TotalMsat.Valid {
-		metrics.RecordError("LSP172", "Error filling request params", errors.New("invoiceParams TotalMsat not valid"))
-		log.Printf("LSP172: SessionInvoiceID=%v, Params=%#v", sessionInvoice.ID, invoiceParams)
+		metrics.RecordError("LNM172", "Error filling request params", errors.New("invoiceParams TotalMsat not valid"))
+		log.Printf("LNM172: SessionInvoiceID=%v, Params=%#v", sessionInvoice.ID, invoiceParams)
 		return nil
 	}
 
-	if paymentRequest, signature, err := lightningnetwork.CreateLightningInvoice(r.LightningService, session.Uid, invoiceParams.TotalMsat.Int64); err == nil {
+	if paymentRequest, signature, err := lightningnetwork.CreateLightningInvoice(r.LightningService, memo, invoiceParams.TotalMsat.Int64); err == nil {
 		// Get the session invoice again to check if it's been settled or updated
 		latestSessionInvoice, err := r.SessionResolver.Repository.GetSessionInvoice(ctx, sessionInvoice.ID)
 
@@ -212,12 +222,12 @@ func (r *CdrResolver) updateSessionInvoice(ctx context.Context, session db.Sessi
 			sessionInvoiceParams.EstimatedTime = chargeParams.EstimatedTime
 			sessionInvoiceParams.MeteredEnergy = chargeParams.MeteredEnergy
 			sessionInvoiceParams.MeteredTime = chargeParams.MeteredTime
-			
+
 			_, err := r.SessionResolver.Repository.UpdateSessionInvoice(ctx, sessionInvoiceParams)
 
 			if err != nil {
-				metrics.RecordError("LSP173", "Error updating session invoice", err)
-				log.Printf("LSP173: Params=%#v", sessionInvoiceParams)
+				metrics.RecordError("LNM173", "Error updating session invoice", err)
+				log.Printf("LNM173: Params=%#v", sessionInvoiceParams)
 				return nil
 			}
 
